@@ -2,7 +2,7 @@ import { setTimeout as pause } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import {
-  SDK_HEADER,
+  sdkHeaderEntry,
   readSdkVersion,
   replaceSdkVersion,
   sdkVersionPlan,
@@ -58,13 +58,7 @@ async function snapshot(request, root, sha) {
   } = await request("GET", `${root}/git/trees/${treeSha}?recursive=1`);
   if (truncated) throw Error("SDK tree response was truncated");
   if (returnedSha !== treeSha) throw Error("Unexpected SDK tree SHA");
-  const header = tree.find((entry) => entry.path === SDK_HEADER);
-  if (
-    !header ||
-    header.type !== "blob" ||
-    !["100644", "100755"].includes(header.mode)
-  )
-    throw Error("SDK header must be a regular file");
+  const header = sdkHeaderEntry(tree);
   const blob = await request("GET", `${root}/git/blobs/${header.sha}`);
   if (blob.encoding !== "base64" || blob.size > 1024 * 1024)
     throw Error("Invalid SDK header blob");
@@ -72,6 +66,7 @@ async function snapshot(request, root, sha) {
     files: tree,
     header: Buffer.from(blob.content, "base64").toString("utf8"),
     mode: header.mode,
+    path: header.path,
   };
 }
 
@@ -142,7 +137,7 @@ async function writeVersion(request, root, pr, head, version) {
         fileChanges: {
           additions: [
             {
-              path: SDK_HEADER,
+              path: head.path,
               contents: Buffer.from(
                 replaceSdkVersion(head.header, version),
               ).toString("base64"),
@@ -303,7 +298,7 @@ export async function reconcileSdkPullRequest({
     if (plan.needsUpdate) {
       if (!sameRepository)
         throw Error(
-          `Set EH_SDK_VERSION to ${plan.expectedVersion} in this fork; fork branches are never written or dispatched.`,
+          `Set the SDK version to ${plan.expectedVersion} in this fork; fork branches are never written or dispatched.`,
         );
       const sha = await writeVersion(
         request,

@@ -1,6 +1,20 @@
 export const SDK_ROOT = "firmware/components/eh_agent/";
 export const SDK_HEADER = SDK_ROOT + "include/eh_agent.h";
 
+// A rename can put the base and head in different SDK directories.
+const headerPaths = ["okou_agent", "eh_agent"].map(
+  component => `firmware/components/${component}/include/${component}.h`,
+);
+
+export function sdkHeaderEntry(files) {
+  if (!Array.isArray(files)) throw Error("Expected a git-tree array");
+  const entries = files.filter(file => headerPaths.includes(file.path));
+  if (entries.length !== 1 || entries[0].type !== "blob" ||
+      !["100644", "100755"].includes(entries[0].mode))
+    throw Error("Expected one regular-file SDK header");
+  return entries[0];
+}
+
 function versionParts(version) {
   if (
     typeof version !== "string" ||
@@ -25,17 +39,17 @@ function sdkMacro(header) {
   );
   const macros = [
     ...source.matchAll(
-      /^[\t ]*#[\t ]*define[\t ]+EH_SDK_VERSION\b[^\r\n]*/gm,
+      /^[\t ]*#[\t ]*define[\t ]+(?:OKOU|EH)_SDK_VERSION\b[^\r\n]*/gm,
     ),
   ];
   if (macros.length !== 1)
-    throw Error("SDK header must contain exactly one EH_SDK_VERSION macro");
+    throw Error("SDK header must contain exactly one SDK version macro");
   const macro = macros[0];
   const literal =
-    /^([\t ]*#[\t ]*define[\t ]+EH_SDK_VERSION[\t ]+")([^"\r\n]*)("[\t ]*)$/.exec(
+    /^([\t ]*#[\t ]*define[\t ]+(?:OKOU|EH)_SDK_VERSION[\t ]+")([^"\r\n]*)("[\t ]*)$/.exec(
       macro[0],
     );
-  if (!literal) throw Error("Invalid EH_SDK_VERSION macro");
+  if (!literal) throw Error("Invalid SDK version macro");
   const version = literal[2];
   versionParts(version);
   return { version, start: macro.index + literal[1].length };
@@ -55,9 +69,9 @@ export function replaceSdkVersion(header, version) {
   );
 }
 
-function isSdkInput(path) {
-  if (!path.startsWith(SDK_ROOT)) return false;
-  const relative = path.slice(SDK_ROOT.length);
+function isSdkInput(path, root) {
+  if (!path.startsWith(root)) return false;
+  const relative = path.slice(root.length);
   return (
     !/\.(?:md|markdown|mdown|mdx)$/i.test(relative) &&
     !/(?:^|\/)(?:docs?|tests?|__tests__)(?:\/|$)/i.test(relative) &&
@@ -68,24 +82,16 @@ function isSdkInput(path) {
   );
 }
 
-function sdkInputs(files, header, name) {
-  if (!Array.isArray(files)) throw Error(`${name} must be a git-tree array`);
-  const headers = files.filter((file) => file.path === SDK_HEADER);
-  if (
-    headers.length !== 1 ||
-    headers[0].type !== "blob" ||
-    !["100644", "100755"].includes(headers[0].mode)
-  )
-    throw Error(
-      `${name} must contain one regular-file SDK header: ${SDK_HEADER}`,
-    );
+function sdkInputs(files, header) {
+  const { path } = sdkHeaderEntry(files);
+  const root = path.slice(0, path.lastIndexOf("include/"));
   const inputs = files
-    .filter((file) => file.type !== "tree" && isSdkInput(file.path))
+    .filter((file) => file.type !== "tree" && isSdkInput(file.path, root))
     .map((file) => [
       file.path,
       file.mode,
       file.type,
-      file.path === SDK_HEADER ? replaceSdkVersion(header, "0.0.0") : file.sha,
+      file.path === path ? replaceSdkVersion(header, "0.0.0") : file.sha,
     ])
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return JSON.stringify(inputs);
@@ -105,8 +111,8 @@ export function sdkVersionPlan({
   const baseVersion = readSdkVersion(baseHeader);
   const currentVersion = readSdkVersion(headHeader);
   const hasChanges =
-    sdkInputs(baseFiles, baseHeader, "baseFiles") !==
-    sdkInputs(headFiles, headHeader, "headFiles");
+    sdkInputs(baseFiles, baseHeader) !==
+    sdkInputs(headFiles, headHeader);
   const base = versionParts(baseVersion);
   const current = versionParts(currentVersion);
   let expectedVersion = currentVersion;
