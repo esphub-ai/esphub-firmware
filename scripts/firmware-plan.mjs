@@ -282,8 +282,11 @@ if (
     event,
     process.env,
   );
-  const after = firmwareProfiles(afterRef),
-    before = firmwareProfiles(beforeRef);
+  const after = firmwareProfiles(afterRef);
+  const before =
+    process.env.GITHUB_EVENT_NAME === "push" && /^0+$/.test(beforeRef ?? "")
+      ? after
+      : firmwareProfiles(beforeRef);
   const options = {
     manual,
     board: event.inputs?.board ?? "",
