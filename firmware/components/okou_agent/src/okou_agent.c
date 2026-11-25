@@ -616,6 +616,16 @@ static void handle_req(const cJSON *root)
         okou_net_info(data);
         cJSON_AddItemToObject(data, "partitions", okou_partitions_json());
         r = ESP_OK;
+    } else if (strcmp(op, "logs.set") == 0) {
+        const cJSON *enabled = cJSON_GetObjectItemCaseSensitive(args, "enabled");
+        if (!cJSON_IsBool(enabled)) {
+            snprintf(err, sizeof(err), "expected boolean enabled");
+            r = ESP_ERR_INVALID_ARG;
+        } else {
+            r = okou_console_set(cJSON_IsTrue(enabled));
+            if (r == ESP_OK) cJSON_AddBoolToObject(data, "enabled", cJSON_IsTrue(enabled));
+            else snprintf(err, sizeof(err), "cannot allocate console buffer");
+        }
     } else if (strcmp(op, "cmd") == 0) {
         const cJSON *n = cJSON_GetObjectItemCaseSensitive(args, "name");
         const cJSON *argv = cJSON_GetObjectItemCaseSensitive(args, "argv");
@@ -778,6 +788,8 @@ static void agent_wait(bool transport_paused)
             deadline = s_next_connect_us;
         } else if (s_iot_started && !s_mqtt_up) {
             deadline = s_conn_start_us + CONNECT_TIMEOUT_US;
+        } else if (s_hello_acked && !s_mqtt_broken) {
+            deadline = okou_console_deadline();
         }
     }
     portENTER_CRITICAL(&s_rmux);
@@ -804,6 +816,7 @@ static void agent_task(void *arg)
     for (;;) {
         if (s_reload) {
             s_reload = false;
+            okou_console_set(false);
             s_cfg_ok = load_config();
             if (s_iot_started) {
                 mqtt_teardown("config reload");
@@ -860,6 +873,7 @@ static void agent_task(void *arg)
 #endif
             if (s_hello_acked && !s_mqtt_broken) {
                 service_control();
+                if (!s_mqtt_broken) okou_console_flush();
             }
             if (!okou_net_has_ip()) {
                 mqtt_teardown("network down");

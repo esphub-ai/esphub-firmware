@@ -10,7 +10,7 @@ if(CONFIG_OKOU_BLE_WIFI)
     set(ble_source "src/okou_ble.c")
 endif()
 idf_component_register(
-    SRCS ${ble_source} "src/okou_agent.c" "src/okou_hub.c" "src/okou_iot.c" "src/okou_registry.c" "src/okou_net.c" "src/okou_wifi.c" "src/okou_wifi_setup.c" "src/okou_util.c" "src/okou_qemu.c"
+    SRCS ${ble_source} "src/okou_agent.c" "src/okou_console.c" "src/okou_hub.c" "src/okou_iot.c" "src/okou_registry.c" "src/okou_net.c" "src/okou_wifi.c" "src/okou_wifi_setup.c" "src/okou_util.c" "src/okou_qemu.c"
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "src"
     REQUIRES esp_partition esp_http_client ${json_component} esp_event

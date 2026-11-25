@@ -34,7 +34,6 @@ void app_main(void)
 #endif
     ESP_ERROR_CHECK(okou_cmd_register("app", "start the installed application", start_app));
     okou_op_register("install", install_op);
-    coredump_ops_register();
     okou_config_t cfg = OKOU_CONFIG_DEFAULT();
     cfg.role = OKOU_ROLE_BOOTLOADER;
     ESP_ERROR_CHECK(okou_agent_start(&cfg));

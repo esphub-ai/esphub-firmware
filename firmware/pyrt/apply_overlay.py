@@ -38,6 +38,9 @@ shutil.copytree(ov / "cmodules" / "okou", m5 / "cmodules" / "okou", dirs_exist_o
 shutil.copytree(ov / "okl", m5 / "okl", dirs_exist_ok=True)
 shutil.copy(ov / "partitions_okl_build.csv", m5 / "partitions_okl_build.csv")
 if generic:
+    # ESP-IDF already supplies Unix seconds, as the UIFlow TLS clock expects.
+    # Applying the 2000 epoch offset makes valid MQTT certificates appear expired.
+    edit("main.c", "return tv.tv_sec + TIMEUTILS_SECONDS_1970_TO_2000;", "return tv.tv_sec;")
     edit("esp32_common.cmake", "list(APPEND IDF_COMPONENTS", "list(APPEND IDF_COMPONENTS\n    okou_agent")
     # Keep OTA safe-boot behavior identical to UIFlow's main loop.
     uiflow_main = (uiflow / "m5stack/main.c").read_text()
@@ -56,7 +59,13 @@ edit("main.c", "void MICROPY_ESP_IDF_ENTRY(void) {",
 edit("main.c", "    MICROPY_BOARD_STARTUP();\n",
      "    MICROPY_BOARD_STARTUP();\n    okl_runtime_start();\n")
 
-# pyexec prints the traceback on the local console. Report the failure event to the hub.
+# Both UIFlow and the generic ESP32 port build this stdout implementation.
+# Explicit file objects in print(file=...) keep their own stream behavior.
+stdout = 'mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {'
+edit(mp.resolve() / "ports/esp32/mphalport.c", stdout,
+     '#include "okou_agent.h"\n' + stdout + '\n    if (okou_console_write(str, len)) return len;')
+
+# pyexec writes the traceback to stdout and reports the failure event to the hub.
 edit("main.c", '#include "py/runtime.h"', '#include "py/runtime.h"\n#include "okou_agent.h"')
 for script, indent in (("boot.py", "    "), ("main.py", "        ")):
     call = f'int ret = pyexec_file_if_exists("{script}");'

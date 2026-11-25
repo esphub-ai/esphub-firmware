@@ -2,6 +2,7 @@
 #pragma once
 #include <assert.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -19,6 +20,10 @@ typedef int esp_err_t;
 const char *esp_err_to_name(esp_err_t e);
 size_t strlcpy(char *dest, const char *src, size_t size);
 
+typedef void *TaskHandle_t;
+TaskHandle_t xTaskGetCurrentTaskHandle(void);
+typedef int (*vprintf_like_t)(const char *, va_list);
+vprintf_like_t esp_log_set_vprintf(vprintf_like_t fn);
 typedef uint32_t TickType_t;
 typedef int BaseType_t;
 typedef unsigned UBaseType_t;

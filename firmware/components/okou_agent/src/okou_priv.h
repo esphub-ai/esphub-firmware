@@ -40,6 +40,10 @@ cJSON *okou_partitions_json(void);
 
 /* ---- agent (okou_agent.c) ---- */
 void okou_agent_notify(void);
+/* The agent task owns the console session and its send schedule. */
+esp_err_t okou_console_set(bool enabled);
+int64_t okou_console_deadline(void);
+void okou_console_flush(void);
 extern okou_config_t g_okou_cfg;
 
 static inline bool okou_is_bootloader(void)
