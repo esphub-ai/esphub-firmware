@@ -1,0 +1,40 @@
+name: Publish board firmware
+on:
+  workflow_dispatch:
+    inputs:
+      source_run: {description: Trusted firmware build run ID, type: string, required: true}
+      board: {description: Canonical group/project board ID, type: string, required: true}
+permissions: {contents: read, actions: read}
+jobs:
+  publish:
+    if: ${{ github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: npm}
+      - run: npm ci --ignore-scripts
+      - name: Verify the source run and identify its assets
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+          BOARD: ${{ inputs.board }}
+        run: node scripts/prepare-publication.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          pattern: ${{ steps.source.outputs.stem }}.*
+          path: assets
+      - name: Publish release assets and advance the Neon catalog
+        env:
+          BOARD_PROFILE: ${{ steps.source.outputs.profile }}
+          RELEASE_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          FIRMWARE_R2_ENDPOINT: ${{ vars.FIRMWARE_R2_ENDPOINT }}
+          FIRMWARE_DATABASE_URL: ${{ secrets.FIRMWARE_DATABASE_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FIRMWARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FIRMWARE_R2_SECRET_ACCESS_KEY }}
+        run: node scripts/publish-board.mjs

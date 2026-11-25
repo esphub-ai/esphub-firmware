@@ -24,6 +24,7 @@ jobs:
     concurrency:
       group: firmware-${{ github.ref }}-${{ matrix.profile.board }}
       cancel-in-progress: false
+    permissions: {contents: read, actions: write}
     uses: ./.github/workflows/build-board.yml
     with:
       profile: ${{ toJSON(matrix.profile) }}

@@ -8,7 +8,7 @@ import { boardFileStem } from "../shared/board-id.js";
 
 const profile = JSON.parse(process.env.BOARD_PROFILE);
 const { board, chip, jobs } = profile;
-const source = process.env.GITHUB_SHA;
+const source = process.env.RELEASE_SOURCE_SHA ?? process.env.GITHUB_SHA;
 const endpoint = process.env.FIRMWARE_R2_ENDPOINT;
 const database = process.env.FIRMWARE_DATABASE_URL;
 const bucket = "esphub-firmware";
