@@ -24,7 +24,7 @@ Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bu
 
 Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`, `esphub.boards`, and `esphub.board_sources`, plus `DELETE` on `esphub.board_sources`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
 
-Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Its public WebP photo is stored at `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The Hub reads this directory and joins the latest published firmware versions at request time.
+Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time.
 
 ## Application messages
 
