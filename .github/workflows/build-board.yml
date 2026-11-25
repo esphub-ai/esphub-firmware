@@ -89,7 +89,7 @@ jobs:
           name: ${{ env.BOARD_FILE_STEM }}.setup
           path: dist/
           if-no-files-found: error
-  publish:
+  queue-publish:
     needs: [component, kit]
     if: >-
       ${{ !cancelled() && vars.FIRMWARE_PUBLISH_ENABLED == 'true' &&
@@ -99,22 +99,9 @@ jobs:
           (needs.component.result == 'success' || needs.component.result == 'skipped') &&
           (needs.kit.result == 'success' || needs.kit.result == 'skipped') }}
     runs-on: ubuntu-latest
-    environment: production
+    permissions: {actions: write}
     steps:
-      - uses: actions/checkout@v4
-        with: {persist-credentials: false}
-      - uses: actions/setup-node@v4
-        with: {node-version: 24, cache: npm}
-      - run: npm ci --ignore-scripts
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: ${{ env.BOARD_FILE_STEM }}.*
-          path: assets
-      - name: Publish this board to R2 and advance its Neon release catalog
+      - name: Dispatch this board for publication
         env:
-          BOARD_PROFILE: ${{ inputs.profile }}
-          FIRMWARE_R2_ENDPOINT: ${{ vars.FIRMWARE_R2_ENDPOINT }}
-          FIRMWARE_DATABASE_URL: ${{ secrets.FIRMWARE_DATABASE_URL }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FIRMWARE_R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FIRMWARE_R2_SECRET_ACCESS_KEY }}
-        run: node scripts/publish-board.mjs
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-board.yml --repo "$GITHUB_REPOSITORY" --ref main -f source_run="$GITHUB_RUN_ID" -f board="$BOARD"

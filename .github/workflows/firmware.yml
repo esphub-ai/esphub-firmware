@@ -46,6 +46,7 @@ jobs:
       fail-fast: false
       matrix:
         cohort: ${{ fromJSON(needs.plan.outputs.cohorts) }}
+    permissions: {contents: read, actions: write}
     uses: ./.github/workflows/build-variant.yml
     with:
       cohort: ${{ toJSON(matrix.cohort) }}
