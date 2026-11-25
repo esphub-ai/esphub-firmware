@@ -70,15 +70,15 @@ function firmwareProfiles(ref, cwd = process.cwd()) {
     );
   const variants = new Map();
   for (const path of files.keys()) {
+    // The base snapshot may still contain an older transport-suffixed variant.
     const match =
-      /^firmware\/bootloader\/([a-z0-9]+)-(\d+)mb(-usb-cdc)?\/sdkconfig\.defaults$/.exec(
+      /^firmware\/bootloader\/(([a-z0-9]+)-(\d+)mb(?:-[a-z0-9-]+)?)\/sdkconfig\.defaults$/.exec(
         path,
       );
     if (!match) continue;
-    const [, target, flash, transport = ""] = match;
+    const [, variant, target, flash] = match;
     if (Number(flash) < 8)
       throw Error("EspHub requires at least 8 MiB Flash: " + path);
-    const variant = `${target}-${flash}mb${transport}`;
     const container =
       target === "esp32s31"
         ? "espressif/idf:v6.1.1"

@@ -1,8 +1,8 @@
 # Espressif ESP-Mosaico
 
-ESP-Mosaico uses the `esp32s31-16mb-usb-cdc` EspHub bootloader and boots from 16 MiB SPI NOR.
+ESP-Mosaico uses the `esp32s31-16mb` EspHub bootloader and boots from 16 MiB SPI NOR.
 Its 16 MiB PSRAM and 128 MiB SPI NAND are separate from the boot flash.
-Use the onboard USB-C port for bootloader provisioning over USB OTG CDC and UART0 for early boot logs.
+Use the onboard USB-C port in ROM download mode to flash the kit. The bootloader uses UART0 on the right expansion header (H1) for registration and console output.
 [Official board guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s31/esp-mosaico/user_guide.html)
 
 ## Native example
@@ -27,4 +27,6 @@ The OTA image is `native/project/build/mosaico_hello.bin`. Use the EspHub partit
 
 Register the device as `espressif/esp-mosaico` in EspHub. Follow `INSTALL.txt` in the setup ZIP linked by the [setup manifest](https://api.esphub.ai/releases/espressif/esp-mosaico/setup-manifest). The kit contains the EspHub Bootloader and native Hello World app. The first-time flash replaces the partition table and application.
 
-Write the private registration over USB CDC, then configure Wi-Fi using the [Mac BLE tool](../../../../tools/ble-wifi/) while the board is in bootloader mode. Check that `devices.get` shows the device online, then call `bootloader.exit`. Verify Hello World and its touch counter on the display and the native runtime version in `devices.get`.
+For boards running the former USB OTG bootloader, back up device data and flash the new setup kit to change bootloader profiles. Bootloader OTA validates the installed profile.
+
+Connect a 3.3 V USB-to-UART adapter to H1. Connect adapter TX to pin 13 (RX0, GPIO59), adapter RX to pin 15 (TX0, GPIO58), and connect ground. Use the adapter port at 115200 baud with `provision_usb.py`, then configure Wi-Fi using the [Mac BLE tool](../../../../tools/ble-wifi/) while the board is in bootloader mode. Check that `devices.get` shows the device online, then call `bootloader.exit`. Verify Hello World and its touch counter on the display and the native runtime version in `devices.get`.

@@ -3,6 +3,6 @@
   "model": "Espressif ESP-Mosaico",
   "chip": "esp32s31",
   "flash_mb": 16,
-  "bootloader": "esp32s31-16mb-usb-cdc",
+  "bootloader": "esp32s31-16mb",
   "preview": true
 }

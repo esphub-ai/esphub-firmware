@@ -15,12 +15,7 @@
 #include "esp_mac.h"
 #include "okou_agent_ext.h"
 #include "bootloader.h"
-#if CONFIG_OKL_USB_CDC
-#include "tinyusb.h"
-#include "tinyusb_cdc_acm.h"
-#include "tinyusb_console.h"
-#include "tinyusb_default_config.h"
-#elif CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
 #include "driver/usb_serial_jtag_vfs.h"
 #elif CONFIG_ESP_CONSOLE_UART
@@ -131,37 +126,9 @@ static void serial_task(void *arg)
     }
 }
 
-#if CONFIG_OKL_USB_CDC
-static bool usb_cdc_ready;
-
-void prov_usb_cdc_init(void)
-{
-    ESP_LOGI(TAG, "initializing USB CDC");
-    const tinyusb_config_t usb = TINYUSB_DEFAULT_CONFIG();
-    const tinyusb_config_cdcacm_t cdc = { .cdc_port = TINYUSB_CDC_ACM_0 };
-    esp_err_t err = tinyusb_driver_install(&usb);
-    if (err == ESP_OK)
-        err = tinyusb_cdcacm_init(&cdc);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "USB CDC driver initialization failed: %s", esp_err_to_name(err));
-        return;
-    }
-    usb_cdc_ready = true;
-    ESP_LOGI(TAG, "USB CDC driver ready");
-}
-#endif
-
 void prov_serial_start(void)
 {
-#if CONFIG_OKL_USB_CDC
-    if (!usb_cdc_ready)
-        return;
-    esp_err_t err = tinyusb_console_init(TINYUSB_CDC_ACM_0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "USB CDC console initialization failed: %s", esp_err_to_name(err));
-        return;
-    }
-#elif CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
     usb_serial_jtag_driver_config_t cfg = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
     if (usb_serial_jtag_driver_install(&cfg) != ESP_OK) {
         ESP_LOGW(TAG, "usb serial driver install failed; serial provisioning unavailable");
