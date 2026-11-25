@@ -12,5 +12,4 @@
 bool prov_apply(const char *line, char *err, size_t n);
 
 /* USB-serial provisioning: a console line "OKL-PROVISION <json>" applies the same payload. */
-void prov_usb_cdc_init(void);
 void prov_serial_start(void);

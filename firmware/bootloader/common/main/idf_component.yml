@@ -4,7 +4,3 @@ dependencies:
     version: "^1.7.19"
     rules:
       - if: "idf_version >=6.0"
-  espressif/esp_tinyusb:
-    version: "3.0.1"
-    rules:
-      - if: "target in [esp32s31]"

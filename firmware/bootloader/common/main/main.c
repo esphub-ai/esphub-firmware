@@ -29,9 +29,6 @@ void app_main(void)
         esp_restart();
     }
 
-#if CONFIG_OKL_USB_CDC
-    prov_usb_cdc_init();
-#endif
     ESP_ERROR_CHECK(okou_cmd_register("app", "start the installed application", start_app));
     okou_op_register("install", install_op);
     okou_config_t cfg = OKOU_CONFIG_DEFAULT();
