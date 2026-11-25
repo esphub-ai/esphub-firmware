@@ -23,3 +23,23 @@ Use `logs.set` to redirect ordinary ESP-IDF task logs and MicroPython stdout ove
 Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bucket. Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies manifest hashes, writes immutable versioned objects and release receipts, then advances that board's Neon catalog in one transaction. Versions in this repository start at `1.2`.
 
 Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
+
+## Application messages
+
+EspHub sends a JSON envelope with `id` and `payload`. Messages use MQTT QoS 0 and expire with the connection.
+
+Native applications call `okou_message_receive()` to take a heap-owned JSON envelope, and `okou_message_send(json, reply_to)` to send JSON text with an optional incoming ID. Use `NULL` for an unsolicited message. A successful send means the local transport queue accepted the message.
+
+MicroPython exposes the same interface:
+
+```python
+import json
+import okou
+
+message = okou.message_receive()
+if message is not None:
+    envelope = json.loads(message)
+    okou.message_send(json.dumps({"received": envelope["payload"]}), envelope["id"])
+```
+
+Read device messages through the Hub's `logs.read` tool.

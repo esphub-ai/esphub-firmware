@@ -21,7 +21,7 @@ static cJSON *active_identity, *active_certificate;
 static unsigned events;
 static char topic[64], uplink[64], boot[33];
 static uint32_t next_mid;
-static QueueHandle_t acks, controls;
+static QueueHandle_t acks, controls, messages;
 static char *incoming;
 static size_t received, expected;
 
@@ -29,6 +29,7 @@ cJSON *okou_iot_control(void)
 {
     cJSON *frame = NULL;
     if (controls) xQueueReceive(controls, &frame, 0);
+    if (!frame && messages) xQueueReceive(messages, &frame, 0);
     return frame;
 }
 static portMUX_TYPE event_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -224,13 +225,16 @@ static void mqtt_event(void *ctx, esp_event_base_t base, int32_t event, void *ar
             uint32_t ack = (uint32_t)mid->valuedouble;
             xQueueSend(acks, &ack, 0);
         }
-        if (pid && !strcmp(pid, boot) && cJSON_GetObjectItemCaseSensitive(m, "command")) {
-            if (xQueueSend(controls, &m, 0) == pdTRUE) {
+        bool message = cJSON_IsObject(cJSON_GetObjectItemCaseSensitive(m, "message"));
+        if (pid && !strcmp(pid, boot) &&
+            (message || cJSON_GetObjectItemCaseSensitive(m, "command"))) {
+            QueueHandle_t queue = message ? messages : controls;
+            if (queue && xQueueSend(queue, &m, 0) == pdTRUE) {
                 okou_agent_notify();
                 break;
             }
             // A fresh hello requests the outstanding command again.
-            signal_event(IOT_OFFLINE);
+            if (!message) signal_event(IOT_OFFLINE);
         }
         cJSON_Delete(m);
         break;
@@ -276,9 +280,11 @@ bool okou_iot_publish(cJSON *frame, bool confirm)
     cJSON_Delete(envelope);
     if (!payload)
         return false;
+    const char *kind = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(frame, "t"));
+    int qos = kind && !strcmp(kind, "message") ? 0 : 1;
     bool done = false;
     for (int attempt = 0; attempt < (confirm ? 2 : 1) && !done; ++attempt) {
-        if (esp_mqtt_client_publish(mqtt, uplink, payload, 0, 1, 0) < 0)
+        if (esp_mqtt_client_publish(mqtt, uplink, payload, 0, qos, 0) < 0)
             break;
         if (!confirm) {
             done = true;
@@ -327,6 +333,8 @@ bool okou_iot_start(const char *boot_id, const char *hub, const char *token)
         acks = xQueueCreate(8, sizeof(uint32_t));
     if (!controls)
         controls = xQueueCreate(4, sizeof(cJSON *));
+    if (!messages)
+        messages = xQueueCreate(4, sizeof(cJSON *));
     if (!acks || !controls)
         goto done;
     xQueueReset(acks);

@@ -45,6 +45,12 @@ typedef struct {
 esp_err_t okou_agent_start(const okou_config_t *cfg);
 
 /* True while the hub MQTT session is up and our hello has been acknowledged. */
+/* Best-effort JSON messages. A successful send only hands the payload to the
+ * current session's local queue. reply_to is NULL or a received message ID. */
+bool okou_message_send(const char *json, const char *reply_to);
+/* Non-blocking; returns a heap-owned JSON envelope or NULL. Free after use. */
+char *okou_message_receive(void);
+
 bool okou_connected(void);
 
 /* Reboot into the bootloader and hold it for this boot. Does not return on success. */
