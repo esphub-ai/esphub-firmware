@@ -290,7 +290,7 @@ if (
   const options = {
     manual,
     board: event.inputs?.board ?? "",
-    version: "1.1." + process.env.GITHUB_RUN_ID,
+    version: "1.2." + process.env.GITHUB_RUN_NUMBER,
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
   let plans = boardPlans(before.boards, after.boards, {}, options);

@@ -2,7 +2,19 @@ name: Board firmware
 on:
   push:
     branches: [main]
+    paths:
+      - 'firmware/**'
+      - 'scripts/build-bootloader.sh'
+      - 'scripts/package-*.py'
+      - 'tools/ble-wifi/provision_usb.py'
+      - '.github/actions/**'
   pull_request:
+    paths:
+      - 'firmware/**'
+      - 'scripts/build-bootloader.sh'
+      - 'scripts/package-*.py'
+      - 'tools/ble-wifi/provision_usb.py'
+      - '.github/actions/**'
   workflow_dispatch:
     inputs:
       board:
