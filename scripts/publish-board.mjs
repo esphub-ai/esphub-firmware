@@ -71,8 +71,22 @@ async function readRelease({ kind, version, fingerprint }) {
         );
       }
     }
-  } else if (kind === "setup" && manifest.sha256 !== files.setup.sha256) {
-    throw Error("USB kit checksum mismatch");
+  } else if (kind === "setup") {
+    if (
+      manifest.file !== files.setup.name ||
+      manifest.sha256 !== files.setup.sha256
+    ) {
+      throw Error("USB kit checksum mismatch");
+    }
+  } else {
+    const image = files[kind];
+    const checksum = await readFile(
+      image.path.replace(/\.bin$/, ".sha256"),
+      "utf8",
+    );
+    if (checksum.trim() !== `${image.sha256}  ${image.name}`) {
+      throw Error("Runtime image checksum mismatch: " + image.name);
+    }
   }
   return {
     board,
