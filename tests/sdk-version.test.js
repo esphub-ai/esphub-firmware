@@ -9,7 +9,7 @@ import {
 } from "../scripts/sdk-version.mjs";
 
 const header = (version = "1.2.3") =>
-  `#pragma once\n#define OKOU_SDK_VERSION "${version}"\nvoid okou_start(void);\n`;
+  `#pragma once\n#define EH_SDK_VERSION "${version}"\nvoid eh_start(void);\n`;
 const file = (path, sha = "base", mode = "100644", type = "blob") => ({
   path,
   mode,
@@ -23,7 +23,7 @@ const files = () => [
   file("firmware/components", "components-tree", "040000", "tree"),
   file(SDK_ROOT.slice(0, -1), "sdk-tree", "040000", "tree"),
   file(SDK_HEADER, "header-base"),
-  sdkFile("src/okou_agent.c"),
+  sdkFile("src/eh_agent.c"),
   sdkFile("CMakeLists.txt"),
   sdkFile("Kconfig"),
   sdkFile("idf_component.yml"),
@@ -36,14 +36,14 @@ const plan = (options = {}) =>
     headFiles: files(),
     ...options,
   });
-const changedFiles = (path = SDK_ROOT + "src/okou_agent.c", changes = {}) =>
+const changedFiles = (path = SDK_ROOT + "src/eh_agent.c", changes = {}) =>
   files().map((entry) =>
     entry.path === path ? { ...entry, sha: "head", ...changes } : entry,
   );
 
 test("exports the SDK component and header paths", () => {
-  assert.equal(SDK_ROOT, "firmware/components/okou_agent/");
-  assert.equal(SDK_HEADER, SDK_ROOT + "include/okou_agent.h");
+  assert.equal(SDK_ROOT, "firmware/components/eh_agent/");
+  assert.equal(SDK_HEADER, SDK_ROOT + "include/eh_agent.h");
 });
 
 for (const version of ["0.0.0", "1.2.3", "12.34.567", "9007199254740991.0.0"]) {
@@ -60,17 +60,17 @@ test("reads whitespace, CRLF, trailing comments and an unterminated final line",
     " /* a */ /* b */",
   ]) {
     assert.equal(
-      readSdkVersion(`\t# define\tOKOU_SDK_VERSION\t"2.3.4"${suffix}\r\n`),
+      readSdkVersion(`\t# define\tEH_SDK_VERSION\t"2.3.4"${suffix}\r\n`),
       "2.3.4",
     );
   }
-  assert.equal(readSdkVersion('#define OKOU_SDK_VERSION "2.3.4"'), "2.3.4");
+  assert.equal(readSdkVersion('#define EH_SDK_VERSION "2.3.4"'), "2.3.4");
 });
 
 test("ignores macro examples in C comments and other quoted strings", () => {
   const source =
-    '// #define OKOU_SDK_VERSION "8.8.8"\n' +
-    '/*\n#define OKOU_SDK_VERSION "9.9.9"\n*/\n' +
+    '// #define EH_SDK_VERSION "8.8.8"\n' +
+    '/*\n#define EH_SDK_VERSION "9.9.9"\n*/\n' +
     'const char *url = "https://example.org/* not a comment */";\n' +
     header();
   assert.equal(readSdkVersion(source), "1.2.3");
@@ -110,22 +110,22 @@ for (const version of invalidVersions) {
 for (const macro of [
   "",
   '#define OTHER_VERSION "1.2.3"',
-  '// #define OKOU_SDK_VERSION "1.2.3"',
-  '/* #define OKOU_SDK_VERSION "1.2.3" */',
-  '#define OKOU_SDK_VERSION_EXTRA "1.2.3"',
-  "#define OKOU_SDK_VERSION",
-  "#define OKOU_SDK_VERSION 1.2.3",
-  '#define OKOU_SDK_VERSION ("1.2.3")',
-  '#define OKOU_SDK_VERSION(x) "1.2.3"',
-  '#define OKOU_SDK_VERSION "1.2.3" extra',
-  '#define OKOU_SDK_VERSION "1.2.3" "4.5.6"',
-  '#define OKOU_SDK_VERSION "1.2.3"; ',
-  '#define OKOU_SDK_VERSION "1.2.3',
-  '#define OKOU_SDK_VERSION \\\n"1.2.3"',
-  '#define OKOU_SDK_VERSION "1.2.3" \\\n+ 1',
-  '#define OKOU_SDK_VERSION "1.2.3"\n#define OKOU_SDK_VERSION "1.2.3"',
-  '#define OKOU_SDK_VERSION "1.2.3"\n#define OKOU_SDK_VERSION invalid',
-  '#if A\n#define OKOU_SDK_VERSION "1.2.3"\n#else\n#define OKOU_SDK_VERSION "1.2.4"\n#endif',
+  '// #define EH_SDK_VERSION "1.2.3"',
+  '/* #define EH_SDK_VERSION "1.2.3" */',
+  '#define EH_SDK_VERSION_EXTRA "1.2.3"',
+  "#define EH_SDK_VERSION",
+  "#define EH_SDK_VERSION 1.2.3",
+  '#define EH_SDK_VERSION ("1.2.3")',
+  '#define EH_SDK_VERSION(x) "1.2.3"',
+  '#define EH_SDK_VERSION "1.2.3" extra',
+  '#define EH_SDK_VERSION "1.2.3" "4.5.6"',
+  '#define EH_SDK_VERSION "1.2.3"; ',
+  '#define EH_SDK_VERSION "1.2.3',
+  '#define EH_SDK_VERSION \\\n"1.2.3"',
+  '#define EH_SDK_VERSION "1.2.3" \\\n+ 1',
+  '#define EH_SDK_VERSION "1.2.3"\n#define EH_SDK_VERSION "1.2.3"',
+  '#define EH_SDK_VERSION "1.2.3"\n#define EH_SDK_VERSION invalid',
+  '#if A\n#define EH_SDK_VERSION "1.2.3"\n#else\n#define EH_SDK_VERSION "1.2.4"\n#endif',
 ]) {
   test(`rejects missing, malformed or multiple macros: ${JSON.stringify(macro)}`, () => {
     assert.throws(() => readSdkVersion(macro), /SDK|macro/);
@@ -142,7 +142,7 @@ test("rejects non-string headers and replacement versions", () => {
 
 test("replacement preserves every byte except the version literal", () => {
   const source =
-    '/* 1.2.3 */\r\n\t# define /* SDK */ OKOU_SDK_VERSION\t"1.2.3" /* 1.2.3 */\r\n' +
+    '/* 1.2.3 */\r\n\t# define /* SDK */ EH_SDK_VERSION\t"1.2.3" /* 1.2.3 */\r\n' +
     '#define OTHER_VERSION "1.2.3"\r\n';
   const expected = source.replace('VERSION\t"1.2.3"', 'VERSION\t"20.30.40"');
   assert.equal(replaceSdkVersion(source, "20.30.40"), expected);
@@ -161,9 +161,9 @@ test("unchanged SDK returns the full no-op result", () => {
 });
 
 for (const path of [
-  "src/okou_agent.c",
-  "src/okou_priv.h",
-  "include/okou_agent_ext.h",
+  "src/eh_agent.c",
+  "src/eh_priv.h",
+  "include/eh_agent_ext.h",
   "CMakeLists.txt",
   "Kconfig",
   "idf_component.yml",
@@ -190,7 +190,7 @@ for (const path of [
 test("public SDK header content is compared rather than its git blob SHA", () => {
   assert.equal(plan({ headFiles: changedFiles(SDK_HEADER) }).hasChanges, false);
   assert.equal(
-    plan({ headHeader: header() + "void okou_stop(void);\n" }).hasChanges,
+    plan({ headHeader: header() + "void eh_stop(void);\n" }).hasChanges,
     true,
   );
   assert.equal(
@@ -205,14 +205,14 @@ test("header whitespace, comments and line-ending edits are meaningful", () => {
     header().replace("#define", "# define"),
     header().replace('"1.2.3"', '"1.2.3" // release'),
     header().replaceAll("\n", "\r\n"),
-    header().replace("void okou_start", "void okou_begin"),
+    header().replace("void eh_start", "void eh_begin"),
   ]) {
     assert.equal(plan({ headHeader }).hasChanges, true);
   }
 });
 
 test("SDK additions, deletions, renames, symlinks and file mode changes count", () => {
-  const source = SDK_ROOT + "src/okou_agent.c";
+  const source = SDK_ROOT + "src/eh_agent.c";
   for (const headFiles of [
     [...files(), sdkFile("src/new.c")],
     files().filter((entry) => entry.path !== source),
@@ -248,7 +248,7 @@ const excludedPaths = [
   SDK_ROOT + "LICENSE",
   SDK_ROOT + "LICENSE.txt",
   SDK_ROOT + "vendor/LICENSE.MIT",
-  "firmware/components/okou_agent_extra/src/agent.c",
+  "firmware/components/eh_agent_extra/src/agent.c",
   "firmware/components/other/src/agent.c",
   "firmware/version.txt",
   "scripts/build-bootloader.sh",

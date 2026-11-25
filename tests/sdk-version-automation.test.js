@@ -15,7 +15,7 @@ const treeShas = Object.fromEntries(
   ),
 );
 const header = (version) =>
-  `#pragma once\n#define OKOU_SDK_VERSION "${version}" // keep this comment\nint okou_agent_start(void);\n`;
+  `#pragma once\n#define EH_SDK_VERSION "${version}" // keep this comment\nint eh_agent_start(void);\n`;
 const clone = (value) => structuredClone(value);
 const immediate = async () => {};
 const commitMutation =

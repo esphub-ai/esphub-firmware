@@ -3,5 +3,15 @@
   "model": "M5Stack Dial",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 12,
+  "default_example": "display-shapes",
+  "examples": [
+    {
+      "id": "display-shapes",
+      "description": "Draw randomly placed, colored circles and squares on the LCD. Change the drawing routine to build a display application.",
+      "entrypoint": "examples/display-shapes/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Dial/blob/735eb55beefe6577c646ebf164a19793a01375d4/examples/Basic/display/display.ino"
+    }
+  ]
 }

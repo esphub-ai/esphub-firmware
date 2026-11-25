@@ -3,5 +3,15 @@
   "model": "M5Stack TriviaPOD",
   "chip": "esp32s3",
   "flash_mb": 32,
-  "bootloader": "esp32s3-32mb"
+  "bootloader": "esp32s3-32mb",
+  "default_example": "chip-info",
+  "examples": [
+    {
+      "id": "chip-info",
+      "description": "Print the ESP32-S3 revision, radio features, flash size and free heap. This ESP-IDF chip example runs without the proprietary TriviaPOD game or peripheral drivers.",
+      "entrypoint": "examples/chip-info/main.cpp",
+      "upstream": "https://github.com/espressif/esp-idf/blob/v5.4.1/examples/get-started/hello_world/main/hello_world_main.c"
+    }
+  ],
+  "psram": "octal"
 }

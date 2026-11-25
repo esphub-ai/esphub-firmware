@@ -1,6 +1,0 @@
-name: Atom-PSRAM micropython
-description: Build the Atom-PSRAM micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

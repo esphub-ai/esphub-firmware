@@ -3,5 +3,15 @@
   "model": "M5Stack Unit C6L",
   "chip": "esp32c6",
   "flash_mb": 16,
-  "bootloader": "esp32c6-16mb"
+  "bootloader": "esp32c6-16mb",
+  "m5_board_id": 25,
+  "default_example": "game-of-life",
+  "examples": [
+    {
+      "id": "game-of-life",
+      "description": "Render Conway\u2019s Game of Life on the display. Change the initial cells or simulation rules.",
+      "entrypoint": "examples/game-of-life/main.cpp",
+      "upstream": "https://github.com/m5stack/M5GFX/blob/28d47949bdc84f30881623476f555398e2194313/examples/Basic/GameOfLife/GameOfLife.ino"
+    }
+  ]
 }

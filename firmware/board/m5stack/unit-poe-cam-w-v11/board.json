@@ -3,5 +3,14 @@
   "model": "M5Stack Unit PoE CAM-W v1.1",
   "chip": "esp32",
   "flash_mb": 16,
-  "bootloader": "esp32-16mb"
+  "bootloader": "esp32-16mb",
+  "default_example": "button",
+  "examples": [
+    {
+      "id": "button",
+      "description": "Report presses and releases of the user button over serial. Use the input handler to trigger an application action.",
+      "entrypoint": "examples/button/main.cpp",
+      "upstream": "https://github.com/m5stack/M5PoECAM/blob/d9b08c6363084add434dfb211a0e56d0fdcd70a4/examples/button/button.ino"
+    }
+  ]
 }

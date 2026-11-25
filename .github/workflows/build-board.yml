@@ -8,7 +8,6 @@ on:
 permissions: {contents: read}
 env:
   BOARD: ${{ fromJSON(inputs.profile).board }}
-  BOARD_DIR: firmware/board/${{ fromJSON(inputs.profile).board }}
   BOARD_FILE_STEM: ${{ fromJSON(inputs.profile).fileStem }}
   CHIP: ${{ fromJSON(inputs.profile).chip }}
 jobs:
@@ -39,12 +38,13 @@ jobs:
           set -eo pipefail
           source "$IDF_PATH/export.sh"
           python scripts/package-board-bootloader.py "$BOARD" "$VERSION"
-      - name: Select the board's composite action
-        if: matrix.task.kind != 'bootloader'
+      - name: Build the default app and all published source examples
+        if: matrix.task.kind == 'app'
         shell: bash
-        run: cp -R "$BOARD_DIR/$KIND" .board-task
-      - uses: ./.board-task
-        if: matrix.task.kind != 'bootloader'
+        run: |
+          set -eo pipefail
+          source "$IDF_PATH/export.sh"
+          python3 scripts/build-example.py "$BOARD" --all --version "$VERSION"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BOARD_FILE_STEM }}.${{ matrix.task.kind }}
@@ -61,9 +61,8 @@ jobs:
       TAG: ${{ fromJSON(inputs.profile).kit.tag }}
       BOOTLOADER_VERSION: ${{ fromJSON(inputs.profile).kit.bootloader.version }}
       BOOTLOADER_TAG: ${{ fromJSON(inputs.profile).kit.bootloader.tag }}
-      RUNTIME_VERSION: ${{ fromJSON(inputs.profile).kit.runtime.version }}
-      RUNTIME_KIND: ${{ fromJSON(inputs.profile).kit.runtime_kind }}
-      RUNTIME_TAG: ${{ fromJSON(inputs.profile).kit.runtime.tag }}
+      APP_VERSION: ${{ fromJSON(inputs.profile).kit.app.version }}
+      APP_TAG: ${{ fromJSON(inputs.profile).kit.app.tag }}
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
@@ -73,12 +72,9 @@ jobs:
           path: components/bootloader
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ env.BOARD_FILE_STEM }}.${{ env.RUNTIME_KIND }}
-          path: components/runtime
-      - name: Select the board's USB kit action
-        shell: bash
-        run: cp -R "$BOARD_DIR/setup" .board-task
-      - uses: ./.board-task
+          name: ${{ env.BOARD_FILE_STEM }}.app
+          path: components/app
+      - uses: ./.github/actions/build-kit
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BOARD_FILE_STEM }}.setup

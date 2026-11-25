@@ -1,6 +1,0 @@
-{
-  "target": "M5STACK_Atom_EchoS3R",
-  "disable_cmake_options": [
-    "ADF_MODULE_ENABLE"
-  ]
-}

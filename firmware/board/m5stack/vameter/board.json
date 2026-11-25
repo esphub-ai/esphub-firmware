@@ -3,5 +3,15 @@
   "model": "M5Stack VAMeter",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 16,
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Initialize the board and print its name on the LCD. Adjust the type size and foreground color to make a status screen.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/HowToUse/HowToUse.ino"
+    }
+  ]
 }

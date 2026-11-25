@@ -1,4 +1,0 @@
-{
-  "target": "ESP32_GENERIC",
-  "psram": "spiram"
-}

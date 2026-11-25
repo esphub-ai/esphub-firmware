@@ -1,6 +1,0 @@
-name: AtomS3U setup
-description: Build the AtomS3U setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

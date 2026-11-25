@@ -1,2 +1,0 @@
-# Leave space for the ESPHub agent in the 4 MiB OTA slot.
-CONFIG_COMPILER_OPTIMIZATION_SIZE=y

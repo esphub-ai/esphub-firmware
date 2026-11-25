@@ -41,36 +41,36 @@ typedef void (*event_handler_t)(void *, esp_event_base_t, int32_t, void *);
 static event_handler_t handlers[7];
 static esp_err_t esp_event_handler_register(esp_event_base_t base, int32_t id, event_handler_t handler, void *arg)
 { if (id == ESP_EVENT_ANY_ID) id = WIFI_EVENT_STA_DISCONNECTED; assert(id > 0 && id < 7); handlers[id] = handler; return ESP_OK; }
-#include "firmware/components/okou_agent/src/okou_net.c"
+#include "firmware/components/eh_agent/src/eh_net.c"
 
-okou_config_t g_okou_cfg = OKOU_CONFIG_DEFAULT();
+eh_config_t g_eh_cfg = EH_CONFIG_DEFAULT();
 static unsigned wakes, disconnects, got_ips;
-void okou_agent_notify(void) { ++wakes; }
-void okou_wifi_on_started(void) { }
-void okou_wifi_on_disconnected(int reason) { assert(reason == 7); ++disconnects; }
-void okou_wifi_on_got_ip(void) { ++got_ips; }
-void okou_wifi_reload(void) { }
-esp_err_t okou_wifi_init(void) { return ESP_OK; }
-int okou_wifi_count(void) { return 0; }
-esp_err_t okou_nvs_get_str(const char *key, char *out, size_t len) { out[0] = 0; return ESP_ERR_NOT_FOUND; }
+void eh_agent_notify(void) { ++wakes; }
+void eh_wifi_on_started(void) { }
+void eh_wifi_on_disconnected(int reason) { assert(reason == 7); ++disconnects; }
+void eh_wifi_on_got_ip(void) { ++got_ips; }
+void eh_wifi_reload(void) { }
+esp_err_t eh_wifi_init(void) { return ESP_OK; }
+int eh_wifi_count(void) { return 0; }
+esp_err_t eh_nvs_get_str(const char *key, char *out, size_t len) { out[0] = 0; return ESP_ERR_NOT_FOUND; }
 
 int main(void)
 {
-    assert(okou_net_start(true) == ESP_OK);
+    assert(eh_net_start(true) == ESP_OK);
     ip_event_got_ip_t ip = { .ip_info.ip.addr = 42 };
     wifi_event_sta_disconnected_t lost = { .reason = 7 };
     assert(handlers[IP_EVENT_STA_GOT_IP] && handlers[IP_EVENT_ETH_GOT_IP]);
     assert(handlers[IP_EVENT_STA_LOST_IP] && handlers[IP_EVENT_ETH_LOST_IP]);
     assert(handlers[WIFI_EVENT_STA_DISCONNECTED]);
     handlers[IP_EVENT_STA_GOT_IP](NULL, IP_EVENT, IP_EVENT_STA_GOT_IP, &ip);
-    assert(okou_net_has_ip() && wakes == 1 && got_ips == 1);
+    assert(eh_net_has_ip() && wakes == 1 && got_ips == 1);
     handlers[WIFI_EVENT_STA_DISCONNECTED](NULL, WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &lost);
-    assert(!okou_net_has_ip() && wakes == 2 && disconnects == 1 && !s_ip[0]);
+    assert(!eh_net_has_ip() && wakes == 2 && disconnects == 1 && !s_ip[0]);
     handlers[IP_EVENT_STA_GOT_IP](NULL, IP_EVENT, IP_EVENT_STA_GOT_IP, &ip);
     handlers[IP_EVENT_STA_LOST_IP](NULL, IP_EVENT, IP_EVENT_STA_LOST_IP, NULL);
-    assert(!okou_net_has_ip() && wakes == 4 && !s_ip[0]);
+    assert(!eh_net_has_ip() && wakes == 4 && !s_ip[0]);
     handlers[IP_EVENT_ETH_GOT_IP](NULL, IP_EVENT, IP_EVENT_ETH_GOT_IP, &ip);
     handlers[IP_EVENT_ETH_LOST_IP](NULL, IP_EVENT, IP_EVENT_ETH_LOST_IP, NULL);
-    assert(!okou_net_has_ip() && wakes == 6 && !s_ip[0]);
+    assert(!eh_net_has_ip() && wakes == 6 && !s_ip[0]);
     puts("native network loss wake callbacks: ok");
 }

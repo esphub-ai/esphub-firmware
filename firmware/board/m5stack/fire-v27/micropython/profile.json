@@ -1,6 +1,0 @@
-{
-  "target": "M5STACK_Fire",
-  "disable_cmake_options": [
-    "MICROPY_PY_LVGL"
-  ]
-}

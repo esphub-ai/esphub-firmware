@@ -1,6 +1,0 @@
-name: PowerHub setup
-description: Build the PowerHub setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

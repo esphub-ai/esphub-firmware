@@ -7,14 +7,22 @@ on:
       - 'scripts/build-bootloader.sh'
       - 'scripts/package-*.py'
       - 'tools/ble-wifi/provision_usb.py'
-      - '.github/actions/build-micropython/**'
+      - 'scripts/build-example.py'
+      - 'scripts/firmware-plan.mjs'
+      - '.github/actions/build-kit/**'
+      - '.github/workflows/build-board.yml'
+      - 'shared/*.js'
   pull_request:
     paths:
       - 'firmware/**'
       - 'scripts/build-bootloader.sh'
       - 'scripts/package-*.py'
       - 'tools/ble-wifi/provision_usb.py'
-      - '.github/actions/build-micropython/**'
+      - 'scripts/build-example.py'
+      - 'scripts/firmware-plan.mjs'
+      - '.github/actions/build-kit/**'
+      - '.github/workflows/build-board.yml'
+      - 'shared/*.js'
   workflow_dispatch:
     inputs:
       board:

@@ -3,5 +3,15 @@
   "model": "M5Stack StackChan",
   "chip": "esp32s3",
   "flash_mb": 16,
-  "bootloader": "esp32s3-16mb"
+  "bootloader": "esp32s3-16mb",
+  "m5_board_id": 27,
+  "default_example": "rgb-led",
+  "examples": [
+    {
+      "id": "rgb-led",
+      "description": "Cycle eight colors across the twelve RGB LEDs on the body, six per side. Edit the palette or animation speed.",
+      "entrypoint": "examples/rgb-led/main.cpp",
+      "upstream": "https://github.com/m5stack/StackChan-BSP/blob/e2f3b02dbe7f28e26a02adc72bef3aa2c545e4a0/examples/RGB_LED/RGB_LED.ino"
+    }
+  ]
 }

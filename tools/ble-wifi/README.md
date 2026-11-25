@@ -1,12 +1,12 @@
 # ESP Hub Wi-Fi setup on macOS
 
-Use the bootloader and MicroPython images from the latest USB kit for your board. Register with `devices.create` and flash the kit following its INSTALL.txt. On the local USB port at 115200 baud send one newline-terminated record with the returned values:
+Use the bootloader and example application from the latest USB kit for your board. Register with `devices.create` and flash the kit following its INSTALL.txt. On the local USB port at 115200 baud send one newline-terminated record with the returned values:
 
 ```text
-OKL-PROVISION {"hub":"api.esphub.ai","token":"<token>","ble_secret":"<ble_secret>"}
+EH-PROVISION {"hub":"api.esphub.ai","token":"<token>","ble_secret":"<ble_secret>"}
 ```
 
-The setup kit includes `provision_usb.py`. Install `pyserial` and pipe the private JSON result of `devices.create` or `devices.reissue` to `python3 provision_usb.py PORT` after flashing. The helper sends the record, reads the receipt, and calls `devices.bind_ble_address` using the authorized local Okou CLI. With another MCP client, read `OKL-PROVISION-OK {"ble_address":"aa:bb:cc:dd:ee:ff"}` and pass that address and the registration’s `device_id` to the same tool. The device returns `OKL-PROVISION-OK {}` when its Bluetooth address is unavailable. The device can now receive its first Wi-Fi over Bluetooth.
+The setup kit includes `provision_usb.py`. Install `pyserial` and pipe the private JSON result of `devices.create` or `devices.reissue` to `python3 provision_usb.py PORT` after flashing. The helper sends the record, reads the receipt, and calls `devices.bind_ble_address` using the authorized local Okou CLI. With another MCP client, read `EH-PROVISION-OK {"ble_address":"aa:bb:cc:dd:ee:ff"}` and pass that address and the registration’s `device_id` to the same tool. The device returns `EH-PROVISION-OK {}` when its Bluetooth address is unavailable. The device can now receive its first Wi-Fi over Bluetooth.
 
 On a Mac with Python 3.13+ (OpenSSL with PSK support), install Bleak in a virtual environment and grant Bluetooth access to the terminal. Run with a locally authorized Okou CLI:
 

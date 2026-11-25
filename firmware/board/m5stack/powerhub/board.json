@@ -3,5 +3,15 @@
   "model": "M5Stack PowerHub",
   "chip": "esp32s3",
   "flash_mb": 16,
-  "bootloader": "esp32s3-16mb"
+  "bootloader": "esp32s3-16mb",
+  "m5_board_id": 146,
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the onboard LEDs white and black at half-second intervals. Change the brightness or colors.",
+      "entrypoint": "examples/blink/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/powerhub/program"
+    }
+  ]
 }

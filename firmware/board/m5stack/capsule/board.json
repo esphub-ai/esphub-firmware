@@ -3,5 +3,15 @@
   "model": "M5Stack Capsule",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 139,
+  "default_example": "buttons",
+  "examples": [
+    {
+      "id": "buttons",
+      "description": "Read button transitions and click counts. The serial log identifies the button and gesture; screens also show a colored indicator.",
+      "entrypoint": "examples/buttons/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Button/Button.ino"
+    }
+  ]
 }

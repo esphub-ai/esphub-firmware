@@ -1,6 +1,0 @@
-name: Stamp C6LoRa micropython
-description: Build the Stamp C6LoRa micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

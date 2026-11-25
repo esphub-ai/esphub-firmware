@@ -1,6 +1,0 @@
-name: CoreS3 micropython
-description: Build the CoreS3 micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

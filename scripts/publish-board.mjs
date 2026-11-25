@@ -84,7 +84,7 @@ async function readRelease({ kind, version, fingerprint }) {
       "utf8",
     );
     if (checksum.trim() !== `${image.sha256}  ${image.name}`) {
-      throw Error("Runtime image checksum mismatch: " + image.name);
+      throw Error("App image checksum mismatch: " + image.name);
     }
   }
   return {

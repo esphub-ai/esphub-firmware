@@ -1,6 +1,0 @@
-name: Cardputer micropython
-description: Build the Cardputer micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

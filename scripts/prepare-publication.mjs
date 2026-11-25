@@ -78,7 +78,7 @@ appendFileSync(
         jobs: selected.map(({ kind, fingerprint }) => ({
           kind,
           fingerprint,
-          version: "1.2." + run.run_number,
+          version: "2.0." + run.run_number,
         })),
       }),
     "",

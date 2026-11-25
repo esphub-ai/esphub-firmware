@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { describeExamples } from "../shared/board-examples.js";
 import { boardId } from "../shared/board-id.js";
 
 const repository = new URL("../", import.meta.url);
@@ -23,7 +24,7 @@ export async function readBoardCatalog() {
         chip,
         flash_mb,
         bootloader,
-        preview = false,
+        preview = false, default_example, examples,
       } = JSON.parse(await file("board.json"));
       if (
         ![name, model, chip, bootloader].every(
@@ -33,8 +34,16 @@ export async function readBoardCatalog() {
         throw Error("Invalid metadata for " + id);
       if (!Number.isInteger(flash_mb) || flash_mb < 8)
         throw Error("EspHub requires at least 8 MiB Flash: " + id);
-      const tasks = JSON.parse(await file("ci.json"));
-      const runtime = Object.hasOwn(tasks, "native") ? "native" : "micropython";
+      if (!Array.isArray(examples) || !examples.some(e => e.id === default_example) ||
+          new Set(examples.map(e => e.id)).size !== examples.length)
+        throw Error("Invalid default or duplicate example for " + id);
+      for (const e of examples) {
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(e.id) || !e.description?.trim() ||
+            !e.entrypoint?.startsWith("examples/" + e.id + "/") || e.entrypoint.includes("..") ||
+            !e.upstream?.startsWith("https://"))
+          throw Error("Invalid example for " + id);
+        await file(e.entrypoint);
+      }
       boards[id] = {
         name,
         model,
@@ -42,43 +51,45 @@ export async function readBoardCatalog() {
         flash_mb,
         bootloader,
         ...(preview ? { preview: true } : {}),
-        has_setup: Object.hasOwn(tasks, "setup"),
-        directory: `firmware/board/${id}`,
-        runtime,
-        ...(runtime === "micropython" && { hello: await file("main.py") }),
+        default_example, examples,
       };
     }
   }
   if (!Object.keys(boards).length) throw Error("Empty board catalog");
   const header = await readFile(
-    new URL("firmware/components/okou_agent/include/okou_agent.h", repository),
+    new URL("firmware/components/eh_agent/include/eh_agent.h", repository),
     "utf8",
   );
   const sdk_version = header.match(
-    /^#define OKOU_SDK_VERSION "([^"]+)"$/m,
+    /^#define EH_SDK_VERSION "([^"]+)"$/m,
   )?.[1];
   if (!sdk_version) throw Error("Missing EspHub SDK version");
-  const upstream = JSON.parse(
-    await readFile(new URL("firmware/pyrt/upstream.json", repository), "utf8"),
-  );
   const revision = execFileSync("git", ["rev-parse", "HEAD"], {
     cwd: repository,
     encoding: "utf8",
   }).trim();
-  return { boards, sdk_version, upstream, revision };
+  return { boards, sdk_version, revision };
 }
 
 if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const { boards, sdk_version } = await readBoardCatalog();
-  await writeFile(
-    new URL("shared/boards.generated.json", repository),
-    JSON.stringify(boards) + "\n",
-  );
-  await writeFile(
-    new URL("shared/sdk.generated.json", repository),
-    JSON.stringify({ version: sdk_version }) + "\n",
-  );
+  const { boards, sdk_version, revision } = await readBoardCatalog();
+  if (process.argv[2] === "--default-example") {
+    const id = process.argv[3];
+    const board = boards[id];
+    if (!board) throw Error("Unknown board: " + id);
+    const examples = describeExamples(id, board.examples, revision);
+    console.log(JSON.stringify(examples.find(e => e.id === board.default_example)));
+  } else {
+    await writeFile(
+      new URL("shared/boards.generated.json", repository),
+      JSON.stringify(boards) + "\n",
+    );
+    await writeFile(
+      new URL("shared/sdk.generated.json", repository),
+      JSON.stringify({ version: sdk_version }) + "\n",
+    );
+  }
 }

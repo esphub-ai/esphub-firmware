@@ -3,5 +3,15 @@
   "model": "M5Stack AtomS3R-CAM",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "default_example": "camera-frame",
+  "examples": [
+    {
+      "id": "camera-frame",
+      "description": "Initialize the onboard camera and report the dimensions and byte count of each RGB565 frame. Read pixels in the capture loop to add image processing.",
+      "entrypoint": "examples/camera-frame/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Basics/camera/camera.ino"
+    }
+  ],
+  "psram": "octal"
 }

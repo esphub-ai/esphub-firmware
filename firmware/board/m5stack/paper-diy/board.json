@@ -3,5 +3,16 @@
   "model": "M5Stack PaperDIY",
   "chip": "esp32s3",
   "flash_mb": 16,
-  "bootloader": "esp32s3-16mb"
+  "bootloader": "esp32s3-16mb",
+  "m5_board_id": 34,
+  "default_example": "scroll-text",
+  "examples": [
+    {
+      "id": "scroll-text",
+      "description": "Scroll multilingual text on the display with an offscreen canvas. Replace the string or adjust the font and scroll speed.",
+      "entrypoint": "examples/scroll-text/main.cpp",
+      "upstream": "https://github.com/m5stack/M5GFX/blob/28d47949bdc84f30881623476f555398e2194313/examples/Basic/LongTextScroll/LongTextScroll.ino"
+    }
+  ],
+  "psram": "octal"
 }

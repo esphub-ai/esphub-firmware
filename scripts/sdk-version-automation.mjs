@@ -303,7 +303,7 @@ export async function reconcileSdkPullRequest({
     if (plan.needsUpdate) {
       if (!sameRepository)
         throw Error(
-          `Set OKOU_SDK_VERSION to ${plan.expectedVersion} in this fork; fork branches are never written or dispatched.`,
+          `Set EH_SDK_VERSION to ${plan.expectedVersion} in this fork; fork branches are never written or dispatched.`,
         );
       const sha = await writeVersion(
         request,

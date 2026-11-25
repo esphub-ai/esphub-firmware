@@ -3,5 +3,15 @@
   "model": "M5Stack Stamp-S3",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 136,
+  "default_example": "color-button",
+  "examples": [
+    {
+      "id": "color-button",
+      "description": "Switch the onboard RGB LED color when the Stamp-S3 button is pressed. Edit the palette and event handler.",
+      "entrypoint": "examples/color-button/main.cpp",
+      "upstream": "https://github.com/m5stack/STAMP-S3/blob/6b64d431f930ff5e2bd770a07003ac983c24bc3f/examples/Led/Led.ino"
+    }
+  ]
 }

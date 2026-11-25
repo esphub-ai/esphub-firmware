@@ -1,1 +1,0 @@
-../../../pyrt/examples/board_status.py

@@ -1,6 +1,0 @@
-name: AtomS3R micropython
-description: Build the AtomS3R micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

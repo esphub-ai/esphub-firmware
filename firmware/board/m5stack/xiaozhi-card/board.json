@@ -3,5 +3,14 @@
   "model": "M5Stack Xiaozhi Card",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "default_example": "back-button",
+  "examples": [
+    {
+      "id": "back-button",
+      "description": "Report presses and releases of the user button over serial. Use the input handler to trigger an application action.",
+      "entrypoint": "examples/back-button/main.cpp",
+      "upstream": "https://github.com/m5stack/XiaoZhi-Card/blob/44aa2f2b91c3e938932bb41f670e984cf752b731/main/boards/xiaozhi-card/config.h"
+    }
+  ]
 }

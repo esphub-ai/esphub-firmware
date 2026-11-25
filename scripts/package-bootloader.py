@@ -17,7 +17,7 @@ parts = json.loads((build / "flasher_args.json").read_text())
 config = Path("sdkconfig").read_text()
 image = (build / "esp-bootloader.bin").read_bytes()
 assert parts["flash_settings"]["flash_size"].lower() == flash
-assert image[288:].startswith(f"ESPHUB2/bootloader/{variant}\0bootloader-ota-v2\0".encode())
+assert image[288:].startswith(f"EH/bootloader/v1/{variant}\0".encode())
 # Check the linked firmware.
 # An MQTT client configured for TLS can still link ESP-IDF's default WS transport.
 settings = set(config.splitlines())
@@ -30,7 +30,7 @@ with (build / "esp-bootloader.elf").open("rb") as elf:
                if symbol["st_shndx"] != "SHN_UNDEF"}
 unexpected = sorted(s for s in symbols if s.startswith(("esp_transport_ws_", "esp_websocket_client_")))
 assert not unexpected, f"WebSocket implementation linked: {unexpected}"
-required = {"esp_transport_ssl_init", "esp_mqtt_client_start", "esp_http_client_perform", "okou_hub_host_valid"}
+required = {"esp_transport_ssl_init", "esp_mqtt_client_start", "esp_http_client_perform", "eh_hub_host_valid"}
 assert required <= symbols, f"Missing native transport or hostname validation: {required - symbols}"
 print(f"{variant} {build}: {len(image)} bytes, SHA-256 {sha256(image).hexdigest()}; ELF transport checks passed")
 

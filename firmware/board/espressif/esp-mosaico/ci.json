@@ -1,6 +1,0 @@
-{
-  "native": {
-    "container": "espressif/idf:release-v6.2@sha256:0e714292d8b4e6e75cb42e25461716221448858e125d96dbfea09732964c412d"
-  },
-  "setup": {}
-}

@@ -3,5 +3,14 @@
   "model": "M5Stack Unit CamS3-5MP",
   "chip": "esp32s3",
   "flash_mb": 16,
-  "bootloader": "esp32s3-16mb"
+  "bootloader": "esp32s3-16mb",
+  "default_example": "button",
+  "examples": [
+    {
+      "id": "button",
+      "description": "Report presses and releases of the user button over serial. Use the input handler to trigger an application action.",
+      "entrypoint": "examples/button/main.cpp",
+      "upstream": "https://github.com/m5stack/UnitCamS3-UserDemo/blob/50410249ece3f92f414a222c859dd48d5958fd97/platforms/unitcam_s3_5mp/main/hal_unitcam_s3_5mp/components/hal_gamepad.cpp"
+    }
+  ]
 }

@@ -3,5 +3,22 @@
   "model": "M5Stack Core2",
   "chip": "esp32",
   "flash_mb": 16,
-  "bootloader": "esp32-16mb"
+  "bootloader": "esp32-16mb",
+  "m5_board_id": 2,
+  "default_example": "scroll-graph",
+  "examples": [
+    {
+      "id": "scroll-graph",
+      "description": "Scroll six colored traces across the screen. Replace the generated samples with live measurements.",
+      "entrypoint": "examples/scroll-graph/main.cpp",
+      "upstream": "https://github.com/m5stack/M5GFX/blob/28d47949bdc84f30881623476f555398e2194313/examples/Basic/ScrollGraph/ScrollGraph.ino"
+    },
+    {
+      "id": "touch-drag",
+      "description": "Drag colored boxes on the touchscreen. Edit the touch handlers and drawing code to build an interactive interface.",
+      "entrypoint": "examples/touch-drag/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Touch/DragDrop/DragDrop.ino"
+    }
+  ],
+  "psram": "quad"
 }

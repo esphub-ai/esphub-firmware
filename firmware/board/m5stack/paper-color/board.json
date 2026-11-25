@@ -3,5 +3,16 @@
   "model": "M5Stack Paper Color",
   "chip": "esp32s3",
   "flash_mb": 16,
-  "bootloader": "esp32s3-16mb"
+  "bootloader": "esp32s3-16mb",
+  "m5_board_id": 28,
+  "default_example": "color-bands",
+  "examples": [
+    {
+      "id": "color-bands",
+      "description": "Draw six colored bands and a multicolored label on the e-paper display using an offscreen canvas.",
+      "entrypoint": "examples/color-bands/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/program"
+    }
+  ],
+  "psram": "octal"
 }

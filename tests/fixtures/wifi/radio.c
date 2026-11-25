@@ -1,10 +1,10 @@
-/* Deterministic host radio for the actual okou_wifi.c. No threads or sleeps. */
+/* Deterministic host radio for the actual eh_wifi.c. No threads or sleeps. */
 #include <assert.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "okou_priv.h"
+#include "eh_priv.h"
 #include "esp_wifi.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -71,15 +71,15 @@ void mbedtls_platform_zeroize(void *buffer, size_t len)
     zeroizations++;
 }
 
-char *okou_nvs_get_str_alloc(const char *key)
+char *eh_nvs_get_str_alloc(const char *key)
 {
-    assert(!strcmp(key, OKOU_KEY_WIFIS));
+    assert(!strcmp(key, EH_KEY_WIFIS));
     return strdup(stored);
 }
 
-esp_err_t okou_nvs_set_str(const char *key, const char *value)
+esp_err_t eh_nvs_set_str(const char *key, const char *value)
 {
-    assert(!strcmp(key, OKOU_KEY_WIFIS));
+    assert(!strcmp(key, EH_KEY_WIFIS));
     writes++;
     if (fail_next_save) {
         fail_next_save = false;
@@ -136,8 +136,8 @@ static void deliver_pending(void)
 {
     EventBits_t event = pending;
     pending = 0;
-    if (event == GOT_IP) okou_wifi_on_got_ip();
-    else if (event == DISC) okou_wifi_on_disconnected(201);
+    if (event == GOT_IP) eh_wifi_on_got_ip();
+    else if (event == DISC) eh_wifi_on_disconnected(201);
     else assert(false);
 }
 
@@ -183,7 +183,7 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t group, EventBits_t bits,
     assert(bits == RECONF || bits == (DISC | RECONF));
     assert(!mutexes[0].held && !mutexes[1].held);
     char ssid[33];
-    finished_online = okou_wifi_current(ssid, sizeof(ssid));
+    finished_online = eh_wifi_current(ssid, sizeof(ssid));
     longjmp(task_end, 1); /* At the production loop's quiescent boundary only. */
 }
 
@@ -239,7 +239,7 @@ esp_err_t esp_wifi_connect(void)
     connect_calls++;
     now += connect_delay[index];
     if ((int)index == queue_join_on_attempt) {
-        assert(okou_wifi_join("requested", "manual-password", false));
+        assert(eh_wifi_join("requested", "manual-password", false));
     }
     if (outcomes[index] == CONNECT_ERROR) return ESP_FAIL;
     if (outcomes[index] == TIMEOUT) {
@@ -288,9 +288,9 @@ static wifi_ap_record_t ap(const char *ssid, int rssi, unsigned channel, unsigne
 static void init(const char *saved)
 {
     strlcpy(stored, saved, sizeof(stored));
-    assert(okou_wifi_init() == ESP_OK);
+    assert(eh_wifi_init() == ESP_OK);
     assert(task && mutex_count == 2);
-    okou_wifi_on_started();
+    eh_wifi_on_started();
 }
 
 static void run(void)
@@ -323,7 +323,7 @@ static void assert_current(const char *expected)
 {
     char current[33];
     assert(finished_online);
-    assert(okou_wifi_current(current, sizeof(current)));
+    assert(eh_wifi_current(current, sizeof(current)));
     assert(!strcmp(current, expected));
 }
 
@@ -356,11 +356,11 @@ static void scan_test(void)
     scanned[4] = ap("weak", -90, 7, 5, WIFI_AUTH_WEP);
     scanned_count = 5;
     init("[]");
-    okou_ap_t out[24] = {0};
+    eh_ap_t out[24] = {0};
     assert(xSemaphoreTake(&mutexes[1], 0) == pdTRUE);
-    assert(okou_wifi_scan(out, 24, 0) == -1 && scan_calls == 0);
+    assert(eh_wifi_scan(out, 24, 0) == -1 && scan_calls == 0);
     xSemaphoreGive(&mutexes[1]);
-    assert(okou_wifi_scan(out, 24, 0) == 3);
+    assert(eh_wifi_scan(out, 24, 0) == 3);
     assert(!strcmp(out[0].ssid, "mesh") && out[0].rssi == -20 && out[0].channel == 11);
     assert(out[0].auth == WIFI_AUTH_WPA3_PSK && !memcmp(out[0].bssid, scanned[3].bssid, 6));
     assert(!strcmp(out[1].ssid, "other") && !strcmp(out[2].ssid, "weak"));
@@ -477,31 +477,31 @@ static void manual_test(const char *scenario)
     air[1] = scanned[1];
     air_count = 2;
     init("[{\"s\":\"saved\",\"p\":\"saved-password\"}]");
-    okou_ap_t out[24];
-    assert(okou_wifi_scan(out, 24, 0) == 2); /* Deliberately stale public scan. */
-    assert(okou_wifi_join("requested", hidden ? "" : "manual-password", hidden));
-    assert(!strcmp(okou_wifi_join_state(), "joining"));
-    assert(!okou_wifi_join("busy", "password", false));
-    assert(writes == 0 && okou_wifi_count() == 1);
+    eh_ap_t out[24];
+    assert(eh_wifi_scan(out, 24, 0) == 2); /* Deliberately stale public scan. */
+    assert(eh_wifi_join("requested", hidden ? "" : "manual-password", hidden));
+    assert(!strcmp(eh_wifi_join_state(), "joining"));
+    assert(!eh_wifi_join("busy", "password", false));
+    assert(writes == 0 && eh_wifi_count() == 1);
     if (failed) outcomes[0] = DISCONNECT;
     if (save_failed) fail_next_save = true;
     run();
     assert_config(0, "requested", false, 0, 0);
     assert(zeroizations == 1);
     if (failed || save_failed) {
-        assert(!strcmp(okou_wifi_join_state(), "failed"));
+        assert(!strcmp(eh_wifi_join_state(), "failed"));
         assert_current("saved");
-        assert(okou_wifi_count() == 1 && attempt_count == 2 && scan_calls == 2);
+        assert(eh_wifi_count() == 1 && attempt_count == 2 && scan_calls == 2);
         assert_config(1, "saved", true, 6, 2);
         assert_saved(0, "saved", false);
         assert(writes == (save_failed ? 1U : 0U));
     } else {
-        assert(!strcmp(okou_wifi_join_state(), "saved"));
+        assert(!strcmp(eh_wifi_join_state(), "saved"));
         assert_current("requested");
         assert(attempt_count == 1 && scan_calls == 1 && writes == 1);
         assert_saved(0, "requested", hidden);
         assert_saved(1, "saved", false);
-        assert(okou_wifi_count() == 2);
+        assert(eh_wifi_count() == 2);
     }
 }
 
@@ -517,7 +517,7 @@ static void queued_test(void)
     assert(attempt_count == 2);
     assert_config(0, "mesh", true, 1, 1);
     assert_config(1, "requested", false, 0, 0);
-    assert(!strcmp(okou_wifi_join_state(), "saved"));
+    assert(!strcmp(eh_wifi_join_state(), "saved"));
 }
 
 static void budget_test(const char *scenario)

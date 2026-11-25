@@ -3,11 +3,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'firmware/board/**/board.json'
-      - 'firmware/board/**/ci.json'
-      - 'firmware/board/**/main.py'
-      - 'firmware/components/okou_agent/include/okou_agent.h'
-      - 'firmware/pyrt/upstream.json'
+      - 'firmware/board/**'
+      - 'firmware/components/eh_agent/include/eh_agent.h'
+      - 'docs/build-examples.md'
+      - 'shared/board-examples.js'
       - 'scripts/board-catalog.mjs'
       - 'scripts/publish-catalog.mjs'
       - 'shared/board-id.js'

@@ -1,6 +1,0 @@
-name: AtomS3R setup
-description: Build the AtomS3R setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

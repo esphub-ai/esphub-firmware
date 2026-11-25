@@ -1,8 +1,0 @@
-{
-  "micropython": {},
-  "setup": {
-    "inputs": [
-      "firmware/pyrt/examples/board_status.py"
-    ]
-  }
-}

@@ -1,6 +1,0 @@
-name: PaperS3 setup
-description: Build the PaperS3 setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

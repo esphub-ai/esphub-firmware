@@ -1,6 +1,6 @@
 menu "esp-bootloader"
 
-    config OKL_URL_OTA
+    config EH_URL_OTA
         bool
         default y
 

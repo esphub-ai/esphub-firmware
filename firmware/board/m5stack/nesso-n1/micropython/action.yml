@@ -1,6 +1,0 @@
-name: Arduino Nesso N1 micropython
-description: Build the Arduino Nesso N1 micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

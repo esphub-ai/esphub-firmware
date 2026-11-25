@@ -32,22 +32,14 @@ jobs:
           run-id: ${{ inputs.source_run }}
           name: ${{ steps.source.outputs.stem }}.bootloader
           path: assets/${{ steps.source.outputs.stem }}.bootloader
-      - name: Download micropython artifact
-        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'micropython') }}
+      - name: Download app artifact
+        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'app') }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.source_run }}
-          name: ${{ steps.source.outputs.stem }}.micropython
-          path: assets/${{ steps.source.outputs.stem }}.micropython
-      - name: Download native artifact
-        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'native') }}
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.source_run }}
-          name: ${{ steps.source.outputs.stem }}.native
-          path: assets/${{ steps.source.outputs.stem }}.native
+          name: ${{ steps.source.outputs.stem }}.app
+          path: assets/${{ steps.source.outputs.stem }}.app
       - name: Download setup artifact
         if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'setup') }}
         uses: actions/download-artifact@v4

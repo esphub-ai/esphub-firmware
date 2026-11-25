@@ -1,5 +1,5 @@
-export const SDK_ROOT = "firmware/components/okou_agent/";
-export const SDK_HEADER = SDK_ROOT + "include/okou_agent.h";
+export const SDK_ROOT = "firmware/components/eh_agent/";
+export const SDK_HEADER = SDK_ROOT + "include/eh_agent.h";
 
 function versionParts(version) {
   if (
@@ -25,17 +25,17 @@ function sdkMacro(header) {
   );
   const macros = [
     ...source.matchAll(
-      /^[\t ]*#[\t ]*define[\t ]+OKOU_SDK_VERSION\b[^\r\n]*/gm,
+      /^[\t ]*#[\t ]*define[\t ]+EH_SDK_VERSION\b[^\r\n]*/gm,
     ),
   ];
   if (macros.length !== 1)
-    throw Error("SDK header must contain exactly one OKOU_SDK_VERSION macro");
+    throw Error("SDK header must contain exactly one EH_SDK_VERSION macro");
   const macro = macros[0];
   const literal =
-    /^([\t ]*#[\t ]*define[\t ]+OKOU_SDK_VERSION[\t ]+")([^"\r\n]*)("[\t ]*)$/.exec(
+    /^([\t ]*#[\t ]*define[\t ]+EH_SDK_VERSION[\t ]+")([^"\r\n]*)("[\t ]*)$/.exec(
       macro[0],
     );
-  if (!literal) throw Error("Invalid OKOU_SDK_VERSION macro");
+  if (!literal) throw Error("Invalid EH_SDK_VERSION macro");
   const version = literal[2];
   versionParts(version);
   return { version, start: macro.index + literal[1].length };
