@@ -1,0 +1,29 @@
+name: Build boards sharing a bootloader
+on:
+  workflow_call:
+    inputs:
+      cohort: {type: string, required: true}
+permissions: {contents: read}
+jobs:
+  bootloader:
+    if: fromJSON(inputs.cohort).bootloader != null
+    uses: ./.github/workflows/build-bootloader.yml
+    with:
+      container: ${{ fromJSON(inputs.cohort).bootloader.container }}
+      variant: ${{ fromJSON(inputs.cohort).bootloader.variant }}
+      fingerprint: ${{ fromJSON(inputs.cohort).bootloader.fingerprint }}
+      version: ${{ fromJSON(inputs.cohort).bootloader.version }}
+  board:
+    needs: bootloader
+    if: ${{ !cancelled() && (needs.bootloader.result == 'success' || needs.bootloader.result == 'skipped') }}
+    name: ${{ matrix.profile.board }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(inputs.cohort).boards }}
+    concurrency:
+      group: firmware-${{ github.ref }}-${{ matrix.profile.board }}
+      cancel-in-progress: false
+    uses: ./.github/workflows/build-board.yml
+    with:
+      profile: ${{ toJSON(matrix.profile) }}

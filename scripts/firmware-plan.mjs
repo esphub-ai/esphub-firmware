@@ -290,7 +290,7 @@ if (
   const options = {
     manual,
     board: event.inputs?.board ?? "",
-    version: "1.1." + process.env.GITHUB_RUN_ID,
+    version: "1.2." + process.env.GITHUB_RUN_NUMBER,
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
   let plans = boardPlans(before.boards, after.boards, {}, options);
@@ -303,29 +303,24 @@ if (
     );
     plans = boardPlans(before.boards, after.boards, releases, options);
   }
-  const boardBootloaders = new Set(
-    plans
-      .filter((plan) =>
-        plan.components.some((task) => task.kind === "bootloader"),
-      )
-      .map((plan) => plan.bootloader),
-  );
-  const bootloaders = [...after.variants.values()]
-    .filter(
-      ({ variant, fingerprint }) =>
-        boardBootloaders.has(variant) ||
-        (!options.board &&
-          (manual ||
-            before.variants.get(variant)?.fingerprint !== fingerprint)),
-    )
-    .map((build) => ({ ...build, version: options.version }));
+  const cohorts = new Map();
+  for (const plan of plans) {
+    const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
+    const name = needsBootloader ? plan.bootloader : "runtime-only";
+    if (!cohorts.has(name)) {
+      cohorts.set(name, {
+        name,
+        bootloader: needsBootloader
+          ? { ...after.variants.get(name), version: options.version }
+          : null,
+        boards: [],
+      });
+    }
+    cohorts.get(name).boards.push(plan);
+  }
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    `bootloaders=${JSON.stringify(bootloaders)}\n`,
-  );
-  appendFileSync(
-    process.env.GITHUB_OUTPUT,
-    `boards=${JSON.stringify(plans)}\n`,
+    `cohorts=${JSON.stringify([...cohorts.values()])}\n`,
   );
   console.log(
     plans.length
