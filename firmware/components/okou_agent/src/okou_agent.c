@@ -70,7 +70,10 @@ void okou_agent_notify(void)
         xSemaphoreGive(s_wake);
     }
 }
-static QueueHandle_t s_txq, s_pollq;
+typedef struct { char *frame; unsigned session; } tx_item_t;
+static QueueHandle_t s_txq, s_pollq, s_message_rx;
+static atomic_uint s_message_session;
+static unsigned s_message_generation;
 #if CONFIG_OKL_URL_OTA
 static EventGroupHandle_t ota_transport;
 static atomic_bool s_result_due;
@@ -125,20 +128,21 @@ static void ensure_queues(void)
     if (done) {
         return;
     }
-    QueueHandle_t tx = xQueueCreate(16, sizeof(char *));
+    QueueHandle_t tx = xQueueCreate(16, sizeof(tx_item_t));
     QueueHandle_t pq = xQueueCreate(4, sizeof(poll_job_t *));
+    QueueHandle_t rx = xQueueCreate(4, sizeof(char *));
     portENTER_CRITICAL(&m);
     if (!done) {
         s_txq = tx;
         s_pollq = pq;
+        s_message_rx = rx;
         done = true;
-        tx = pq = NULL;
+        tx = pq = rx = NULL;
     }
     portEXIT_CRITICAL(&m);
-    if (tx) {
-        vQueueDelete(tx);
-        vQueueDelete(pq);
-    }
+    if (tx) vQueueDelete(tx);
+    if (pq) vQueueDelete(pq);
+    if (rx) vQueueDelete(rx);
 }
 
 /* ------------------------------------------------------------------ config */
@@ -229,18 +233,52 @@ esp_err_t okou_op_register_async(const char *op, okou_op_async_handler_t handler
     return op_register(op, NULL, handler);
 }
 
-static void txq_push(char *frame)
+static bool txq_post(char *frame, unsigned session)
 {
     ensure_queues();
-    if (!frame) {
-        return;
-    }
-    if (xQueueSend(s_txq, &frame, 0) != pdTRUE) {
+    if (!frame) return false;
+    tx_item_t item = {frame, session};
+    if (!s_txq || xQueueSend(s_txq, &item, 0) != pdTRUE) {
         free(frame);
-        s_events_dropped++;
-    } else {
-        okou_agent_notify();
+        if (!session) s_events_dropped++;
+        return false;
     }
+    okou_agent_notify();
+    return true;
+}
+
+static void txq_push(char *frame)
+{
+    txq_post(frame, 0);
+}
+
+bool okou_message_send(const char *json, const char *reply_to)
+{
+    unsigned session = atomic_load(&s_message_session);
+    if (!session || !json || strlen(json) > 1024 ||
+        (reply_to && strlen(reply_to) != 36))
+        return false;
+    cJSON *data = cJSON_ParseWithOpts(json, NULL, true);
+    if (!data) return false;
+    cJSON *frame = cJSON_CreateObject();
+    if (!frame || !cJSON_AddItemToObject(frame, "payload", data)) {
+        cJSON_Delete(data);
+        cJSON_Delete(frame);
+        return false;
+    }
+    char *encoded = NULL;
+    if (cJSON_AddStringToObject(frame, "t", "message") &&
+        (!reply_to || cJSON_AddStringToObject(frame, "reply_to", reply_to)))
+        encoded = cJSON_PrintUnformatted(frame);
+    cJSON_Delete(frame);
+    return txq_post(encoded, session);
+}
+
+char *okou_message_receive(void)
+{
+    char *message = NULL;
+    if (s_message_rx) xQueueReceive(s_message_rx, &message, 0);
+    return message;
 }
 
 void okou_event_json(const char *name, cJSON *data)
@@ -370,6 +408,7 @@ static bool send_text(const char *s, size_t len)
     bool final = name && (!strcmp(name, "install.done") || !strcmp(name, "install.failed"));
     bool result = t && !strcmp(t, "res");
     bool confirm = result || final || (t && !strcmp(t, "hello"));
+    bool best_effort = t && !strcmp(t, "message");
     bool sent = okou_iot_publish(frame, confirm);
     if (result && id && !strcmp(id, s_inflight_id)) {
         if (sent) {
@@ -381,13 +420,16 @@ static bool send_text(const char *s, size_t len)
         }
     }
     cJSON_Delete(frame);
-    if (!sent)
+    if (!sent && !best_effort)
         s_mqtt_broken = true;
     return sent;
 }
 
 static void mqtt_teardown(const char *why)
 {
+    atomic_store(&s_message_session, 0);
+    char *message;
+    while ((message = okou_message_receive())) free(message);
     // Reset lazily on disconnect; a healthy idle session needs no periodic wake.
     if (s_mqtt_up && now_us() - s_up_since_us >= BACKOFF_RESET_US) {
         s_backoff_ms = 1000;
@@ -434,13 +476,13 @@ static bool send_hello(void)
 
 static void drain_txq(void)
 {
-    char *s;
-    while (xQueueReceive(s_txq, &s, 0) == pdTRUE) {
-        bool ok = send_text(s, strlen(s));
-        free(s);
-        if (!ok) {
-            break; /* dropped; the socket is going down */
-        }
+    tx_item_t item;
+    while (xQueueReceive(s_txq, &item, 0) == pdTRUE) {
+        bool ok = true;
+        if (!item.session || item.session == atomic_load(&s_message_session))
+            ok = send_text(item.frame, strlen(item.frame));
+        free(item.frame);
+        if (!ok && !item.session) break;
     }
 }
 
@@ -759,6 +801,17 @@ static void service_control(void)
 {
     cJSON *frame = okou_iot_control();
     if (!frame) return;
+    const cJSON *message = cJSON_GetObjectItemCaseSensitive(frame, "message");
+    if (cJSON_IsObject(message) && s_message_rx) {
+        const char *id = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(message, "id"));
+        if (id && strlen(id) == 36 && cJSON_GetObjectItemCaseSensitive(message, "payload")) {
+            char *encoded = cJSON_PrintUnformatted(message);
+            if (encoded && xQueueSend(s_message_rx, &encoded, 0) != pdTRUE) free(encoded);
+        }
+        cJSON_Delete(frame);
+        okou_agent_notify();
+        return;
+    }
     const cJSON *command = cJSON_GetObjectItem(frame, "command");
     const char *id = cJSON_GetStringValue(cJSON_GetObjectItem(command, "id"));
     const cJSON *sequence = cJSON_GetObjectItem(command, "seq");
@@ -848,6 +901,10 @@ static void agent_task(void *arg)
                 s_mqtt_up = true;
                 if (send_hello()) {
                     s_hello_acked = report_install_result();
+                    if (s_hello_acked) {
+                        if (++s_message_generation == 0) ++s_message_generation;
+                        atomic_store(&s_message_session, s_message_generation);
+                    }
                 } else {
                     s_mqtt_broken = true;
                 }
@@ -868,8 +925,10 @@ static void agent_task(void *arg)
         } else {
             drain_txq();
 #if CONFIG_OKL_URL_OTA
-            if (s_hello_acked && atomic_exchange(&s_result_due, false) && !report_install_result())
+            if (s_hello_acked && atomic_exchange(&s_result_due, false) && !report_install_result()) {
                 s_hello_acked = false;
+                atomic_store(&s_message_session, 0);
+            }
 #endif
             if (s_hello_acked && !s_mqtt_broken) {
                 service_control();
