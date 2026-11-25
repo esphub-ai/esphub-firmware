@@ -12,6 +12,10 @@ The initial extraction uses the existing EspHub releases to reuse previously pub
 
 Run `npm run catalog` to generate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package. See the [board matrix](docs/m5stack-boards.md) for ESP32 targets.
 
+## Remote console
+
+Use `logs.set` to redirect ordinary ESP-IDF task logs and MicroPython stdout over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs.read`. See the [wire protocol and memory limits](https://github.com/okou-ai/esphub/blob/main/docs/iot.md#remote-console).
+
 ## Production publishing
 
 Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bucket. Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies manifest hashes, writes immutable versioned objects and release receipts, then advances that board's Neon catalog in one transaction. Versions in this repository start at `1.2`.

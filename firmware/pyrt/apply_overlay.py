@@ -56,7 +56,13 @@ edit("main.c", "void MICROPY_ESP_IDF_ENTRY(void) {",
 edit("main.c", "    MICROPY_BOARD_STARTUP();\n",
      "    MICROPY_BOARD_STARTUP();\n    okl_runtime_start();\n")
 
-# pyexec prints the traceback on the local console. Report the failure event to the hub.
+# Both UIFlow and the generic ESP32 port build this stdout implementation.
+# Explicit file objects in print(file=...) keep their own stream behavior.
+stdout = 'mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {'
+edit(mp.resolve() / "ports/esp32/mphalport.c", stdout,
+     '#include "okou_agent.h"\n' + stdout + '\n    if (okou_console_write(str, len)) return len;')
+
+# pyexec writes the traceback to stdout and reports the failure event to the hub.
 edit("main.c", '#include "py/runtime.h"', '#include "py/runtime.h"\n#include "okou_agent.h"')
 for script, indent in (("boot.py", "    "), ("main.py", "        ")):
     call = f'int ret = pyexec_file_if_exists("{script}");'

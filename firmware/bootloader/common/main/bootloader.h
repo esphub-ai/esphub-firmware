@@ -7,7 +7,6 @@
 
 #include "okou_install.h"
 
-void coredump_ops_register(void);
 
 /* Store a provisioning JSON object (BLE bootstrap key/hub/token/name) in NVS namespace okl. */
 bool prov_apply(const char *line, char *err, size_t n);

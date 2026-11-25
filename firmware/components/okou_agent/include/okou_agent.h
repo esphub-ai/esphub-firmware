@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#define OKOU_SDK_VERSION "6.0.0"
+#define OKOU_SDK_VERSION "7.0.0"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -75,6 +75,10 @@ esp_err_t okou_param_float(const char *name, float *ptr, float min, float max, b
 esp_err_t okou_param_bool(const char *name, bool *ptr, bool persist);
 /* Save the current value of a persistent param after the app changed it itself. */
 esp_err_t okou_param_save(const char *name);
+
+/* Runtime port output hook. True when remote capture consumed the bytes;
+ * false means the caller should use its normal stdout implementation. */
+bool okou_console_write(const char *data, size_t len);
 
 /* ---- telemetry ----------------------------------------------------------------------- */
 /* json: a JSON object text (or NULL for {}). Invalid JSON is sent as {"text":"..."}.

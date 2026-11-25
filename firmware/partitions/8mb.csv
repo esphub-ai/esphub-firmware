@@ -6,5 +6,4 @@ phy_init,     data, phy,      0x11000,  0x1000
 launcher_a,   app,  ota_0,    0x20000,  0x140000
 launcher_b,   app,  ota_1,    0x160000, 0x140000
 app,          app,  ota_2,    0x2a0000, 0x400000
-coredump,     data, coredump, 0x6a0000, 0x10000
-data,         data, littlefs, 0x6b0000, 0x150000
+data,         data, littlefs, 0x6a0000, 0x160000

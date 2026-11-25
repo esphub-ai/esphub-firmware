@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "fake-idf.h"
 #include "firmware/components/okou_agent/src/okou_agent.c"
+#include "firmware/components/okou_agent/src/okou_console.c"
 
 struct fake_queue { unsigned cap, size, count, head; unsigned char *items; };
 struct fake_semaphore { bool pending; };
@@ -48,6 +49,98 @@ static esp_err_t echo(const cJSON *args, cJSON *data, char *err, size_t len)
     ++commands;
     cJSON_AddNumberToObject(data, "answer", 42);
     return ESP_OK;
+}
+
+static int local_prints, log_batches;
+static bool fail_console_allocation;
+void *okou_malloc_large(size_t n) { return fail_console_allocation ? NULL : malloc(n); }
+static int local_console(const char *fmt, va_list args)
+{
+    ++local_prints;
+    return vsnprintf(NULL, 0, fmt, args);
+}
+static vprintf_like_t sink = local_console;
+vprintf_like_t esp_log_set_vprintf(vprintf_like_t fn)
+{
+    vprintf_like_t previous = sink;
+    sink = fn;
+    return previous;
+}
+TaskHandle_t xTaskGetCurrentTaskHandle(void) { return (TaskHandle_t)&task_entry; }
+static int native_log(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int result = sink(fmt, args);
+    va_end(args);
+    return result;
+}
+static void set_logging(bool enabled)
+{
+    assert(!control);
+    control = cJSON_Parse(enabled
+        ? "{\"command\":{\"id\":\"11111111-2222-3333-4444-555555555551\",\"seq\":1,\"op\":\"logs.set\",\"args\":{\"enabled\":true}}}"
+        : "{\"command\":{\"id\":\"11111111-2222-3333-4444-555555555552\",\"seq\":2,\"op\":\"logs.set\",\"args\":{\"enabled\":false}}}");
+    okou_agent_notify();
+}
+bool okou_iot_publish_log(const uint8_t *bytes, size_t len, uint32_t dropped, char wire[OKOU_LOG_WIRE_BYTES])
+{
+    ++log_batches;
+    if (is("console-fragments")) {
+        if (log_batches == 1) {
+            assert(len == OKOU_LOG_CHUNK_BYTES - 1 && dropped == 5);
+            for (size_t i = 0; i < len; ++i) assert(bytes[i] == 'x');
+        } else {
+            assert(log_batches == 2 && len == 3 && !memcmp(bytes, "打", 3) && !dropped);
+        }
+        return true;
+    }
+    assert(native_log("MQTT write") == 10); // transport diagnostics never re-enter the ring
+    if (log_batches == 1) {
+        assert(len == 8 && !memcmp(bytes, "C:42 py\n", len) && !dropped);
+        return false; // best-effort send failed
+    }
+    assert(log_batches == 2 && len == OKOU_LOG_CHUNK_BYTES);
+    assert(dropped == 8 + 19); // previous send plus bytes evicted from the full ring
+    for (size_t i = 0; i < len; ++i) assert(bytes[i] == (uint8_t)('A' + ((i + 19) % 26)));
+    return true;
+}
+static void console_scenario(unsigned step, TickType_t ticks)
+{
+    if (step == 0) {
+        forever(ticks);
+        assert(!okou_console_write("private", 7));
+        fail_console_allocation = true;
+        assert(okou_console_set(true) == ESP_ERR_NO_MEM && sink == local_console);
+        fail_console_allocation = false;
+        assert(native_log("local") == 5 && local_prints == 1);
+        set_logging(true);
+    } else if (step == 1) {
+        forever(ticks);
+        assert(results == 1 && native_log("C:%d", 42) == 4);
+        assert(okou_console_write(" py\n", 4) && local_prints == 1);
+    } else if (step == 2 || step == 4) {
+        deadline(ticks, clock_us + FLUSH_US);
+        clock_us += FLUSH_US;
+    } else if (step == 3) {
+        forever(ticks);
+        assert(log_batches == 1 && local_prints == 2);
+        char burst[RING_BYTES + 19];
+        for (size_t i = 0; i < sizeof(burst); ++i) burst[i] = 'A' + (i % 26);
+        assert(okou_console_write(burst, sizeof(burst)));
+    } else if (step == 5) {
+        assert(log_batches == 2 && local_prints == 3);
+        deadline(ticks, clock_us + FLUSH_US);
+        // A stop command wins even if the next batch has become due.
+        clock_us += FLUSH_US;
+        set_logging(false);
+    } else {
+        forever(ticks);
+        assert(results == 2 && log_batches == 2 && sink == local_console);
+        assert(!okou_console_write("private again", 13));
+        assert(native_log("local") == 5 && local_prints == 4);
+        finish();
+    }
 }
 
 /* Called only when the real binary semaphore would block. Each callback either
@@ -138,7 +231,30 @@ static void on_wait(TickType_t ticks)
     }
     assert(hellos >= 1);
     --step;
-    if (is("idle-online")) {
+    if (is("console-fragments")) {
+        if (step == 0) {
+            forever(ticks);
+            assert(okou_console_set(true) == ESP_OK);
+            char text[261];
+            memset(text, 'x', 260);
+            text[260] = 0;
+            assert(native_log("%s", text) == 260); // 255 retained, 5 counted
+            assert(okou_console_write(text, OKOU_LOG_CHUNK_BYTES - 1 - 255));
+            assert(okou_console_write("打", 1));   // incomplete character at batch edge
+        } else if (step == 1 || step == 2 || step == 4) {
+            deadline(ticks, clock_us + FLUSH_US);
+            clock_us += FLUSH_US;
+        } else if (step == 3) {
+            forever(ticks); // partial character alone has no polling deadline
+            assert(log_batches == 1 && okou_console_write("打" + 1, 2));
+        } else {
+            forever(ticks);
+            assert(log_batches == 2 && okou_console_set(false) == ESP_OK);
+            finish();
+        }
+    } else if (is("console-capture")) {
+        console_scenario(step, ticks);
+    } else if (is("idle-online")) {
         forever(ticks); assert(okou_connected()); finish();
     } else if (is("queued-events")) {
         forever(ticks);
@@ -282,7 +398,11 @@ bool okou_iot_publish(cJSON *frame, bool confirm)
     }
     else if (!strcmp(type, "res")) {
         ++results; assert(confirm && cJSON_IsTrue(cJSON_GetObjectItem(frame, "ok")));
-        assert(cJSON_GetObjectItem(cJSON_GetObjectItem(frame, "data"), "answer")->valueint == 42);
+        const cJSON *data = cJSON_GetObjectItem(frame, "data");
+        if (is("console-capture"))
+            assert(cJSON_IsTrue(cJSON_GetObjectItem(data, "enabled")) == (results == 1));
+        else
+            assert(cJSON_GetObjectItem(data, "answer")->valueint == 42);
         if (fail_result) { fail_result = false; return false; }
     } else if (!strcmp(type, "event")) {
         const char *name = cJSON_GetStringValue(cJSON_GetObjectItem(frame, "name")); assert(name);

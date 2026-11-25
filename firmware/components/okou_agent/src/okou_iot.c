@@ -7,6 +7,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "mbedtls/pk.h"
+#include "mbedtls/base64.h"
+#include <inttypes.h>
 #include "mbedtls/x509_csr.h"
 #include "mqtt_client.h"
 #include "okou_priv.h"
@@ -296,6 +298,23 @@ bool okou_iot_publish(cJSON *frame, bool confirm)
     }
     free(payload);
     return done;
+}
+
+bool okou_iot_publish_log(const uint8_t *bytes, size_t len, uint32_t dropped,
+                          char wire[OKOU_LOG_WIRE_BYTES])
+{
+    if (!mqtt || !len || len > OKOU_LOG_CHUNK_BYTES) return false;
+    int header = snprintf(wire, OKOU_LOG_WIRE_BYTES,
+                          "{\"frame\":{\"t\":\"log\",\"boot_id\":\"%s\",\"mid\":%" PRIu32
+                          ",\"dropped\":%" PRIu32 ",\"bytes\":\"", boot, ++next_mid, dropped);
+    if (header < 0 || header >= OKOU_LOG_WIRE_BYTES - 4) return false;
+    size_t encoded;
+    if (mbedtls_base64_encode((uint8_t *)wire + header, OKOU_LOG_WIRE_BYTES - header - 3,
+                              &encoded, bytes, len) != 0) return false;
+    memcpy(wire + header + encoded, "\"}}", 4);
+    // Synchronous QoS 0 uses the client's existing TX buffer. QoS 1 or
+    // enqueue(store=true) would also allocate an outbox copy per message.
+    return esp_mqtt_client_publish(mqtt, uplink, wire, header + (int)encoded + 3, 0, 0) >= 0;
 }
 
 bool okou_iot_start(const char *boot_id, const char *hub, const char *token)

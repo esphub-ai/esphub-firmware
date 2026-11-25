@@ -6,6 +6,8 @@ import { join, resolve } from "node:path";
 
 const scenarios = [
   "idle-online",
+  "console-capture",
+  "console-fragments",
   "offline-no-ip",
   "unconfigured",
   "boot-ip-wake",

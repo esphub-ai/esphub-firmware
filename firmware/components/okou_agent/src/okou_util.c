@@ -118,7 +118,6 @@ static const char *subtype_str(const esp_partition_t *p)
     case ESP_PARTITION_SUBTYPE_DATA_OTA: return "ota";
     case ESP_PARTITION_SUBTYPE_DATA_PHY: return "phy";
     case ESP_PARTITION_SUBTYPE_DATA_NVS: return "nvs";
-    case ESP_PARTITION_SUBTYPE_DATA_COREDUMP: return "coredump";
     case ESP_PARTITION_SUBTYPE_DATA_SPIFFS: return "spiffs";
     case ESP_PARTITION_SUBTYPE_DATA_LITTLEFS: return "littlefs";
     case ESP_PARTITION_SUBTYPE_DATA_FAT: return "fat";

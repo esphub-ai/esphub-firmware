@@ -36,7 +36,6 @@ esp_err_t okou_cmd_register(const char *name, const char *help, okou_cmd_handler
 }
 esp_err_t okou_op_register(const char *name, okou_op_handler_t fn) { return ESP_OK; }
 esp_err_t install_op(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_OK; }
-void coredump_ops_register(void) {}
 esp_err_t okou_agent_start(const okou_config_t *cfg) { assert(cfg->role == OKOU_ROLE_BOOTLOADER); return ESP_OK; }
 void prov_serial_start(void) { ++consoles; }
 
