@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import postgres from "postgres";
+import { AwsClient } from "aws4fetch";
 import { assetNames, releaseTag } from "../shared/firmware-releases.js";
 import { boardFileStem } from "../shared/board-id.js";
 
@@ -100,55 +99,43 @@ async function readRelease({ kind, version, fingerprint }) {
   };
 }
 
-function s3(operation, ...args) {
-  return execFileSync(
-    "aws",
-    [
-      "s3api",
-      operation,
-      "--endpoint-url",
-      endpoint,
-      "--region",
-      "auto",
-      "--bucket",
-      bucket,
-      ...args,
-    ],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-  );
-}
-
-function publishObject(key, path, size, sha256) {
+async function publishObject(aws, key, bytes, sha256) {
   const type = key.endsWith(".json")
     ? "application/json"
     : key.endsWith(".zip")
       ? "application/zip"
       : "application/octet-stream";
-  try {
-    s3(
-      "put-object",
-      "--key",
-      key,
-      "--body",
-      path,
-      "--content-type",
-      type,
-      "--if-none-match",
-      "*",
-      "--metadata",
-      "sha256=" + sha256,
-    );
-  } catch {
-    // A retry can reuse the exact bytes previously uploaded to this immutable key.
+  const url = new URL(bucket + "/" + key, endpoint);
+  const put = await aws.fetch(url, {
+    method: "PUT",
+    headers: {
+      "If-None-Match": "*",
+      "Content-Type": type,
+      "x-amz-meta-sha256": sha256,
+    },
+    body: bytes,
+  });
+  if (!put.ok && put.status !== 412) {
+    throw Error(`R2 upload failed (HTTP ${put.status}): ${key}`);
   }
-  let remote;
-  try {
-    remote = JSON.parse(s3("head-object", "--key", key));
-  } catch {
-    throw Error("Unable to read published R2 object: " + key);
+  const stored = await aws.fetch(url, { method: "HEAD" });
+  const length = stored.headers.get("Content-Length");
+  if (!stored.ok || stored.headers.get("x-amz-meta-sha256") !== sha256) {
+    throw Error("R2 checksum metadata does not match the build: " + key);
   }
-  if (remote.ContentLength !== size || remote.Metadata?.sha256 !== sha256) {
-    throw Error("R2 object does not match the build: " + key);
+  if (length === null) {
+    // R2 can omit Content-Length when the response is compressed.
+    const object = await aws.fetch(url);
+    const received = Buffer.from(await object.arrayBuffer());
+    if (
+      !object.ok ||
+      received.length !== bytes.length ||
+      hash(received) !== sha256
+    ) {
+      throw Error("R2 object does not match the build: " + key);
+    }
+  } else if (Number(length) !== bytes.length) {
+    throw Error("R2 object size does not match the build: " + key);
   }
 }
 
@@ -156,13 +143,18 @@ const releases = await Promise.all(jobs.map(readRelease));
 if (!process.argv.includes("--check")) {
   if (!endpoint || !database)
     throw Error("Missing firmware publishing credentials");
-  const directory = await mkdtemp(join(tmpdir(), "esphub-firmware-"));
+  const aws = new AwsClient({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    service: "s3",
+    region: "auto",
+  });
   const sql = postgres(database, { max: 1, prepare: false, ssl: "require" });
   try {
     for (const release of releases) {
       const prefix = `releases/${release.tag}/`;
-      for (const { path, name, size, sha256 } of Object.values(release.files)) {
-        publishObject(prefix + name, path, size, sha256);
+      for (const { path, name, sha256 } of Object.values(release.files)) {
+        await publishObject(aws, prefix + name, await readFile(path), sha256);
       }
     }
     for (const { tag, fingerprint, files } of releases) {
@@ -178,12 +170,10 @@ if (!process.argv.includes("--check")) {
           })),
         }),
       );
-      const path = join(directory, "published.json");
-      await writeFile(path, marker);
-      publishObject(
+      await publishObject(
+        aws,
         `releases/${tag}/published.json`,
-        path,
-        marker.length,
+        marker,
         hash(marker),
       );
     }
@@ -197,7 +187,6 @@ if (!process.argv.includes("--check")) {
     });
   } finally {
     await sql.end();
-    await rm(directory, { recursive: true, force: true });
   }
 }
 console.log(`${board}: ${releases.map(({ tag }) => tag).join(", ")}`);
