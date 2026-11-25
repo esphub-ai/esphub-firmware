@@ -38,6 +38,9 @@ shutil.copytree(ov / "cmodules" / "okou", m5 / "cmodules" / "okou", dirs_exist_o
 shutil.copytree(ov / "okl", m5 / "okl", dirs_exist_ok=True)
 shutil.copy(ov / "partitions_okl_build.csv", m5 / "partitions_okl_build.csv")
 if generic:
+    # ESP-IDF already supplies Unix seconds, as the UIFlow TLS clock expects.
+    # Applying the 2000 epoch offset makes valid MQTT certificates appear expired.
+    edit("main.c", "return tv.tv_sec + TIMEUTILS_SECONDS_1970_TO_2000;", "return tv.tv_sec;")
     edit("esp32_common.cmake", "list(APPEND IDF_COMPONENTS", "list(APPEND IDF_COMPONENTS\n    okou_agent")
     # Keep OTA safe-boot behavior identical to UIFlow's main loop.
     uiflow_main = (uiflow / "m5stack/main.c").read_text()
