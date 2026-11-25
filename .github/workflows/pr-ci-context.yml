@@ -1,0 +1,35 @@
+name: Validate PR CI dispatch
+on:
+  workflow_call:
+    inputs:
+      pr_number: {type: string, required: false, default: ''}
+    outputs:
+      base_sha:
+        value: ${{ jobs.validate.outputs.base_sha }}
+      head_sha:
+        value: ${{ jobs.validate.outputs.head_sha }}
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      base_sha: ${{ steps.context.outputs.base_sha }}
+      head_sha: ${{ steps.context.outputs.head_sha }}
+    steps:
+      - name: Keep ordinary PR, push, and manual CI unchanged
+        if: inputs.pr_number == ''
+        run: echo 'No SDK bot dispatch context to validate.'
+      - uses: actions/checkout@v4
+        if: inputs.pr_number != ''
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        if: inputs.pr_number != ''
+        with: {node-version: 24}
+      - id: context
+        if: inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: node scripts/pr-ci-context.mjs

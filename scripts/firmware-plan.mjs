@@ -4,7 +4,7 @@ import { readFileSync, appendFileSync } from "node:fs";
 import { matchesGlob, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { boardId, boardFileStem } from "../shared/board-id.js";
-import { publishedFirmware, releaseTag } from "../shared/firmware-releases.js";
+import { releaseTag } from "../shared/firmware-releases.js";
 
 const bootloaderInputs = [
   "firmware/bootloader/common/**",
@@ -199,7 +199,6 @@ function firmwareProfiles(ref, cwd = process.cwd()) {
 export function boardPlans(
   before,
   after,
-  releases,
   { version, manual = false, board: selected = "" },
 ) {
   if (selected && !Object.hasOwn(after, selected))
@@ -210,19 +209,16 @@ export function boardPlans(
     { chip, tasks, bootloader, blFingerprint, runtime },
   ] of Object.entries(after)) {
     if (selected && selected !== board) continue;
-    const published = releases[board] ?? {},
-      changed = {};
+    const changed = {};
     for (const [kind, task] of Object.entries(tasks)) {
       const touched =
         manual || before[board]?.tasks[kind]?.fingerprint !== task.fingerprint;
-      changed[kind] =
-        touched && published[kind]?.fingerprint !== task.fingerprint;
+      changed[kind] = touched;
     }
     if (!Object.values(changed).some(Boolean)) continue;
     if (changed.setup) {
       for (const kind of ["bootloader", runtime]) {
-        if (published[kind]?.fingerprint !== tasks[kind].fingerprint)
-          changed[kind] = true;
+        changed[kind] = true;
       }
     }
     const jobs = Object.values(tasks)
@@ -235,7 +231,7 @@ export function boardPlans(
     const components = jobs.filter((t) => t.kind !== "setup"),
       kit = jobs.find((t) => t.kind === "setup");
     const input = (kind) =>
-      components.find((t) => t.kind === kind) ?? published[kind];
+      components.find((t) => t.kind === kind);
     matrix.push({
       board,
       fileStem: boardFileStem(board),
@@ -250,8 +246,6 @@ export function boardPlans(
             bootloader: input("bootloader"),
             runtime: input(runtime),
             runtime_kind: runtime,
-            local_bootloader: !!changed.bootloader,
-            local_runtime: !!changed[runtime],
           }
         : null,
     });
@@ -269,7 +263,7 @@ export function firmwareEventContext(event, env) {
     beforeRef:
       event.pull_request?.base.sha ||
       (dispatchedPr ? env.PR_CI_BASE_SHA : event.before),
-    afterRef: env.GITHUB_SHA,
+    afterRef: env.FW_HEAD_SHA || env.GITHUB_SHA,
   };
 }
 
@@ -293,16 +287,7 @@ if (
     version: "1.2." + process.env.GITHUB_RUN_NUMBER,
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
-  let plans = boardPlans(before.boards, after.boards, {}, options);
-  if (plans.length && !options.manual) {
-    const releases = await publishedFirmware(
-      after.boards,
-      fetch,
-      process.env.GH_TOKEN,
-      "okou-ai/esphub",
-    );
-    plans = boardPlans(before.boards, after.boards, releases, options);
-  }
+  const plans = boardPlans(before.boards, after.boards, options);
   const cohorts = new Map();
   for (const plan of plans) {
     const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");

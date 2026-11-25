@@ -7,23 +7,31 @@ on:
       - 'scripts/build-bootloader.sh'
       - 'scripts/package-*.py'
       - 'tools/ble-wifi/provision_usb.py'
-      - '.github/actions/**'
+      - '.github/actions/build-micropython/**'
   pull_request:
     paths:
       - 'firmware/**'
       - 'scripts/build-bootloader.sh'
       - 'scripts/package-*.py'
       - 'tools/ble-wifi/provision_usb.py'
-      - '.github/actions/**'
+      - '.github/actions/build-micropython/**'
   workflow_dispatch:
     inputs:
       board:
         description: Group/project board ID, e.g. m5stack/stopwatch.
         type: string
-        required: true
+        required: false
+      pr_number:
+        description: Trusted SDK bot PR CI request.
+        type: string
+        required: false
 permissions: {contents: read}
 jobs:
+  context:
+    uses: ./.github/workflows/pr-ci-context.yml
+    with: {pr_number: '${{ inputs.pr_number }}'}
   plan:
+    needs: context
     runs-on: ubuntu-latest
     outputs:
       cohorts: ${{ steps.plan.outputs.cohorts }}
@@ -31,12 +39,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ needs.context.outputs.head_sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with: {node-version: 24}
       - id: plan
         env:
-          GH_TOKEN: ${{ github.token }}
+          PR_CI_BASE_SHA: ${{ needs.context.outputs.base_sha }}
+          FW_HEAD_SHA: ${{ needs.context.outputs.head_sha || github.sha }}
         run: node scripts/firmware-plan.mjs
   build:
     needs: plan

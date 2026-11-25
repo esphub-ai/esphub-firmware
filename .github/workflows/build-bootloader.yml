@@ -14,8 +14,6 @@ env:
   IDF_IMAGE: ${{ inputs.container }}
   VARIANT: ${{ inputs.variant }}
   VERSION: ${{ inputs.version }}
-  TAG: bl-${{ inputs.variant }}-${{ inputs.fingerprint }}
-  GH_TOKEN: ${{ github.token }}
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -23,24 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Fetch the published build for these inputs
-        id: published
-        shell: bash
-        run: |
-          set -euo pipefail
-          if receipt=$(gh api "repos/okou-ai/esphub/releases/tags/$TAG" 2>&1); then
-            jq -e '.draft == false and .prerelease == false' <<< "$receipt"
-            gh release download "$TAG" -R okou-ai/esphub -p bootloader.tar.gz -p bootloader.tar.gz.sha256
-            sha256sum -c bootloader.tar.gz.sha256
-            mkdir shared-bl
-            tar -xzf bootloader.tar.gz -C shared-bl
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          elif [[ "$receipt" != *"(HTTP 404)"* ]]; then
-            printf '%s\n' "$receipt" >&2
-            exit 1
-          fi
+      - uses: actions/cache@v4
+        id: bootloader-cache
+        with:
+          path: shared-bl
+          key: shared-bootloader-${{ inputs.fingerprint }}
       - name: Compile the shared binaries
-        if: steps.published.outputs.found != 'true'
+        if: steps.bootloader-cache.outputs.cache-hit != 'true'
         run: |
           docker run --rm -v "$PWD:/work" -w /work -e VARIANT -e VERSION -e GITHUB_SHA \
             "$IDF_IMAGE" bash scripts/build-bootloader.sh
