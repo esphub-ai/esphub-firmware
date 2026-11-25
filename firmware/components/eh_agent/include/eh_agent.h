@@ -32,12 +32,9 @@ typedef struct {
      * when CONFIG_EH_NET_OPENETH=y). false: the app owns esp_netif/Wi-Fi and the SDK just
      * waits for an IP address. */
     bool manage_network;
-    /* false (default): command handlers run on the agent task.
-     * true: `cmd` requests are queued and run inside eh_poll() on the caller's task. */
-    bool handlers_in_poll;
 } eh_config_t;
 
-#define EH_CONFIG_DEFAULT() { .role = EH_ROLE_APP, .manage_network = true, .handlers_in_poll = false }
+#define EH_CONFIG_DEFAULT() { .role = EH_ROLE_APP, .manage_network = true }
 
 /* Start the SDK with the default network configuration. */
 esp_err_t eh_agent_start(void);
@@ -81,18 +78,10 @@ esp_err_t eh_param_bool(const char *name, bool *ptr, bool persist);
 /* Save the current value of a persistent param after the app changed it itself. */
 esp_err_t eh_param_save(const char *name);
 
-/* Runtime port output hook. True when remote capture consumed the bytes;
- * false means the caller should use its normal stdout implementation. */
-bool eh_console_write(const char *data, size_t len);
-
 /* ---- telemetry ----------------------------------------------------------------------- */
 /* json: a JSON object text (or NULL for {}). Invalid JSON is sent as {"text":"..."}.
  * Never blocks; dropped (and counted) when the outbound queue is full. */
 void eh_event(const char *name, const char *json);
-
-/* Only meaningful with handlers_in_poll=true: runs queued command handlers on the calling
- * task. Waits up to timeout_ms for work. Returns the number of handlers run. */
-int eh_poll(uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

@@ -18,7 +18,7 @@ build = json.loads((shared / "build.json").read_text())
 assert build["variant"] == metadata["bootloader"]
 image = (shared / "esp-bootloader.bin").read_bytes()
 assert sha256(image).hexdigest() == build["ota_sha256"]
-assert image[288:].startswith(f"EH/bootloader/v1/{metadata['bootloader']}\0".encode())
+assert image[288:].startswith(f"ESPHUB2/bootloader/{metadata['bootloader']}\0bootloader-ota-v2\0".encode())
 chip = metadata["chip"]
 prefix = f"esphub-{group}_{project}-{chip}-{version}"
 out = Path("dist")

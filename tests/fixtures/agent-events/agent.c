@@ -97,7 +97,7 @@ bool eh_iot_publish_log(const uint8_t *bytes, size_t len, uint32_t dropped, char
     }
     assert(native_log("MQTT write") == 10); // transport diagnostics never re-enter the ring
     if (log_batches == 1) {
-        assert(len == 8 && !memcmp(bytes, "C:42 py\n", len) && !dropped);
+        assert(len == 8 && !memcmp(bytes, "C:42 ms\n", len) && !dropped);
         return false; // best-effort send failed
     }
     assert(log_batches == 2 && len == EH_LOG_CHUNK_BYTES);
@@ -109,7 +109,6 @@ static void console_scenario(unsigned step, TickType_t ticks)
 {
     if (step == 0) {
         forever(ticks);
-        assert(!eh_console_write("private", 7));
         fail_console_allocation = true;
         assert(eh_console_set(true) == ESP_ERR_NO_MEM && sink == local_console);
         fail_console_allocation = false;
@@ -118,7 +117,7 @@ static void console_scenario(unsigned step, TickType_t ticks)
     } else if (step == 1) {
         forever(ticks);
         assert(results == 1 && native_log("C:%d", 42) == 4);
-        assert(eh_console_write(" py\n", 4) && local_prints == 1);
+        assert(native_log(" ms\n") == 4 && local_prints == 1);
     } else if (step == 2 || step == 4) {
         deadline(ticks, clock_us + FLUSH_US);
         clock_us += FLUSH_US;
@@ -127,7 +126,11 @@ static void console_scenario(unsigned step, TickType_t ticks)
         assert(log_batches == 1 && local_prints == 2);
         char burst[RING_BYTES + 19];
         for (size_t i = 0; i < sizeof(burst); ++i) burst[i] = 'A' + (i % 26);
-        assert(eh_console_write(burst, sizeof(burst)));
+        for (size_t off = 0; off < sizeof(burst); off += 128) {
+            size_t amount = sizeof(burst) - off;
+            if (amount > 128) amount = 128;
+            assert(native_log("%.*s", (int)amount, burst + off) == (int)amount);
+        }
     } else if (step == 5) {
         assert(log_batches == 2 && local_prints == 3);
         deadline(ticks, clock_us + FLUSH_US);
@@ -137,7 +140,6 @@ static void console_scenario(unsigned step, TickType_t ticks)
     } else {
         forever(ticks);
         assert(results == 2 && log_batches == 2 && sink == local_console);
-        assert(!eh_console_write("private again", 13));
         assert(native_log("local") == 5 && local_prints == 4);
         finish();
     }
@@ -239,14 +241,14 @@ static void on_wait(TickType_t ticks)
             memset(text, 'x', 260);
             text[260] = 0;
             assert(native_log("%s", text) == 260); // 255 retained, 5 counted
-            assert(eh_console_write(text, EH_LOG_CHUNK_BYTES - 1 - 255));
-            assert(eh_console_write("打", 1));   // incomplete character at batch edge
+            assert(native_log("%.*s", EH_LOG_CHUNK_BYTES - 1 - 255, text) == EH_LOG_CHUNK_BYTES - 1 - 255);
+            assert(native_log("%.1s", "打") == 1);   // incomplete character at batch edge
         } else if (step == 1 || step == 2 || step == 4) {
             deadline(ticks, clock_us + FLUSH_US);
             clock_us += FLUSH_US;
         } else if (step == 3) {
             forever(ticks); // partial character alone has no polling deadline
-            assert(log_batches == 1 && eh_console_write("打" + 1, 2));
+            assert(log_batches == 1 && native_log("%s", "打" + 1) == 2);
         } else {
             forever(ticks);
             assert(log_batches == 2 && eh_console_set(false) == ESP_OK);

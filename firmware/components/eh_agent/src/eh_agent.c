@@ -42,12 +42,6 @@
 eh_config_t g_eh_cfg = EH_CONFIG_DEFAULT();
 
 typedef struct {
-    cJSON *id;
-    char name[24];
-    cJSON *argv;
-} poll_job_t;
-
-typedef struct {
     char op[20];
     eh_op_handler_t fn;
     eh_op_async_handler_t afn;
@@ -71,7 +65,7 @@ void eh_agent_notify(void)
     }
 }
 typedef struct { char *frame; unsigned session; } tx_item_t;
-static QueueHandle_t s_txq, s_pollq, s_message_rx;
+static QueueHandle_t s_txq, s_message_rx;
 static atomic_uint s_message_session;
 static unsigned s_message_generation;
 #if CONFIG_EH_URL_OTA
@@ -129,19 +123,16 @@ static void ensure_queues(void)
         return;
     }
     QueueHandle_t tx = xQueueCreate(16, sizeof(tx_item_t));
-    QueueHandle_t pq = xQueueCreate(4, sizeof(poll_job_t *));
     QueueHandle_t rx = xQueueCreate(4, sizeof(char *));
     portENTER_CRITICAL(&m);
     if (!done) {
         s_txq = tx;
-        s_pollq = pq;
         s_message_rx = rx;
         done = true;
-        tx = pq = rx = NULL;
+        tx = rx = NULL;
     }
     portEXIT_CRITICAL(&m);
     if (tx) vQueueDelete(tx);
-    if (pq) vQueueDelete(pq);
     if (rx) vQueueDelete(rx);
 }
 
@@ -313,7 +304,7 @@ void eh_event(const char *name, const char *json)
 #define EH_IMAGE_PROFILE EH_BL_IMAGE_PREFIX CONFIG_EH_BL_PROFILE
 #endif
 #ifdef EH_IMAGE_PROFILE
-static const char image_profile[] __attribute__((section(".rodata_custom_desc"), aligned(4))) = EH_IMAGE_PROFILE;
+static const char image_profile[] __attribute__((section(".rodata_custom_desc"), aligned(4))) = EH_IMAGE_PROFILE "\0" EH_OTA_CAPABILITY;
 #endif
 
 static void report_mac(cJSON *o, const char *field, esp_mac_type_t type)
@@ -667,24 +658,6 @@ static void handle_req(const cJSON *root)
         if (!cJSON_IsString(n)) {
             snprintf(err, sizeof(err), "missing name");
             r = ESP_ERR_INVALID_ARG;
-        } else if (g_eh_cfg.handlers_in_poll) {
-            poll_job_t *j = calloc(1, sizeof(*j));
-            if (j) {
-                j->id = cJSON_Duplicate(id, true);
-                strlcpy(j->name, n->valuestring, sizeof(j->name));
-                j->argv = argv ? cJSON_Duplicate(argv, true) : NULL;
-            }
-            if (j && xQueueSend(s_pollq, &j, 0) == pdTRUE) {
-                cJSON_Delete(data);
-                return; /* answered from eh_poll() */
-            }
-            if (j) {
-                cJSON_Delete(j->id);
-                cJSON_Delete(j->argv);
-                free(j);
-            }
-            snprintf(err, sizeof(err), "busy: app has not polled");
-            r = ESP_ERR_NO_MEM;
         } else {
             r = run_cmd(n->valuestring, argv, data, err, sizeof(err));
         }
@@ -719,24 +692,6 @@ static void handle_req(const cJSON *root)
         cJSON_Delete(data);
     else
         send_res(id, r == ESP_OK, data, err);
-}
-
-int eh_poll(uint32_t timeout_ms)
-{
-    ensure_queues();
-    int n = 0;
-    poll_job_t *j;
-    while (xQueueReceive(s_pollq, &j, n == 0 ? pdMS_TO_TICKS(timeout_ms) : 0) == pdTRUE) {
-        cJSON *data = cJSON_CreateObject();
-        char err[192] = "";
-        esp_err_t r = run_cmd(j->name, j->argv, data, err, sizeof(err));
-        txq_push(build_res_string(j->id, r == ESP_OK, data, err));
-        cJSON_Delete(j->id);
-        cJSON_Delete(j->argv);
-        free(j);
-        n++;
-    }
-    return n;
 }
 
 esp_err_t eh_enter_bootloader(void)

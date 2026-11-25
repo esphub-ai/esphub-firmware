@@ -14,4 +14,6 @@ runs:
         jq -er --arg name "$kit" --arg board "$BOARD" 'select(.board == $board and .usb.file == $name) | .usb.sha256 + "  " + .usb.file' "components/bootloader/$manifest" > components/bootloader/checksum
         (cd components/bootloader && sha256sum -c checksum)
         (cd components/app && sha256sum -c "$app.sha256")
+        export BOOTLOADER_VERSION
+        BOOTLOADER_VERSION=$(jq -er .bootloader_version "components/bootloader/$manifest")
         python3 scripts/package-setup.py "$BOARD" "components/bootloader/$kit" "components/app/$app.bin" dist

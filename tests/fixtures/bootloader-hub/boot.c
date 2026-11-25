@@ -26,7 +26,7 @@ const esp_partition_t *esp_ota_get_running_partition(void) {
 void esp_restart(void) { longjmp(reboot, 1); }
 esp_err_t eh_select_app(void) { ++selections; return bootable ? ESP_OK : -1; }
 void eh_schedule_reboot(uint32_t ms) { ++scheduled; }
-void install_reconcile_boot(void) {}
+void eh_install_reconcile_boot(void) {}
 const char *esp_err_to_name(esp_err_t rc) { return "invalid app"; }
 int eh_outf(eh_out_t *out, const char *fmt, ...) { return 0; }
 esp_err_t eh_cmd_register(const char *name, const char *help, eh_cmd_handler_t fn) {
@@ -35,7 +35,7 @@ esp_err_t eh_cmd_register(const char *name, const char *help, eh_cmd_handler_t f
     return ESP_OK;
 }
 esp_err_t eh_op_register(const char *name, eh_op_handler_t fn) { return ESP_OK; }
-esp_err_t install_op(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_OK; }
+esp_err_t eh_install_op(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_OK; }
 esp_err_t eh_agent_start_with_config(const eh_config_t *cfg) { assert(cfg->role == EH_ROLE_BOOTLOADER); return ESP_OK; }
 void prov_serial_start(void) { ++consoles; }
 

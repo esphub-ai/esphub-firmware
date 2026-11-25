@@ -157,7 +157,7 @@ static bool valid_header(const uint8_t *header, const inst_t *in)
 {
     const esp_image_header_t *ih = (const esp_image_header_t *)header;
     if (ih->magic != ESP_IMAGE_HEADER_MAGIC || ih->chip_id != CONFIG_IDF_FIRMWARE_CHIP_ID) return false;
-    static const char bootloader_profile[] = EH_BL_IMAGE_PREFIX CONFIG_EH_BL_PROFILE;
+    static const char bootloader_profile[] = EH_BL_IMAGE_PREFIX CONFIG_EH_BL_PROFILE "\0" EH_OTA_CAPABILITY;
     const uint8_t *profile = header + PROFILE_OFFSET;
     if (!strcmp(in->kind, "bootloader")) return !memcmp(profile, bootloader_profile, sizeof(bootloader_profile));
     return memcmp(profile, EH_BL_IMAGE_PREFIX, sizeof(EH_BL_IMAGE_PREFIX) - 1) != 0;
@@ -269,7 +269,7 @@ static bool start_task(inst_t *in)
     return true;
 }
 
-esp_err_t install_op(const cJSON *args, cJSON *data, char *err, size_t errlen)
+esp_err_t eh_install_op(const cJSON *args, cJSON *data, char *err, size_t errlen)
 {
     if (s_running) {
         snprintf(err, errlen, "install already in progress");
@@ -299,7 +299,7 @@ esp_err_t install_op(const cJSON *args, cJSON *data, char *err, size_t errlen)
     return ESP_OK;
 }
 
-void install_reconcile_boot(void)
+void eh_install_reconcile_boot(void)
 {
     // Preserve the OTA outcome before the bootloader can hand off to the application.
     char *saved = eh_nvs_get_str_alloc(EH_KEY_PENDING);

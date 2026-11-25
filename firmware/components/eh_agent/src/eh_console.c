@@ -25,7 +25,7 @@ typedef struct {
 } console_t;
 
 // Only the agent enables, drains and frees the capture. Producers borrow it
-// under the lock; a disabled Python stdout write only checks the atomic pointer.
+// under the lock while the current ESP-IDF log hook is active.
 static _Atomic(console_t *) capture;
 static portMUX_TYPE lock = portMUX_INITIALIZER_UNLOCKED;
 static _Atomic(vprintf_like_t) native_print = vprintf;
@@ -44,12 +44,6 @@ static bool append(const char *data, size_t len, size_t truncated)
     console_t *c = capture;
     if (c && len) {
         wake = c->used == 0 || c->flush_at == INT64_MAX;
-        if (len > RING_BYTES) {
-            size_t skip = len - RING_BYTES;
-            count_loss(c, skip);
-            data += skip;
-            len = RING_BYTES;
-        }
         size_t space = RING_BYTES - c->used;
         if (len > space) {
             size_t evict = len - space;
@@ -69,11 +63,6 @@ static bool append(const char *data, size_t len, size_t truncated)
     portEXIT_CRITICAL(&lock);
     if (wake) eh_agent_notify();
     return redirected;
-}
-
-bool eh_console_write(const char *data, size_t len)
-{
-    return append(data, len, 0);
 }
 
 static int console_vprintf(const char *format, va_list args)

@@ -37,7 +37,7 @@ with ZipFile(args.bootloader) as base, ZipFile(kit, "w", ZIP_DEFLATED) as dest:
     bootloader = base.read("esp-bootloader.bin")
     variant = metadata["bootloader"]
     assert bootloader[0] == 0xE9 and bootloader[288:].startswith(
-        f"EH/bootloader/v1/{variant}\0".encode())
+        f"ESPHUB2/bootloader/{variant}\0bootloader-ota-v2\0".encode())
     assert image[0] == 0xE9
     assert bootloader[12:14] == image[12:14], "Mismatched ESP chips"
     for name in base.namelist():

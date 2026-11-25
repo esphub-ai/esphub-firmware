@@ -56,12 +56,14 @@ def build(args, board, example, work):
                     defaults.write("CONFIG_SPIRAM_MODE_OCT=y\n")
         # The copy of app/ is independent of its original relative path to the SDK.
         options += [f"-DEH_AGENT_DIR={FIRMWARE / 'components/eh_agent'}",
-                    f"-DEH_ENTRYPOINT={entrypoint}", f"-DEH_APP_NAME={example_id}"]
+                    f"-DEH_EXAMPLE_DIR={entrypoint.parent}", f"-DEH_APP_NAME={example_id}"]
+        dependencies = entrypoint.parent / "idf_component.yml"
         if "m5_board_id" in board:
-            shutil.copy(project / "m5.yml", project / "main/idf_component.yml")
             options.append(f"-DEH_M5_BOARD_ID={board['m5_board_id']}")
-        elif example_id == "camera-frame":
-            shutil.copy(project / "camera.yml", project / "main/idf_component.yml")
+            if not dependencies.exists():
+                dependencies = project / "m5.yml"
+        if dependencies.exists():
+            shutil.copy(dependencies, project / "main/idf_component.yml")
     output = work / "build"
     subprocess.run(["idf.py", "-C", project, "-B", output, *options, "app"], env=env, check=True)
     description = json.loads((output / "project_description.json").read_text())

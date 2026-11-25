@@ -21,9 +21,6 @@ extern "C" {
 /* Public Bluetooth controller address used for provisioning discovery. */
 bool eh_ble_address(char out[18]);
 
-/* Signal strength of the current station connection, in dBm. */
-bool eh_wifi_rssi(int *rssi);
-
 /* NVS namespace and keys shared between bootloader and SDK (docs/protocol.md). */
 #define EH_NVS_NS          "eh"
 #define EH_KEY_PENDING     "pending"    /* str: in-progress transfer identity or unacknowledged final event */

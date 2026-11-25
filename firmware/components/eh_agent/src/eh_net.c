@@ -22,18 +22,6 @@ static bool s_managed;
 static esp_netif_t *s_netif;
 static char s_ip[16] = "";
 
-bool eh_wifi_rssi(int *rssi)
-{
-#if !CONFIG_EH_NET_OPENETH
-    wifi_ap_record_t ap;
-    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
-        *rssi = ap.rssi;
-        return true;
-    }
-#endif
-    return false;
-}
-
 bool eh_net_has_ip(void)
 {
     return s_has_ip;

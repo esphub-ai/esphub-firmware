@@ -139,6 +139,14 @@ async function publishObject(aws, key, bytes, sha256) {
 }
 
 const releases = await Promise.all(jobs.map(readRelease));
+const setup = releases.find(release => release.kind === "setup");
+if (setup) {
+  const app = releases.find(release => release.kind === "app");
+  const manifest = JSON.parse(setup.files["setup-manifest"].bytes);
+  if (!app || manifest.app_tag !== app.tag || manifest.app_sha256 !== app.files.app.sha256 ||
+      manifest.app_size !== app.files.app.size || !manifest.example?.source_url?.includes("/tree/" + source + "/"))
+    throw Error("Setup kit and published app must use the same image and pinned example");
+}
 if (!process.argv.includes("--check")) {
   if (!endpoint || !database)
     throw Error("Missing firmware publishing credentials");
