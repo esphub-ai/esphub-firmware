@@ -95,7 +95,6 @@ async function readRelease({ kind, version, fingerprint }) {
     source,
     tag,
     files,
-    manifest: kind === "bootloader" ? manifest : null,
   };
 }
 
@@ -178,10 +177,10 @@ if (!process.argv.includes("--check")) {
       );
     }
     await sql.begin(async (tx) => {
-      for (const { kind, version, manifest } of releases) {
-        await tx`INSERT INTO esphub.firmware_releases AS current (board, kind, version, manifest)
-          VALUES (${board}, ${kind}, ${version}, ${manifest ? tx.json(manifest) : null})
-          ON CONFLICT (board, kind) DO UPDATE SET version = excluded.version, manifest = excluded.manifest
+      for (const { kind, version } of releases) {
+        await tx`INSERT INTO esphub.firmware_releases AS current (board, kind, version)
+          VALUES (${board}, ${kind}, ${version})
+          ON CONFLICT (board, kind) DO UPDATE SET version = excluded.version
           WHERE string_to_array(excluded.version, '.')::numeric[] > string_to_array(current.version, '.')::numeric[]`;
       }
     });

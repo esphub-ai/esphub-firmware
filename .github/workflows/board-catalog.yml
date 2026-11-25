@@ -1,0 +1,31 @@
+name: Publish board directory
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/board/**/board.json'
+      - 'firmware/board/**/ci.json'
+      - 'firmware/board/**/main.py'
+      - 'firmware/components/okou_agent/include/okou_agent.h'
+      - 'firmware/pyrt/upstream.json'
+      - 'scripts/board-catalog.mjs'
+      - 'scripts/publish-catalog.mjs'
+      - 'shared/board-id.js'
+      - '.github/workflows/board-catalog.yml'
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency: { group: board-catalog-production, cancel-in-progress: false }
+jobs:
+  publish:
+    if: github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # A queued or manually retried run reconciles the current catalog.
+      - uses: actions/checkout@v4
+        with: { ref: main, persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci --ignore-scripts
+      - run: node scripts/publish-catalog.mjs
+        env: { FIRMWARE_DATABASE_URL: '${{ secrets.FIRMWARE_DATABASE_URL }}' }
