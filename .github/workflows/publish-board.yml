@@ -23,12 +23,39 @@ jobs:
           SOURCE_RUN: ${{ inputs.source_run }}
           BOARD: ${{ inputs.board }}
         run: node scripts/prepare-publication.mjs
-      - uses: actions/download-artifact@v4
+      # A cross-run artifact listing is capped at 100. Fetch each validated name directly.
+      - name: Download bootloader artifact
+        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'bootloader') }}
+        uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.source_run }}
-          pattern: ${{ steps.source.outputs.stem }}.*
-          path: assets
+          name: ${{ steps.source.outputs.stem }}.bootloader
+          path: assets/${{ steps.source.outputs.stem }}.bootloader
+      - name: Download micropython artifact
+        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'micropython') }}
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          name: ${{ steps.source.outputs.stem }}.micropython
+          path: assets/${{ steps.source.outputs.stem }}.micropython
+      - name: Download native artifact
+        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'native') }}
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          name: ${{ steps.source.outputs.stem }}.native
+          path: assets/${{ steps.source.outputs.stem }}.native
+      - name: Download setup artifact
+        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'setup') }}
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          name: ${{ steps.source.outputs.stem }}.setup
+          path: assets/${{ steps.source.outputs.stem }}.setup
       - name: Publish release assets and advance the Neon catalog
         env:
           BOARD_PROFILE: ${{ steps.source.outputs.profile }}
