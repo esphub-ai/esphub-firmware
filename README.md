@@ -25,3 +25,23 @@ Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bu
 Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`, `esphub.boards`, and `esphub.board_sources`, plus `DELETE` on `esphub.board_sources`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
 
 Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Its public WebP photo is stored at `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The Hub reads this directory and joins the latest published firmware versions at request time.
+
+## Application messages
+
+EspHub sends a JSON envelope with `id` and `payload`. Messages use MQTT QoS 0 and expire with the connection.
+
+Native applications call `okou_message_receive()` to take a heap-owned JSON envelope, and `okou_message_send(json, reply_to)` to send JSON text with an optional incoming ID. Use `NULL` for an unsolicited message. A successful send means the local transport queue accepted the message.
+
+MicroPython exposes the same interface:
+
+```python
+import json
+import okou
+
+message = okou.message_receive()
+if message is not None:
+    envelope = json.loads(message)
+    okou.message_send(json.dumps({"received": envelope["payload"]}), envelope["id"])
+```
+
+Read device messages through the Hub's `logs.read` tool.

@@ -88,6 +88,31 @@ static mp_obj_t okou_event_py(size_t n_args, const mp_obj_t *args)
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(okou_event_obj, 1, 2, okou_event_py);
 
+static mp_obj_t okou_message_send_py(size_t n_args, const mp_obj_t *args)
+{
+    size_t length;
+    const char *json = mp_obj_str_get_data(args[0], &length);
+    const char *reply_to = n_args > 1 && args[1] != mp_const_none ? mp_obj_str_get_str(args[1]) : NULL;
+    return mp_obj_new_bool(length == strlen(json) && okou_message_send(json, reply_to));
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(okou_message_send_obj, 1, 2, okou_message_send_py);
+
+static mp_obj_t okou_message_receive_py(void)
+{
+    char *json = okou_message_receive();
+    if (!json) return mp_const_none;
+    nlr_buf_t nlr;
+    if (nlr_push(&nlr) == 0) {
+        mp_obj_t result = mp_obj_new_str(json, strlen(json));
+        nlr_pop();
+        free(json);
+        return result;
+    }
+    free(json);
+    nlr_jump(nlr.ret_val);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(okou_message_receive_obj, okou_message_receive_py);
+
 static mp_obj_t okou_safe_boot_py(void)
 {
     bool safe = okou_nvs_get_u8("pysafe", 0) != 0;
@@ -155,6 +180,8 @@ static const mp_rom_map_elem_t okou_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_wifi_rssi), MP_ROM_PTR(&okou_wifi_rssi_obj) },
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_okou) },
     { MP_ROM_QSTR(MP_QSTR_connected), MP_ROM_PTR(&okou_connected_obj) },
+    { MP_ROM_QSTR(MP_QSTR_message_send), MP_ROM_PTR(&okou_message_send_obj) },
+    { MP_ROM_QSTR(MP_QSTR_message_receive), MP_ROM_PTR(&okou_message_receive_obj) },
     { MP_ROM_QSTR(MP_QSTR_event), MP_ROM_PTR(&okou_event_obj) },
     { MP_ROM_QSTR(MP_QSTR_safe_boot), MP_ROM_PTR(&okou_safe_boot_obj) },
 };
