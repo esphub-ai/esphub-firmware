@@ -64,19 +64,14 @@ jobs:
       RUNTIME_VERSION: ${{ fromJSON(inputs.profile).kit.runtime.version }}
       RUNTIME_KIND: ${{ fromJSON(inputs.profile).kit.runtime_kind }}
       RUNTIME_TAG: ${{ fromJSON(inputs.profile).kit.runtime.tag }}
-      LOCAL_BOOTLOADER: ${{ toJSON(fromJSON(inputs.profile).kit.local_bootloader) }}
-      LOCAL_RUNTIME: ${{ toJSON(fromJSON(inputs.profile).kit.local_runtime) }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
       - uses: actions/download-artifact@v4
-        if: fromJSON(inputs.profile).kit.local_bootloader
         with:
           name: ${{ env.BOARD_FILE_STEM }}.bootloader
           path: components/bootloader
       - uses: actions/download-artifact@v4
-        if: fromJSON(inputs.profile).kit.local_runtime
         with:
           name: ${{ env.BOARD_FILE_STEM }}.${{ env.RUNTIME_KIND }}
           path: components/runtime

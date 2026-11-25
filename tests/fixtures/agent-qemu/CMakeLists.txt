@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.16)
+set(COMPONENTS main)
+set(PROJECT_VER "qemu-probe")
+set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/../../../firmware/components/okou_agent")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(agent-qemu)
