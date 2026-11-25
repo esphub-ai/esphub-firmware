@@ -1,0 +1,7 @@
+{
+  "name": "Chain Captain",
+  "model": "M5Stack Chain Captain",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb"
+}

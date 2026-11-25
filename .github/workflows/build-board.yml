@@ -1,0 +1,91 @@
+name: Build a board
+on:
+  workflow_call:
+    inputs:
+      profile:
+        required: true
+        type: string
+permissions: {contents: read}
+env:
+  BOARD: ${{ fromJSON(inputs.profile).board }}
+  BOARD_DIR: firmware/board/${{ fromJSON(inputs.profile).board }}
+  BOARD_FILE_STEM: ${{ fromJSON(inputs.profile).fileStem }}
+  CHIP: ${{ fromJSON(inputs.profile).chip }}
+jobs:
+  component:
+    if: fromJSON(inputs.profile).components[0] != null
+    name: ${{ matrix.task.kind }}
+    strategy:
+      fail-fast: false
+      matrix:
+        task: ${{ fromJSON(inputs.profile).components }}
+    runs-on: ${{ matrix.task.runner }}
+    container: ${{ matrix.task.container || null }}
+    env:
+      VERSION: ${{ matrix.task.version }}
+      KIND: ${{ matrix.task.kind }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v4
+        if: matrix.task.kind == 'bootloader'
+        with:
+          name: bl-${{ fromJSON(inputs.profile).bootloader }}
+          path: shared-bl
+      - name: Assemble bootloader release for the board
+        if: matrix.task.kind == 'bootloader'
+        shell: bash
+        run: |
+          set -eo pipefail
+          source "$IDF_PATH/export.sh"
+          python scripts/package-board-bootloader.py "$BOARD" "$VERSION"
+      - name: Select the board's composite action
+        if: matrix.task.kind != 'bootloader'
+        shell: bash
+        run: cp -R "$BOARD_DIR/$KIND" .board-task
+      - uses: ./.board-task
+        if: matrix.task.kind != 'bootloader'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BOARD_FILE_STEM }}.${{ matrix.task.kind }}
+          path: dist/
+          if-no-files-found: error
+  kit:
+    needs: component
+    if: ${{ !cancelled() && (needs.component.result == 'success' || needs.component.result == 'skipped') && fromJSON(inputs.profile).kit != null }}
+    name: USB kit
+    runs-on: ${{ fromJSON(inputs.profile).kit.runner }}
+    container: ${{ fromJSON(inputs.profile).kit.container || null }}
+    env:
+      VERSION: ${{ fromJSON(inputs.profile).kit.version }}
+      TAG: ${{ fromJSON(inputs.profile).kit.tag }}
+      BOOTLOADER_VERSION: ${{ fromJSON(inputs.profile).kit.bootloader.version }}
+      BOOTLOADER_TAG: ${{ fromJSON(inputs.profile).kit.bootloader.tag }}
+      RUNTIME_VERSION: ${{ fromJSON(inputs.profile).kit.runtime.version }}
+      RUNTIME_KIND: ${{ fromJSON(inputs.profile).kit.runtime_kind }}
+      RUNTIME_TAG: ${{ fromJSON(inputs.profile).kit.runtime.tag }}
+      LOCAL_BOOTLOADER: ${{ toJSON(fromJSON(inputs.profile).kit.local_bootloader) }}
+      LOCAL_RUNTIME: ${{ toJSON(fromJSON(inputs.profile).kit.local_runtime) }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v4
+        if: fromJSON(inputs.profile).kit.local_bootloader
+        with:
+          name: ${{ env.BOARD_FILE_STEM }}.bootloader
+          path: components/bootloader
+      - uses: actions/download-artifact@v4
+        if: fromJSON(inputs.profile).kit.local_runtime
+        with:
+          name: ${{ env.BOARD_FILE_STEM }}.${{ env.RUNTIME_KIND }}
+          path: components/runtime
+      - name: Select the board's USB kit action
+        shell: bash
+        run: cp -R "$BOARD_DIR/setup" .board-task
+      - uses: ./.board-task
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BOARD_FILE_STEM }}.setup
+          path: dist/
+          if-no-files-found: error

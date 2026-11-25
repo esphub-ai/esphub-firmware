@@ -1,0 +1,6 @@
+name: CoreS3 setup
+description: Build the CoreS3 setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

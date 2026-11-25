@@ -1,0 +1,320 @@
+diff --git a/hw/misc/esp32c5_i2c_ana_mst.c b/hw/misc/esp32c5_i2c_ana_mst.c
+index af67c72..a16f600 100644
+--- a/hw/misc/esp32c5_i2c_ana_mst.c
++++ b/hw/misc/esp32c5_i2c_ana_mst.c
+@@ -97,6 +97,7 @@ static void esp32c5_i2c_ana_mst_realize(DeviceState *dev, Error **errp)
+     ESP32C5I2cAnaMstState *s = ESP32C5_I2C_ANA_MST(dev);
+ 
+     s->regs[0x61][3] = 0x09;
++    s->regs[0x63][0] = 0x5B;
+     s->regs[0x66][8] = 0xC0;
+ }
+ 
+diff --git a/hw/misc/esp32c6_i2c_ana_mst.c b/hw/misc/esp32c6_i2c_ana_mst.c
+index c6bbc3d..273203a 100644
+--- a/hw/misc/esp32c6_i2c_ana_mst.c
++++ b/hw/misc/esp32c6_i2c_ana_mst.c
+@@ -127,6 +127,7 @@ static void esp32c6_i2c_ana_mst_realize(DeviceState *dev, Error **errp)
+     ESP32C6I2cAnaMstState *s = ESP32C6_I2C_ANA_MST(dev);
+ 
+     s->regs[0x61][3] = 0x09;
++    s->regs[0x63][0] = 0x5B;
+     s->regs[0x66][8] = 0xC0;
+ }
+ 
+diff --git a/hw/riscv/esp32c5.c b/hw/riscv/esp32c5.c
+index 94ba635..a9ec205 100644
+--- a/hw/riscv/esp32c5.c
++++ b/hw/riscv/esp32c5.c
+@@ -8,6 +8,7 @@
+  * (at your option) any later version.
+  */
+ #include "qemu/osdep.h"
++#include "hw/misc/esp-smoke-status.h"
+ #include "qemu/log.h"
+ #include "qemu/error-report.h"
+ #include "hw/qdev-properties.h"
+@@ -849,6 +850,19 @@ static void esp32c5_machine_init(MachineState *machine)
+         }
+     }
+ 
++    MemoryRegion *modem_ctrl = g_new0(MemoryRegion, 1);
++    memory_region_init_ram(modem_ctrl, NULL, "esp32c5.modem-ctrl", 4, &error_fatal);
++    memory_region_add_subregion_overlap(sys_mem, 0x600b2800, modem_ctrl, 2);
++    MemoryRegion *modem_gate = g_new0(MemoryRegion, 1);
++    memory_region_init_ram(modem_gate, NULL, "esp32c5.modem-gate", 4, &error_fatal);
++    memory_region_add_subregion_overlap(sys_mem, 0x600b47f8, modem_gate, 2);
++    smoke_status("esp32c5.phy-600a0418", 0x600a0418, 0x400000);
++    smoke_status("esp32c5.phy-600a047c", 0x600a047c, 0x10000);
++    smoke_status("esp32c5.phy-600a080c", 0x600a080c, 0x1c000);
++    smoke_status("esp32c5.phy-600a0814", 0x600a0814, 0x1c000);
++    smoke_status("esp32c5.phy-600a00cc", 0x600a00cc, 0x100);
++    smoke_status("esp32c5.phy-600a0028", 0x600a0028, 0x100);
++    smoke_status("esp32c5.phy-ready", 0x600a4ddc, 1);
+     create_unimplemented_device("esp32c5.peripherals", ESP32C5_IO_START_ADDR, 0x100000);
+     create_unimplemented_device("esp32c5.clic_area", 0x20000000, 0x1000000);
+ }
+diff --git a/hw/riscv/esp32c6.c b/hw/riscv/esp32c6.c
+index d6b493b..ff126cc 100644
+--- a/hw/riscv/esp32c6.c
++++ b/hw/riscv/esp32c6.c
+@@ -8,6 +8,7 @@
+  * (at your option) any later version.
+  */
+ #include "qemu/osdep.h"
++#include "hw/misc/esp-smoke-status.h"
+ #include "qemu/log.h"
+ #include "qemu/error-report.h"
+ #include "hw/qdev-properties.h"
+@@ -551,6 +552,13 @@ static void esp32c6_machine_init(MachineState *machine)
+ 
+     /* Catch-all for the entire peripheral address space (priority -1000).
+      * Specific devices mapped above at priority 0 take precedence. */
++    /* Deterministic ADC status for the headless test. */
++    smoke_status("esp32c6.sar-ready", 0x6000e044, 0x80000800);
++    smoke_status("esp32c6.modem-ready", 0x600a0418, 0x400000);
++    smoke_status("esp32c6.phy-600a0814", 0x600a0814, 0x1c000);
++    smoke_status("esp32c6.phy-600a00cc", 0x600a00cc, 0x100);
++    smoke_status("esp32c6.phy-600a04a0", 0x600a04a0, 0x10000);
++    smoke_status("esp32c6.phy-ready", 0x600a4ddc, 1);
+     create_unimplemented_device("esp32c6.peripherals", ESP32C6_IO_START_ADDR, 0x100000);
+     create_unimplemented_device("esp32c6.hp_peri", 0x20000000, 0x100000);
+ }
+diff --git a/hw/riscv/esp32c61.c b/hw/riscv/esp32c61.c
+index 5de83d5..90c7400 100644
+--- a/hw/riscv/esp32c61.c
++++ b/hw/riscv/esp32c61.c
+@@ -8,6 +8,7 @@
+  * (at your option) any later version.
+  */
+ #include "qemu/osdep.h"
++#include "hw/misc/esp-smoke-status.h"
+ #include "qemu/log.h"
+ #include "qemu/error-report.h"
+ #include "hw/qdev-properties.h"
+@@ -770,6 +771,13 @@ static void esp32c61_machine_init(MachineState *machine)
+         }
+     }
+ 
++    smoke_status("esp32c61.modem-ready", 0x600a047c, 0x10000);
++    smoke_status("esp32c61.phy-600a0418", 0x600a0418, 0x400000);
++    smoke_status("esp32c61.phy-600a0814", 0x600a0814, 0x1c000);
++    smoke_status("esp32c61.phy-600a080c", 0x600a080c, 0x1c000);
++    smoke_status("esp32c61.phy-600a00cc", 0x600a00cc, 0x100);
++    smoke_status("esp32c61.phy-600a0028", 0x600a0028, 0x100);
++    smoke_status("esp32c61.phy-ready", 0x600a4ddc, 1);
+     create_unimplemented_device("esp32c61.peripherals", ESP32C61_IO_START_ADDR, 0x100000);
+     create_unimplemented_device("esp32c61.clic_area", 0x20000000, 0x1000000);
+ }
+diff --git a/hw/ssi/esp32_spi.c b/hw/ssi/esp32_spi.c
+index 65ca666..c382ca7 100644
+--- a/hw/ssi/esp32_spi.c
++++ b/hw/ssi/esp32_spi.c
+@@ -158,11 +158,11 @@ static void esp32_spi_txrx_buffer(Esp32SpiState *s, void *buf, int tx_bytes, int
+     uint8_t *c_buf = (uint8_t*) buf;
+     for (int i = 0; i < bytes; ++i) {
+         uint8_t byte = 0;
+-        if (byte < tx_bytes) {
++        if (i < tx_bytes) {
+             memcpy(&byte, c_buf + i, 1);
+         }
+         uint32_t res = ssi_transfer(s->spi, byte);
+-        if (byte < rx_bytes) {
++        if (i < rx_bytes) {
+             memcpy(c_buf + i, &res, 1);
+         }
+     }
+@@ -312,6 +312,10 @@ static void esp32_spi_do_command(Esp32SpiState* s, uint32_t cmd_reg)
+             const int addr_bits = t.addr_bytes ?
+                 FIELD_EX32(s->user1_reg, SPI_USER1, ADDR_BITLEN) + 1 : 0;
+             t.dummy_bytes = esp32_spi_dummy_bytes(s, addr_bits, t.addr_bytes);
++            /* Input delay compensation cycles do not shift extra data out of the flash. */
++            if (t.cmd == 0xeb && t.addr_bytes == 4) {
++                t.dummy_bytes = MIN(t.dummy_bytes, 2);
++            }
+         }
+         if (FIELD_EX32(s->user_reg, SPI_USER, MOSI)) {
+             t.data = &s->data_reg[0];
+diff --git a/hw/ssi/esp32c3_spi.c b/hw/ssi/esp32c3_spi.c
+index 3f20911..f470b93 100644
+--- a/hw/ssi/esp32c3_spi.c
++++ b/hw/ssi/esp32c3_spi.c
+@@ -131,11 +131,11 @@ static void esp32c3_spi_txrx_buffer(ESP32C3SpiState *s,
+     int bytes = MAX(tx_bytes, rx_bytes);
+     for (int i = 0; i < bytes; ++i) {
+         uint8_t byte = 0;
+-        if (byte < tx_bytes) {
++        if (i < tx_bytes) {
+             memcpy(&byte, tx + i, 1);
+         }
+         uint32_t res = ssi_transfer(s->spi, byte);
+-        if (byte < rx_bytes) {
++        if (i < rx_bytes) {
+             memcpy(rx + i, &res, 1);
+         }
+     }
+@@ -244,6 +244,11 @@ static void esp32c3_spi_begin_transaction(ESP32C3SpiState *s)
+         }
+     }
+ 
++    /* A half-byte WB_MODE phase still occupies one transfer on the byte-wide SSI bus. */
++    if (s->addr_phase_has_wb_mode && t.cmd == 0xbb && t.addr_bytes == 3 &&
++        t.mode_bytes == 0 && t.dummy_bytes == 0) {
++        t.mode_bytes = 1;
++    }
+     esp32c3_spi_perform_transaction(s, &t);
+ }
+ 
+diff --git a/hw/xtensa/esp32.c b/hw/xtensa/esp32.c
+index c3cf32e..0cc5155 100644
+--- a/hw/xtensa/esp32.c
++++ b/hw/xtensa/esp32.c
+@@ -9,6 +9,7 @@
+  */
+ 
+ #include "qemu/osdep.h"
++#include "hw/misc/esp-smoke-status.h"
+ #include "qemu/log.h"
+ #include "hw/qdev-clock.h"
+ #include "qemu/error-report.h"
+@@ -525,6 +526,14 @@ static void esp32_soc_realize(DeviceState *dev, Error **errp)
+     esp32_soc_add_periph_device(sys_mem, &s->rgb, DR_REG_FRAMEBUF_BASE);
+     memory_region_add_subregion_overlap(sys_mem, esp32_memmap[ESP32_MEMREGION_FRAMEBUF].base, &s->rgb.vram, 0);
+ 
++    if (g_getenv("ESPHUB_QA_PAPER_HRDY")) {
++        smoke_status("esp32.it8951-hrdy", 0x3ff4403c, BIT(27));
++    }
++    smoke_status("esp32.radio-conversion", 0x3ff4e04c, BIT(24));
++    smoke_status("esp32.fe-ready", 0x3ff4607c, BIT(31));
++    smoke_status("esp32.radio-ready", 0x3ff73d24, BIT(0));
++    /* The other ESP QEMU machines also leave unmapped peripheral reads at zero. */
++    esp32_soc_add_unimp_device(sys_mem, "esp32.peripherals", DR_REG_DPORT_APB_BASE, 0x40000);
+     esp32_soc_add_unimp_device(sys_mem, "esp32.analog", DR_REG_ANA_BASE, 0x1000);
+     esp32_soc_add_unimp_device(sys_mem, "esp32.rtcio", DR_REG_RTCIO_BASE, 0x400);
+     esp32_soc_add_unimp_device(sys_mem, "esp32.rtcio", DR_REG_SENS_BASE, 0x400);
+diff --git a/hw/xtensa/esp32s3.c b/hw/xtensa/esp32s3.c
+index 5a60acf..b9e717a 100644
+--- a/hw/xtensa/esp32s3.c
++++ b/hw/xtensa/esp32s3.c
+@@ -372,8 +372,11 @@ static void esp32s3_init_spi_flash(Esp32s3SocState *ms, BlockBackend* blk)
+         case 16 * MB:
+             flash_model = "is25lp128";
+             break;
++        case 32 * MB:
++            flash_model = "is25lp256";
++            break;
+         default:
+-            error_report("Drive size error: only 2, 4, 8, and 16MB images are supported");
++            error_report("Unsupported ESP32-S3 flash image size");
+             return;
+     }
+ 
+@@ -572,6 +575,24 @@ static void esp32s3_soc_realize(DeviceState *dev, Error **errp)
+ 
+ static uint64_t esp32s3_io_read(void *opaque, hwaddr addr, unsigned int size)
+ {
++    /* Headless smoke-test model. Peripherals report deterministic status only. */
++    switch (ESP32S3_IO_START_ADDR + addr) {
++    case 0x6000880c: /* SAR1 conversion complete and fixed ADC sample */
++    case 0x60008830: /* SAR2 conversion complete and fixed ADC sample */
++        return BIT(16) | 2048;
++    case 0x60008850: /* temperature conversion ready and fixed sample */
++        return BIT(8) | 120;
++    case 0x6000e04c: /* analog calibration status */
++        return BIT(24);
++    case 0x6000e050:
++        return 7u << 24;
++    case 0x60006174: /* radio initialization status */
++        return BIT(16);
++    case 0x60033d14:
++        return BIT(0);
++    case 0x6004106c: /* LCD_CAM LCD transfer done interrupt status */
++        return BIT(1);
++    }
+     /* The calibration delay is not modelled, so calibration is always done */
+     if (ESP32S3_IO_START_ADDR + addr == ESP32S3_I2C_MST_ANA_CONF0_REG) {
+         return ESP32S3_I2C_MST_BBPLL_CAL_DONE;
+diff --git a/include/hw/misc/esp-smoke-status.h b/include/hw/misc/esp-smoke-status.h
+new file mode 100644
+index 0000000..a98b75f
+--- /dev/null
++++ b/include/hw/misc/esp-smoke-status.h
+@@ -0,0 +1,28 @@
++#ifndef HW_MISC_ESP_SMOKE_STATUS_H
++#define HW_MISC_ESP_SMOKE_STATUS_H
++
++#include "exec/memory.h"
++#include "exec/address-spaces.h"
++
++static uint64_t smoke_read(void *opaque, hwaddr addr, unsigned size)
++{
++    return (uintptr_t)opaque;
++}
++
++static void smoke_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
++{
++}
++
++static const MemoryRegionOps smoke_status_ops = {
++    .read = smoke_read,
++    .write = smoke_write,
++    .endianness = DEVICE_LITTLE_ENDIAN,
++};
++
++static void smoke_status(const char *name, hwaddr address, uint32_t value)
++{
++    MemoryRegion *mr = g_new0(MemoryRegion, 1);
++    memory_region_init_io(mr, NULL, &smoke_status_ops, (void *)(uintptr_t)value, name, 4);
++    memory_region_add_subregion_overlap(get_system_memory(), address, mr, 2);
++}
++#endif
+diff --git a/target/riscv/esp_cpu.c b/target/riscv/esp_cpu.c
+index 8e0b324..048f5dc 100644
+--- a/target/riscv/esp_cpu.c
++++ b/target/riscv/esp_cpu.c
+@@ -202,6 +202,10 @@ static RISCVException esp_cpu_csr_read(CPURISCVState *env, int csrno, target_ulo
+ 
+     if (csrno == ESP_CPU_CSR_MCYCLE_U) {
+         *ret_value = esp_cpu_get_cycles(&s->cc_user);
++    } else if (csrno == 0x7e3) {
++        *ret_value = s->context_csr_7e3;
++    } else if (csrno >= 0x803 && csrno <= 0x805) {
++        *ret_value = s->context_csr_803_805[csrno - 0x803];
+     } else if (csrno == ESP_CPU_CSR_MCYCLE_M) {
+         *ret_value = esp_cpu_get_cycles(&s->cc_machine);
+     } else if (csrno == CSR_MCYCLE || csrno == CSR_CYCLE) {
+@@ -264,6 +268,10 @@ static RISCVException esp_cpu_csr_write(CPURISCVState *env, int csrno, target_ul
+ 
+     if (csrno == ESP_CPU_CSR_MCYCLE_U) {
+         s->cc_user.cycles = new_value;
++    } else if (csrno == 0x7e3) {
++        s->context_csr_7e3 = new_value;
++    } else if (csrno >= 0x803 && csrno <= 0x805) {
++        s->context_csr_803_805[csrno - 0x803] = new_value;
+     } else if (csrno == ESP_CPU_CSR_MCYCLE_M) {
+         s->cc_machine.cycles = new_value;
+     } else if (csrno == CSR_MCYCLE) {
+@@ -870,6 +878,10 @@ static void esp_cpu_init(Object *obj)
+     riscv_set_csr_ops(ESP_CPU_CSR_PCER_M, &esp_cpu_csr_ops);
+     riscv_set_csr_ops(ESP_CPU_CSR_PCMR_M, &esp_cpu_csr_ops);
+     riscv_set_csr_ops(ESP_CPU_CSR_MCYCLE_M, &esp_cpu_csr_ops);
++    riscv_set_csr_ops(0x7e3, &esp_cpu_csr_ops);
++    for (int csrno = 0x803; csrno <= 0x805; csrno++) {
++        riscv_set_csr_ops(csrno, &esp_cpu_csr_ops);
++    }
+ 
+     riscv_set_csr_ops(ESP_CPU_CSR_PCER_U, &esp_cpu_csr_ops);
+     riscv_set_csr_ops(ESP_CPU_CSR_PCMR_U, &esp_cpu_csr_ops);
+diff --git a/target/riscv/esp_cpu.h b/target/riscv/esp_cpu.h
+index 4624ce0..476e0fe 100644
+--- a/target/riscv/esp_cpu.h
++++ b/target/riscv/esp_cpu.h
+@@ -145,6 +145,8 @@ typedef struct EspRISCVCPU {
+     /* Machine Hardware Configuration CSR range (0x7C0..0x7CF) used by the
+      * ESP32-C5 (mhcr/mhint/etc.).  Indexed by `csrno - 0x7C0`. */
+     uint32_t mhcr[16];
++    uint32_t context_csr_7e3;
++    uint32_t context_csr_803_805[3];
+ 
+     /* mexstatus (0x7E1) on the ESP32-C5.  Same address as PCMR_M on the
+      * older C3/C6/H2 cores, where it is a no-op stub; storing it here is

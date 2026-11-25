@@ -1,0 +1,7 @@
+{
+  "name": "Stamp C6LoRa",
+  "model": "M5Stack Stamp C6LoRa",
+  "chip": "esp32c6",
+  "flash_mb": 16,
+  "bootloader": "esp32c6-16mb"
+}

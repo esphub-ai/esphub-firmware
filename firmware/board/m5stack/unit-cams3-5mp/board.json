@@ -1,0 +1,7 @@
+{
+  "name": "Unit CamS3-5MP",
+  "model": "M5Stack Unit CamS3-5MP",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Atom VoiceS3R",
+  "model": "M5Stack Atom VoiceS3R",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb"
+}

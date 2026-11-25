@@ -1,0 +1,7 @@
+{
+  "name": "Unit C6L",
+  "model": "M5Stack Unit C6L",
+  "chip": "esp32c6",
+  "flash_mb": 16,
+  "bootloader": "esp32c6-16mb"
+}

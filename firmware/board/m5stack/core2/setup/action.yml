@@ -1,0 +1,6 @@
+name: Core2 setup
+description: Build the Core2 setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

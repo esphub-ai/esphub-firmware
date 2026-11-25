@@ -1,0 +1,7 @@
+{
+  "name": "Station",
+  "model": "M5Stack Station",
+  "chip": "esp32",
+  "flash_mb": 16,
+  "bootloader": "esp32-16mb"
+}

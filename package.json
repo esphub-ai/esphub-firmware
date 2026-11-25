@@ -1,0 +1,9 @@
+{
+  "name": "esphub-firmware",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "catalog": "node scripts/board-catalog.mjs"
+  }
+}

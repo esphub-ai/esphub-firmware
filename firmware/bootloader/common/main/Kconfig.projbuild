@@ -1,0 +1,11 @@
+menu "esp-bootloader"
+
+    config OKL_USB_CDC
+        bool "USB OTG CDC provisioning console"
+        depends on IDF_TARGET_ESP32S31 && TINYUSB_CDC_ENABLED
+
+    config OKL_URL_OTA
+        bool
+        default y
+
+endmenu

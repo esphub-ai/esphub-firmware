@@ -1,0 +1,6 @@
+name: Xiaozhi Card setup
+description: Build the Xiaozhi Card setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

@@ -1,0 +1,6 @@
+{
+  "target": "M5STACK_Dial",
+  "disable_cmake_options": [
+    "MICROPY_PY_LVGL"
+  ]
+}

@@ -1,0 +1,6 @@
+name: Atom-PSRAM setup
+description: Build the Atom-PSRAM setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

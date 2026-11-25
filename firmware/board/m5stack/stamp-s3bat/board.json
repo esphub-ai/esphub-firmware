@@ -1,0 +1,7 @@
+{
+  "name": "Stamp-S3Bat",
+  "model": "M5Stack Stamp-S3Bat",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb"
+}

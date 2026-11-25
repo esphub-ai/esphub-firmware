@@ -1,0 +1,7 @@
+{
+  "name": "PaperMono-Lite",
+  "model": "M5Stack PaperMono-Lite",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb"
+}

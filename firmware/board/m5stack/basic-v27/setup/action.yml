@@ -1,0 +1,6 @@
+name: Basic v2.7 setup
+description: Build the Basic v2.7 setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

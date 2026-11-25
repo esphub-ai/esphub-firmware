@@ -1,0 +1,6 @@
+name: CoreMatrix setup
+description: Build the CoreMatrix setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

@@ -1,0 +1,7 @@
+{
+  "name": "ToughC5",
+  "model": "M5Stack ToughC5",
+  "chip": "esp32c5",
+  "flash_mb": 16,
+  "bootloader": "esp32c5-16mb"
+}

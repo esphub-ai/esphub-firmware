@@ -1,0 +1,7 @@
+{
+  "name": "CoreMatrix",
+  "model": "M5Stack CoreMatrix",
+  "chip": "esp32c61",
+  "flash_mb": 16,
+  "bootloader": "esp32c61-16mb"
+}

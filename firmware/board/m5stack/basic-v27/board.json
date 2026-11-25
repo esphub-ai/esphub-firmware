@@ -1,0 +1,7 @@
+{
+  "name": "Basic v2.7",
+  "model": "M5Stack Basic v2.7",
+  "chip": "esp32",
+  "flash_mb": 16,
+  "bootloader": "esp32-16mb"
+}

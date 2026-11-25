@@ -1,0 +1,7 @@
+{
+  "name": "StickC-Plus2",
+  "model": "M5Stack StickC-Plus2",
+  "chip": "esp32",
+  "flash_mb": 8,
+  "bootloader": "esp32-8mb"
+}

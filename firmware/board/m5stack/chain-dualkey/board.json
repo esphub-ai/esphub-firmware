@@ -1,0 +1,7 @@
+{
+  "name": "Chain DualKey",
+  "model": "M5Stack Chain DualKey",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb"
+}

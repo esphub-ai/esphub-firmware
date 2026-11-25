@@ -1,0 +1,6 @@
+name: Stamp-S3Bat setup
+description: Build the Stamp-S3Bat setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

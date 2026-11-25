@@ -1,0 +1,7 @@
+{
+  "name": "Unit PoE CAM-W v1.1",
+  "model": "M5Stack Unit PoE CAM-W v1.1",
+  "chip": "esp32",
+  "flash_mb": 16,
+  "bootloader": "esp32-16mb"
+}

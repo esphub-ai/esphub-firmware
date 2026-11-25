@@ -1,0 +1,7 @@
+{
+  "name": "Atom-PSRAM",
+  "model": "M5Stack Atom-PSRAM",
+  "chip": "esp32",
+  "flash_mb": 8,
+  "bootloader": "esp32-8mb"
+}

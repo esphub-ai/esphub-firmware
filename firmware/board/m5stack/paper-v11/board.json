@@ -1,0 +1,7 @@
+{
+  "name": "Paper v1.1",
+  "model": "M5Stack Paper v1.1",
+  "chip": "esp32",
+  "flash_mb": 16,
+  "bootloader": "esp32-16mb"
+}

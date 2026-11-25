@@ -1,0 +1,6 @@
+name: AtomS3R-CAM micropython
+description: Build the AtomS3R-CAM micropython release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-micropython

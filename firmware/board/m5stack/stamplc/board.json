@@ -1,0 +1,7 @@
+{
+  "name": "StamPLC",
+  "model": "M5Stack StamPLC",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb"
+}

@@ -1,0 +1,16 @@
+node_modules/
+.wrangler/
+.dev.vars
+.env
+dist/
+build/
+sdkconfig
+managed_components/
+__pycache__/
+services/web/public/ui/
+
+wrangler.local.json
+wrangler.e2e.json
+shared/boards.generated.json
+
+shared/sdk.generated.json

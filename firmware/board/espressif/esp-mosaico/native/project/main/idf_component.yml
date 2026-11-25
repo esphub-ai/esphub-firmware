@@ -1,0 +1,5 @@
+dependencies:
+  esp-mosaico-bsp:
+    path: ${MOSAICO_BSP}/components/esp-mosaico-bsp
+  espressif/esp-gsp: "==1.5.1"
+  lvgl/lvgl: "==9.5.0"

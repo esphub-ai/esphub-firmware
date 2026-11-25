@@ -1,0 +1,6 @@
+name: PaperDIY micropython
+description: Build the PaperDIY micropython release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-micropython

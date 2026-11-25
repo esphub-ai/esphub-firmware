@@ -1,0 +1,7 @@
+{
+  "name": "Arduino Nesso N1",
+  "model": "Arduino Nesso N1",
+  "chip": "esp32c6",
+  "flash_mb": 16,
+  "bootloader": "esp32c6-16mb"
+}

@@ -1,0 +1,10 @@
+{
+  "bsp": {
+    "repository": "esp-mosaico/esp-mosaico-bsp",
+    "ref": "d1eef04db4c96f027891cdb05aa6c1c5f2cbc5e8"
+  },
+  "utils": {
+    "repository": "esp-mosaico/esp-mosaico-utils",
+    "ref": "f58f4f9e5363f908b17a8e1ea8fdf4dd77561ef1"
+  }
+}

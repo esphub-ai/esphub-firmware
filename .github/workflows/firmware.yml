@@ -1,0 +1,72 @@
+name: Board firmware
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      board:
+        description: Group/project board ID, e.g. m5stack/stopwatch.
+        type: string
+        required: true
+permissions: {contents: read}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      bootloaders: ${{ steps.plan.outputs.bootloaders }}
+      boards: ${{ steps.plan.outputs.boards }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/firmware-plan.mjs
+  bootloader:
+    needs: plan
+    if: needs.plan.outputs.bootloaders != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        build: ${{ fromJSON(needs.plan.outputs.bootloaders) }}
+    uses: ./.github/workflows/build-bootloader.yml
+    with:
+      container: ${{ matrix.build.container }}
+      variant: ${{ matrix.build.variant }}
+      fingerprint: ${{ matrix.build.fingerprint }}
+      version: ${{ matrix.build.version }}
+  board:
+    needs: [plan, bootloader]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.bootloader.result != 'failure' && needs.plan.outputs.boards != '[]' }}
+    name: ${{ matrix.profile.board }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.plan.outputs.boards) }}
+    concurrency:
+      group: firmware-${{ github.ref }}-${{ matrix.profile.board }}
+      cancel-in-progress: false
+    uses: ./.github/workflows/build-board.yml
+    with:
+      profile: ${{ toJSON(matrix.profile) }}
+  check:
+    name: Firmware
+    needs: [plan, bootloader, board]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every selected firmware build to pass
+        env:
+          PLAN: ${{ needs.plan.result }}
+          BOOTLOADER: ${{ needs.bootloader.result }}
+          BOARD: ${{ needs.board.result }}
+        run: |
+          test "$PLAN" = success
+          for result in "$BOOTLOADER" "$BOARD"; do
+            test "$result" = success || test "$result" = skipped || exit 1
+          done

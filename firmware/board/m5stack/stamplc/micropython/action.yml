@@ -1,0 +1,6 @@
+name: StamPLC micropython
+description: Build the StamPLC micropython release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-micropython

@@ -1,0 +1,7 @@
+{
+  "name": "PaperS3",
+  "model": "M5Stack PaperS3",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb"
+}

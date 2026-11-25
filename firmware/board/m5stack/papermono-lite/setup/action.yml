@@ -1,0 +1,6 @@
+name: PaperMono-Lite setup
+description: Build the PaperMono-Lite setup release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-kit

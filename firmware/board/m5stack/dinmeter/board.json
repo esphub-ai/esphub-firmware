@@ -1,0 +1,7 @@
+{
+  "name": "DinMeter",
+  "model": "M5Stack DinMeter",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb"
+}

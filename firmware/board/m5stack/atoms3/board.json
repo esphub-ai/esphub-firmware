@@ -1,0 +1,7 @@
+{
+  "name": "AtomS3",
+  "model": "M5Stack AtomS3",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb"
+}

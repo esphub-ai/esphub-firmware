@@ -1,0 +1,6 @@
+name: Unit PoE CAM-W v1.1 micropython
+description: Build the Unit PoE CAM-W v1.1 micropython release assets.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-micropython

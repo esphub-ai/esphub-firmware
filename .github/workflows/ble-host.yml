@@ -1,0 +1,15 @@
+name: Mac BLE host
+on:
+  pull_request:
+    paths: ['tools/ble-wifi/**', '.github/workflows/ble-host.yml']
+permissions: {contents: read}
+jobs:
+  host:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: python -m pip install 'bleak>=1,<4' pyserial
+      - run: python -c "from CoreBluetooth import CBPeripheralManager, CBUUID; from bleak import BleakClient, BleakScanner"
+      - run: python -m unittest discover -s tools/ble-wifi

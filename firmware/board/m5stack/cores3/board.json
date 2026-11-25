@@ -1,0 +1,7 @@
+{
+  "name": "CoreS3",
+  "model": "M5Stack CoreS3",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb"
+}

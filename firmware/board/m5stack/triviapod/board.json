@@ -1,0 +1,7 @@
+{
+  "name": "TriviaPOD",
+  "model": "M5Stack TriviaPOD",
+  "chip": "esp32s3",
+  "flash_mb": 32,
+  "bootloader": "esp32s3-32mb"
+}
