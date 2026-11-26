@@ -6,6 +6,7 @@
 #include <string.h>
 #include "eh_priv.h"
 #include "esp_wifi.h"
+#include "esp_netif.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/event_groups.h"
@@ -15,6 +16,21 @@
 #define DISC BIT2
 #define RECONF BIT3
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
+
+struct fake_netif { unsigned clients; };
+static struct fake_netif portal;
+static wifi_mode_t radio_mode = WIFI_MODE_STA;
+static wifi_config_t portal_config;
+static bool fail_ap_config;
+esp_netif_t *esp_netif_create_default_wifi_ap(void) { return &portal; }
+esp_err_t esp_wifi_get_mode(wifi_mode_t *mode) { *mode = radio_mode; return ESP_OK; }
+esp_err_t esp_wifi_set_mode(wifi_mode_t mode) { radio_mode = mode; return ESP_OK; }
+esp_err_t esp_wifi_ap_get_sta_list(wifi_sta_list_t *result)
+{
+    if (radio_mode != WIFI_MODE_APSTA) return ESP_ERR_INVALID_STATE;
+    result->num = portal.clients;
+    return ESP_OK;
+}
 
 struct fake_mutex { bool held; };
 struct fake_event_group { EventBits_t bits; };
@@ -111,6 +127,7 @@ BaseType_t xSemaphoreGive(SemaphoreHandle_t mutex)
     return pdTRUE;
 }
 EventGroupHandle_t xEventGroupCreate(void) { return &events; }
+EventBits_t xEventGroupGetBits(EventGroupHandle_t group) { return group->bits; }
 EventBits_t xEventGroupSetBits(EventGroupHandle_t group, EventBits_t bits)
 {
     group->bits |= bits;
@@ -144,7 +161,7 @@ static void deliver_pending(void)
 EventBits_t xEventGroupWaitBits(EventGroupHandle_t group, EventBits_t bits,
                               BaseType_t clear, BaseType_t all, TickType_t ticks)
 {
-    assert(!all);
+    assert(!all || bits == BIT4);
     if (bits == (GOT_IP | DISC)) {
         assert(active_attempt >= 0 && attempts[active_attempt].connected);
         attempts[active_attempt].wait_ticks = ticks;
@@ -180,7 +197,7 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t group, EventBits_t bits,
         now += ticks;
         return group->bits;
     }
-    assert(bits == RECONF || bits == (DISC | RECONF));
+    assert(bits == RECONF || bits == (DISC | RECONF) || bits == BIT4);
     assert(!mutexes[0].held && !mutexes[1].held);
     char ssid[33];
     finished_online = eh_wifi_current(ssid, sizeof(ssid));
@@ -211,6 +228,13 @@ esp_err_t esp_wifi_clear_ap_list(void) { radio_owned(); return ESP_OK; }
 
 esp_err_t esp_wifi_set_config(int interface, wifi_config_t *config)
 {
+    if (interface == WIFI_IF_AP) {
+        radio_owned();
+        assert(radio_mode == WIFI_MODE_APSTA);
+        if (fail_ap_config) return ESP_FAIL;
+        portal_config = *config;
+        return ESP_OK;
+    }
     radio_owned();
     assert(interface == WIFI_IF_STA && attempt_count < ARRAY_LEN(attempts));
     unsigned index = attempt_count++;
@@ -564,12 +588,45 @@ static void budget_test(const char *scenario)
     }
 }
 
+static void portal_test(void)
+{
+    init("[{\"s\":\"saved\",\"p\":\"synthetic-pass\"}]");
+    assert(eh_wifi_portal_clients() < 0);
+    fail_ap_config = true;
+    assert(eh_wifi_set_portal("PaperColor-000001", 6) == ESP_FAIL);
+    assert(radio_mode == WIFI_MODE_STA);
+    fail_ap_config = false;
+    assert(eh_wifi_set_portal("PaperColor-000001", 6) == ESP_OK);
+    assert(radio_mode == WIFI_MODE_APSTA);
+    assert(portal_config.ap.ssid_len == strlen("PaperColor-000001"));
+    assert(!memcmp(portal_config.ap.ssid,"PaperColor-000001",portal_config.ap.ssid_len));
+    assert(portal_config.ap.channel == 6 && portal_config.ap.authmode == WIFI_AUTH_OPEN);
+    portal.clients = 1;
+    assert(eh_wifi_portal_clients() == 1);
+    assert(eh_wifi_set_station_paused(true) == ESP_OK);
+    run();
+    assert(!attempt_count && eh_wifi_count() == 1 && eh_wifi_portal_clients() == 1);
+    assert(!eh_wifi_join_saved("unknown"));
+    air[air_count++] = ap("saved", -45, 6, 2, WIFI_AUTH_WPA2_PSK);
+    assert(eh_wifi_join_saved("saved"));
+    run();
+    assert_current("saved");
+    assert_config(0,"saved", false,0,0);
+    assert(!strcmp((const char*)attempts[0].config.sta.password, "synthetic-pass"));
+    assert(eh_wifi_portal_clients() == 1);
+    assert(eh_wifi_set_portal(NULL, 0) == ESP_OK);
+    assert(radio_mode == WIFI_MODE_STA && eh_wifi_portal_clients() < 0);
+    assert_current("saved");
+    puts("SDK radio model: AP rollback, AP+STA on channel 6, client retained across STA pause / saved join; portal closed with STA intact.");
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     for (unsigned i = 0; i < ARRAY_LEN(response_delay); i++) response_delay[i] = 7;
     const char *scenario = argv[1];
-    if (!strcmp(scenario, "scan")) scan_test();
+    if (!strcmp(scenario, "portal")) portal_test();
+    else if (!strcmp(scenario, "scan")) scan_test();
     else if (!strcmp(scenario, "fresh")) order_test(true);
     else if (!strcmp(scenario, "order")) order_test(false);
     else if (!strcmp(scenario, "other-ap") || !strcmp(scenario, "channel-moved") ||

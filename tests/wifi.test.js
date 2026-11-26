@@ -36,6 +36,7 @@ test("native Wi-Fi scan hints and safe fallback", async (t) => {
       exe,
     ]);
     for (const [scenario, description] of [
+      ["portal", "keep a local portal across station pause and saved-network rejoin"],
       ["scan", "deduplicate/sort scans with coherent strongest-AP metadata"],
       ["fresh", "use fresh channel+BSSID with FAST_SCAN without a full retry"],
       ["order", "try visible saved SSIDs strongest first, not saved/MRU order"],

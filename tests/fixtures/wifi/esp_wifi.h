@@ -14,6 +14,10 @@ typedef enum { WIFI_FAST_SCAN, WIFI_ALL_CHANNEL_SCAN } wifi_scan_method_t;
 #define WIFI_SCAN_TYPE_ACTIVE 0
 #define WIFI_CONNECT_AP_BY_SIGNAL 1
 #define WIFI_IF_STA 0
+#define WIFI_IF_AP 1
+#define ESP_ERR_WIFI_NOT_CONNECT 0x300f
+typedef enum { WIFI_MODE_NULL, WIFI_MODE_STA, WIFI_MODE_AP, WIFI_MODE_APSTA } wifi_mode_t;
+typedef struct { unsigned num; } wifi_sta_list_t;
 #define WPA3_SAE_PWE_BOTH 3
 
 typedef struct {
@@ -43,6 +47,7 @@ typedef struct {
         struct { bool capable; } pmf_cfg;
         int sae_pwe_h2e;
     } sta;
+    struct { uint8_t ssid[32], ssid_len, channel, max_connection; wifi_auth_mode_t authmode; } ap;
 } wifi_config_t;
 
 esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block);
@@ -51,3 +56,7 @@ esp_err_t esp_wifi_clear_ap_list(void);
 esp_err_t esp_wifi_set_config(int interface, wifi_config_t *config);
 esp_err_t esp_wifi_connect(void);
 esp_err_t esp_wifi_disconnect(void);
+
+esp_err_t esp_wifi_get_mode(wifi_mode_t *mode);
+esp_err_t esp_wifi_set_mode(wifi_mode_t mode);
+esp_err_t esp_wifi_ap_get_sta_list(wifi_sta_list_t *clients);
