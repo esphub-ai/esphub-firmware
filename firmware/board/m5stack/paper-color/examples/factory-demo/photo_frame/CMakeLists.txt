@@ -10,9 +10,9 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     endif()
     set(demo "${paper_frame_SOURCE_DIR}/main")
     file(GLOB_RECURSE sources "${demo}/apps/*.cpp" "${demo}/hal/*.cpp" "${demo}/hal/*.c")
-    list(APPEND sources "${demo}/main.cpp")
+    list(APPEND sources "${demo}/main.cpp" "${CMAKE_CURRENT_LIST_DIR}/paper_network.cpp")
     set_source_files_properties("${demo}/main.cpp" PROPERTIES COMPILE_DEFINITIONS "app_main=paper_color_factory_main")
-    set(include_dirs "${demo}" "${demo}/hal/utils/audio" "${demo}/hal/utils/image" "${demo}/hal/utils/dns_server")
+    set(include_dirs "${CMAKE_CURRENT_LIST_DIR}" "${demo}" "${demo}/hal/utils/audio" "${demo}/hal/utils/image" "${demo}/hal/utils/dns_server")
 endif()
 
 idf_component_register(SRCS ${sources} PRIV_INCLUDE_DIRS ${include_dirs}
