@@ -56,6 +56,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/mic"
     },
     {
+      "id": "rtc-wakeup",
+      "description": "Press Button A to sleep and restart after five seconds using the onboard RTC.",
+      "entrypoint": "examples/rtc-wakeup/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/wakeup#rtc-wakeup-for-esp32-s3"
+    },
+    {
       "id": "speaker-tone",
       "description": "Play alternating 4 kHz and 8 kHz tones on the onboard speaker.",
       "entrypoint": "examples/speaker-tone/main.cpp",
