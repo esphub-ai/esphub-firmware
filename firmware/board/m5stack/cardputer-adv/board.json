@@ -96,6 +96,12 @@
       "description": "Display the date and UTC time after the device synchronizes over Wi-Fi.",
       "entrypoint": "examples/clock/main.cpp",
       "upstream": "https://github.com/m5stack/M5Cardputer-UserDemo/blob/9d7190317d49ff87fa98db345b049ed77c5a1780/main/apps/app_clock/app_clock.cpp"
+    },
+    {
+      "id": "factory-demo",
+      "description": "Open the original M5Stack multi-app launcher. Use the arrow keys and Enter to open an app and G0 to return to the menu.",
+      "entrypoint": "examples/factory-demo/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer-UserDemo/tree/9d7190317d49ff87fa98db345b049ed77c5a1780"
     }
   ]
 }
