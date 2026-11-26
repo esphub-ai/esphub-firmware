@@ -1,0 +1,6 @@
+dependencies:
+  launcher:
+    path: "${PWD}/firmware/board/m5stack/stopwatch/examples/factory-demo/launcher"
+  m5stack/m5unified:
+    git: https://github.com/m5stack/M5Unified.git
+    version: 96576a14247ddc935149145aa6b51943464120f1
