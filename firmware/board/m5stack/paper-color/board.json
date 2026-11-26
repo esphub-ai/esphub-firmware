@@ -8,6 +8,12 @@
   "default_example": "color-bands",
   "examples": [
     {
+      "id": "basic-display",
+      "description": "Show a red frame, colored lettering, panel information and a six-color swatch on the Paper Color display.",
+      "entrypoint": "examples/basic-display/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/display"
+    },
+    {
       "id": "color-bands",
       "description": "Draw six colored bands and a multicolored label on the e-paper display using an offscreen canvas.",
       "entrypoint": "examples/color-bands/main.cpp",
