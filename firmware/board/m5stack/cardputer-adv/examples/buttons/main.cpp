@@ -1,121 +1,45 @@
-// Adapted for EspHub from https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Button/Button.ino
+// Adapted from M5Stack's M5Cardputer Basic/button example by SeanKwok.
+#include <M5Unified.h>
 #include "eh_agent.h"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include <cstdio>
-#include <M5Unified.h>
 
-static void setup(void)
+static void show_state(const char *state, uint16_t color, unsigned presses)
 {
-  M5.begin();
-
-  /// For models with EPD : refresh control
-  M5.Display.setEpdMode(epd_mode_t::epd_fastest); // fastest but very-low quality.
-
-  if (M5.Display.width() < M5.Display.height())
-  { /// Landscape mode.
-    M5.Display.setRotation(M5.Display.getRotation() ^ 1);
-  }
-}
-
-static void loop(void)
-{
-  M5.delay(1);
-
-  M5.update();
-//------------------- Button test
-/*
-/// List of available buttons:
-  M5Stack BASIC/GRAY/GO/FIRE:  BtnA,BtnB,BtnC
-  M5Stack Core2:               BtnA,BtnB,BtnC,BtnPWR
-  M5Stick C/CPlus:             BtnA,BtnB,     BtnPWR
-  M5Stick CoreInk:             BtnA,BtnB,BtnC,BtnPWR,BtnEXT
-  M5Paper:                     BtnA,BtnB,BtnC
-  M5Station:                   BtnA,BtnB,BtnC,BtnPWR
-  M5Tough:                                    BtnPWR
-  M5Atom M5AtomU:              BtnA
-  M5Stamp Pico/C3/C3U:         BtnA
-*/
-
-  static constexpr const int colors[] = { TFT_WHITE, TFT_CYAN, TFT_RED, TFT_YELLOW, TFT_BLUE, TFT_GREEN };
-  static constexpr const char* const names[] = { "none", "wasHold", "wasClicked", "wasPressed", "wasReleased", "wasDeciedCount" };
-
-  int w = M5.Display.width() / 5;
-  int h = M5.Display.height();
-  M5.Display.startWrite();
-
-  /// BtnPWR: "wasClicked"/"wasHold"  can be use.
-  /// BtnPWR of CoreInk: "isPressed"/"wasPressed"/"isReleased"/"wasReleased"/"wasClicked"/"wasHold"/"isHolding"  can be use.
-  int state = M5.BtnPWR.wasHold() ? 1
-            : M5.BtnPWR.wasClicked() ? 2
-            : M5.BtnPWR.wasPressed() ? 3
-            : M5.BtnPWR.wasReleased() ? 4
-            : M5.BtnPWR.wasDecideClickCount() ? 5
-            : 0;
-
-  if (state)
-  {
-    M5_LOGI("BtnPWR:%s  count:%d", names[state], M5.BtnPWR.getClickCount());
-    M5.Display.fillRect(w*0, 0, w-1, h, colors[state]);
-  }
-
-  /// BtnA,BtnB,BtnC,BtnEXT: "isPressed"/"wasPressed"/"isReleased"/"wasReleased"/"wasClicked"/"wasHold"/"isHolding"  can be use.
-  state = M5.BtnA.wasHold() ? 1
-        : M5.BtnA.wasClicked() ? 2
-        : M5.BtnA.wasPressed() ? 3
-        : M5.BtnA.wasReleased() ? 4
-        : M5.BtnA.wasDecideClickCount() ? 5
-        : 0;
-  if (state)
-  {
-    M5_LOGI("BtnA:%s  count:%d", names[state], M5.BtnA.getClickCount());
-    M5.Display.fillRect(w*1, 0, w-1, h, colors[state]);
-  }
-
-  state = M5.BtnB.wasHold() ? 1
-        : M5.BtnB.wasClicked() ? 2
-        : M5.BtnB.wasPressed() ? 3
-        : M5.BtnB.wasReleased() ? 4
-        : M5.BtnB.wasDecideClickCount() ? 5
-        : 0;
-  if (state)
-  {
-    M5_LOGI("BtnB:%s  count:%d", names[state], M5.BtnB.getClickCount());
-    M5.Display.fillRect(w*2, 0, w-1, h, colors[state]);
-  }
-
-  state = M5.BtnC.wasHold() ? 1
-        : M5.BtnC.wasClicked() ? 2
-        : M5.BtnC.wasPressed() ? 3
-        : M5.BtnC.wasReleased() ? 4
-        : M5.BtnC.wasDecideClickCount() ? 5
-        : 0;
-  if (state)
-  {
-    M5_LOGI("BtnC:%s  count:%d", names[state], M5.BtnC.getClickCount());
-    M5.Display.fillRect(w*3, 0, w-1, h, colors[state]);
-  }
-
-  state = M5.BtnEXT.wasHold() ? 1
-        : M5.BtnEXT.wasClicked() ? 2
-        : M5.BtnEXT.wasPressed() ? 3
-        : M5.BtnEXT.wasReleased() ? 4
-        : M5.BtnEXT.wasDecideClickCount() ? 5
-        : 0;
-  if (state)
-  {
-    M5_LOGI("BtnEXT:%s  count:%d", names[state], M5.BtnEXT.getClickCount());
-    M5.Display.fillRect(w*4, 0, w-1, h, colors[state]);
-  }
-  M5.Display.endWrite();
+    auto &lcd = M5.Display;
+    lcd.fillScreen(TFT_BLACK);
+    lcd.setTextSize(2);
+    lcd.setTextColor(TFT_WHITE);
+    lcd.setCursor(8, 8);
+    lcd.print("G0 Button Test");
+    lcd.fillRoundRect(8, 40, lcd.width() - 16, 50, 5, color);
+    lcd.setTextColor(TFT_BLACK);
+    lcd.setCursor(20, 57);
+    lcd.print(state);
+    lcd.setTextColor(TFT_WHITE);
+    lcd.setCursor(8, 108);
+    lcd.printf("Presses: %u", presses);
+    ESP_LOGI("buttons", "%s (presses: %u)", state, presses);
 }
 
 extern "C" void app_main(void)
 {
+    M5.begin();
+    M5.Display.setRotation(0);
+    M5.Display.setBrightness(160);
+    unsigned presses = 0;
+    show_state("Press G0", TFT_CYAN, presses);
     ESP_ERROR_CHECK(eh_agent_start());
-    setup();
-    for (;;) {
-        loop();
+    while (true) {
+        M5.update();
+        if (M5.BtnA.wasPressed()) {
+            show_state("Pressed", TFT_YELLOW, ++presses);
+        } else if (M5.BtnA.wasHold()) {
+            show_state("Held", TFT_ORANGE, presses);
+        } else if (M5.BtnA.wasReleased()) {
+            show_state("Released", TFT_GREEN, presses);
+        }
         vTaskDelay(1);
     }
 }
