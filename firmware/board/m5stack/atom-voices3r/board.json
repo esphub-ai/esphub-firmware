@@ -8,6 +8,12 @@
   "default_example": "tones",
   "examples": [
     {
+      "id": "mic-fft",
+      "description": "Analyze microphone audio and report its peak frequency and spectrum on the serial console.",
+      "entrypoint": "examples/mic-fft/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Advanced/Mic_FFT/Mic_FFT.ino"
+    },
+    {
       "id": "speaker",
       "description": "Use button A to control looping audio and master or channel volume.",
       "entrypoint": "examples/speaker/main.cpp",
