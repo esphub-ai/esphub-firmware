@@ -8,6 +8,12 @@
   "default_example": "hello-display",
   "examples": [
     {
+      "id": "wakeup",
+      "description": "Enter deep sleep with button A and display the timer wakeup after five seconds.",
+      "entrypoint": "examples/wakeup/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/m5air_quality/wakeup"
+    },
+    {
       "id": "sen55",
       "description": "Display particulate matter, humidity, temperature, VOC and NOx from the AirQ SEN55.",
       "entrypoint": "examples/sen55/main.cpp",
