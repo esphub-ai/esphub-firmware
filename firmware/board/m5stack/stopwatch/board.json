@@ -70,6 +70,12 @@
       "description": "Browse badge images with A/B and set the image for a slot over EspHub.",
       "entrypoint": "examples/badge/main.cpp",
       "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_badge"
+    },
+    {
+      "id": "factory-demo",
+      "description": "Run the factory V0.5 menu. Hold A and B together after boot, browse with either button, and tap an icon to open one of eight applications.",
+      "entrypoint": "examples/factory-demo/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/6b4aa125288b6fe9dca661f10159f6e1e5ee785c"
     }
   ]
 }

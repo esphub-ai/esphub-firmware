@@ -1,0 +1,229 @@
+diff --git a/main/hal/hal.cpp b/main/hal/hal.cpp
+index 4d20585..645edbd 100644
+--- a/main/hal/hal.cpp
++++ b/main/hal/hal.cpp
+@@ -24,14 +24,6 @@ void Hal::init()
+ {
+     mclog::tagInfo(_tag, "init");
+
+-    // Initialize NVS
+-    esp_err_t ret = nvs_flash_init();
+-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        ESP_ERROR_CHECK(nvs_flash_erase());
+-        ret = nvs_flash_init();
+-    }
+-    ESP_ERROR_CHECK(ret);
+-
+     i2c_init();
+     pmic_init();
+     ioe_init();
+@@ -92,7 +84,14 @@ void Hal::reboot()
+ void Hal::factoryReset()
+ {
+     mclog::tagInfo(_tag, "start factory reset");
+-    ESP_ERROR_CHECK(nvs_flash_erase());
++    for (const char* ns : {"sw_system", "sw_alarm"}) {
++        nvs_handle_t handle;
++        if (nvs_open(ns, NVS_READWRITE, &handle) == ESP_OK) {
++            ESP_ERROR_CHECK(nvs_erase_all(handle));
++            ESP_ERROR_CHECK(nvs_commit(handle));
++            nvs_close(handle);
++        }
++    }
+     reboot();
+ }
+
+diff --git a/main/hal/hal.h b/main/hal/hal.h
+index 4096365..4090450 100644
+--- a/main/hal/hal.h
++++ b/main/hal/hal.h
+@@ -261,7 +261,7 @@ public:
+     bool shouldShowGuide();
+
+ private:
+-    static constexpr std::string_view SettingsNs = "system";
++    static constexpr std::string_view SettingsNs = "sw_system";
+
+     i2c_bus_handle_t _i2c_bus = nullptr;
+     ImuData _imu_data;
+diff --git a/main/hal/hal_alarm.cpp b/main/hal/hal_alarm.cpp
+index 3e7e316..53095e2 100644
+--- a/main/hal/hal_alarm.cpp
++++ b/main/hal/hal_alarm.cpp
+@@ -19,7 +19,7 @@ static const std::string_view _tag = "HAL-Alarm";
+
+ namespace {
+
+-constexpr const char* _alarm_settings_namespace = "alarm";
++constexpr const char* _alarm_settings_namespace = "sw_alarm";
+ constexpr const char* _alarm_storage_key        = "storage";
+ constexpr uint8_t _alarm_storage_version        = 1;
+ constexpr std::size_t _alarm_beep_count         = 4;
+diff --git a/main/hal/hal_pmic.cpp b/main/hal/hal_pmic.cpp
+index 1ae455c..54f368d 100644
+--- a/main/hal/hal_pmic.cpp
++++ b/main/hal/hal_pmic.cpp
+@@ -100,8 +100,6 @@ void Hal::pmic_init()
+     _pm1->setI2cSleepTime(0);
+     _pm1->setI2cSleepTime(0);
+
+-    // set button delay click 1s
+-    _pm1->btnSetConfig(M5PM1_BTN_TYPE_CLICK, M5PM1_BTN_CLICK_DELAY_1000MS);
+     // disable WDT, default is open
+     _pm1->wdtSet(0);
+     //  hold LDO power close when power off, keep power for RTC
+@@ -117,8 +115,6 @@ void Hal::pmic_init()
+     _pm1->gpioSetMode(PMG2_CHG_STAT, M5PM1_GPIO_MODE_INPUT);
+     _pm1->gpioSetPull(PMG2_CHG_STAT, M5PM1_GPIO_PULL_NONE);
+
+-    _pm1->setSingleResetDisable(true);
+-
+     uint16_t battery_mv = 0;
+     if (_pm1->readVbat(&battery_mv) == M5PM1_OK) {
+         update_bat_level_from_mv(battery_mv);
+diff --git a/main/hal/hal_rtc.cpp b/main/hal/hal_rtc.cpp
+index 6415425..c967bfc 100644
+--- a/main/hal/hal_rtc.cpp
++++ b/main/hal/hal_rtc.cpp
+@@ -118,14 +118,14 @@ void Hal::setTimezone(std::string_view tz)
+ {
+     setenv("TZ", tz.data(), 1);
+     tzset();
+-    Settings settings("system", true);
++    Settings settings(std::string(Hal::SettingsNs), true);
+     settings.SetString("tz", std::string(tz));
+     mclog::tagInfo(_tag, "timezone updated to: {}", tz);
+ }
+
+ std::string Hal::getTimezone()
+ {
+-    Settings settings("system", false);
++    Settings settings(std::string(Hal::SettingsNs), false);
+     return settings.GetString("tz", "GMT0");
+ }
+
+diff --git a/main/hal/utils/config_ap/config_ap.cpp b/main/hal/utils/config_ap/config_ap.cpp
+index 327dadf..fe875fe 100644
+--- a/main/hal/utils/config_ap/config_ap.cpp
++++ b/main/hal/utils/config_ap/config_ap.cpp
+@@ -47,50 +47,6 @@ constexpr const char* _captive_portal_urls[] = {
+     "/library/test/success.html",
+ };
+
+-bool ensure_wifi_stack_ready()
+-{
+-    static std::mutex mutex;
+-    static bool initialized = false;
+-
+-    std::lock_guard<std::mutex> lock(mutex);
+-    if (initialized) {
+-        return true;
+-    }
+-
+-    esp_err_t ret = nvs_flash_init();
+-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        ESP_ERROR_CHECK(nvs_flash_erase());
+-        ret = nvs_flash_init();
+-    }
+-    if (ret != ESP_OK) {
+-        ESP_LOGE(_tag, "nvs init failed: %s", esp_err_to_name(ret));
+-        return false;
+-    }
+-
+-    ret = esp_netif_init();
+-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+-        ESP_LOGE(_tag, "netif init failed: %s", esp_err_to_name(ret));
+-        return false;
+-    }
+-
+-    ret = esp_event_loop_create_default();
+-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+-        ESP_LOGE(_tag, "event loop init failed: %s", esp_err_to_name(ret));
+-        return false;
+-    }
+-
+-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+-    cfg.nvs_enable         = false;
+-    ret                    = esp_wifi_init(&cfg);
+-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+-        ESP_LOGE(_tag, "wifi init failed: %s", esp_err_to_name(ret));
+-        return false;
+-    }
+-
+-    initialized = true;
+-    return true;
+-}
+-
+ std::string make_ap_ssid()
+ {
+     uint8_t mac[6] = {};
+@@ -114,11 +70,6 @@ public:
+
+     bool run()
+     {
+-        if (!ensure_wifi_stack_ready()) {
+-            log("Wi-Fi initialization failed");
+-            return false;
+-        }
+-
+         _event_group = xEventGroupCreate();
+         if (_event_group == nullptr) {
+             log("Failed to create sync event group");
+@@ -169,9 +120,6 @@ private:
+         esp_netif_set_ip_info(ap_netif, &ip_info);
+         esp_netif_dhcps_start(ap_netif);
+
+-        _dns_server = std::make_unique<DnsServer>();
+-        _dns_server->Start(ip_info.gw);
+-
+         _ssid = make_ap_ssid();
+
+         wifi_config_t wifi_config = {};
+@@ -180,12 +128,8 @@ private:
+         wifi_config.ap.max_connection = 4;
+         wifi_config.ap.authmode       = WIFI_AUTH_OPEN;
+
+-        esp_err_t ret = esp_wifi_stop();
+-        if (ret != ESP_OK && ret != ESP_ERR_WIFI_NOT_STARTED && ret != ESP_ERR_WIFI_MODE) {
+-            ESP_LOGW(_tag, "wifi stop before ap failed: %s", esp_err_to_name(ret));
+-        }
+-
+-        ret = esp_wifi_set_mode(WIFI_MODE_AP);
++        // The vendor editor and captive DNS accept local AP clients only.
++        esp_err_t ret = esp_wifi_set_mode(WIFI_MODE_AP);
+         if (ret != ESP_OK) {
+             log("Failed to set AP mode");
+             return false;
+@@ -197,17 +141,8 @@ private:
+             return false;
+         }
+
+-        ret = esp_wifi_set_ps(WIFI_PS_NONE);
+-        if (ret != ESP_OK) {
+-            log("Failed to disable Wi-Fi power save");
+-            return false;
+-        }
+-
+-        ret = esp_wifi_start();
+-        if (ret != ESP_OK) {
+-            log("Failed to start AP");
+-            return false;
+-        }
++        _dns_server = std::make_unique<DnsServer>();
++        _dns_server->Start(ip_info.gw);
+
+         return true;
+     }
+@@ -324,9 +259,9 @@ private:
+             _dns_server.reset();
+         }
+
+-        esp_err_t ret = esp_wifi_stop();
+-        if (ret != ESP_OK && ret != ESP_ERR_WIFI_NOT_STARTED && ret != ESP_ERR_WIFI_MODE) {
+-            ESP_LOGW(_tag, "wifi stop failed: %s", esp_err_to_name(ret));
++        esp_err_t ret = esp_wifi_set_mode(WIFI_MODE_STA);
++        if (ret != ESP_OK) {
++            ESP_LOGW(_tag, "restoring station mode failed: %s", esp_err_to_name(ret));
+         }
+
+         if (_event_group != nullptr) {
