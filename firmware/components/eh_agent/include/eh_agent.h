@@ -52,6 +52,16 @@ bool eh_connected(void);
 /* Reboot into the bootloader and hold it for this boot. Does not return on success. */
 esp_err_t eh_enter_bootloader(void);
 
+/* Transfer the Wi-Fi driver between the SDK station and the application.
+ * false waits for SDK radio operations to finish, stops/deinitializes the SDK
+ * station and leaves saved credentials intact. The app can then initialize Wi-Fi.
+ * Before passing true, stop/deinitialize app-owned Wi-Fi and release its default
+ * netifs. true starts the SDK station and resumes the saved-network policy.
+ * Call from an application task after agent startup, outside IDF event handlers.
+ * Idempotent. Applies to this boot only; choose manage_network at next startup.
+ * The Agent and other network transports continue running. */
+esp_err_t eh_wifi_set_managed(bool enabled);
+
 /* Queue a Wi-Fi trial on the SDK-managed station. Returns false if the input is
  * invalid, another trial is active, or SDK-managed Wi-Fi is unavailable.
  * The manager saves the network only after it obtains an IP address. */

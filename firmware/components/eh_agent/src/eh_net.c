@@ -1,6 +1,7 @@
 /* Network bring-up: Wi-Fi STA (default) or OpenCores Ethernet for QEMU.
  * SPDX-License-Identifier: MIT */
 #include <stdio.h>
+#include <stdatomic.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -17,37 +18,45 @@
 #endif
 #include "eh_priv.h"
 
-static volatile bool s_has_ip;
-static bool s_managed;
-static esp_netif_t *s_netif;
-static char s_ip[16] = "";
+/* A station handoff must never clear an independent Ethernet uplink. */
+static _Atomic uint32_t s_sta_ip;
+static _Atomic uint32_t s_eth_ip;
+#if CONFIG_LWIP_PPP_SUPPORT
+static _Atomic uint32_t s_ppp_ip;
+#endif
+
+static uint32_t uplink_ip(void)
+{
+    uint32_t ip = s_sta_ip;
+    if (!ip) ip = s_eth_ip;
+#if CONFIG_LWIP_PPP_SUPPORT
+    if (!ip) ip = s_ppp_ip;
+#endif
+    return ip;
+}
 
 bool eh_net_has_ip(void)
 {
-    return s_has_ip;
+    return uplink_ip() != 0;
 }
 
-static void on_got_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
+static void on_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    ip_event_got_ip_t *ev = data;
-    snprintf(s_ip, sizeof(s_ip), IPSTR, IP2STR(&ev->ip_info.ip));
-    if (!s_netif) {
-        s_netif = ev->esp_netif;
-    }
-    s_has_ip = true;
-    eh_agent_notify();
-    ESP_LOGI(EH_TAG, "got ip %s", s_ip);
-#if !CONFIG_EH_NET_OPENETH
-    if (s_managed) {
-        eh_wifi_on_got_ip();
-    }
+    _Atomic uint32_t *address = arg;
+    bool got = id == IP_EVENT_STA_GOT_IP || id == IP_EVENT_ETH_GOT_IP;
+#if CONFIG_LWIP_PPP_SUPPORT
+    got = got || id == IP_EVENT_PPP_GOT_IP;
 #endif
-}
-
-static void on_lost_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
-{
-    s_has_ip = false;
-    s_ip[0] = '\0';
+    if (got) {
+        ip_event_got_ip_t *ev = data;
+        *address = ev->ip_info.ip.addr;
+        ESP_LOGI(EH_TAG, "got ip " IPSTR, IP2STR(&ev->ip_info.ip));
+#if !CONFIG_EH_NET_OPENETH
+        if (id == IP_EVENT_STA_GOT_IP) eh_wifi_on_got_ip();
+#endif
+    } else {
+        *address = 0;
+    }
     eh_agent_notify();
 }
 
@@ -57,9 +66,11 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
     if (id == WIFI_EVENT_STA_START) {
         eh_wifi_on_started();
     } else if (id == WIFI_EVENT_STA_DISCONNECTED) {
-        s_has_ip = false;
-        s_ip[0] = '\0';
+        s_sta_ip = 0;
         eh_wifi_on_disconnected(((wifi_event_sta_disconnected_t *)data)->reason);
+        eh_agent_notify();
+    } else if (id == WIFI_EVENT_STA_STOP) {
+        s_sta_ip = 0;
         eh_agent_notify();
     }
 }
@@ -68,15 +79,23 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
 void eh_net_reconfigure(void)
 {
 #if !CONFIG_EH_NET_OPENETH
-    if (s_managed) {
-        eh_wifi_reload();
-    }
+    eh_wifi_reload();
 #endif
+}
+
+static esp_err_t observe_uplink(const char *key, int got, int lost, _Atomic uint32_t *address)
+{
+    ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, got, on_ip, address), EH_TAG, "watch IP");
+    ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, lost, on_ip, address), EH_TAG, "watch IP loss");
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey(key);
+    esp_netif_ip_info_t ip;
+    if (netif && esp_netif_is_netif_up(netif) && esp_netif_get_ip_info(netif, &ip) == ESP_OK)
+        *address = ip.ip.addr;
+    return ESP_OK;
 }
 
 esp_err_t eh_net_start(bool manage)
 {
-    s_managed = manage;
     esp_err_t e = esp_netif_init();
     if (e != ESP_OK && e != ESP_ERR_INVALID_STATE) {
         return e;
@@ -85,30 +104,19 @@ esp_err_t eh_net_start(bool manage)
     if (e != ESP_OK && e != ESP_ERR_INVALID_STATE) {
         return e;
     }
-    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, on_got_ip, NULL);
-    esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, on_got_ip, NULL);
-    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, on_lost_ip, NULL);
-    esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_LOST_IP, on_lost_ip, NULL);
-
-    if (!manage) {
-        /* App owns networking; pick up an address that already exists. */
-        const char *keys[] = {"WIFI_STA_DEF", "ETH_DEF"};
-        for (int i = 0; i < 2; i++) {
-            esp_netif_t *n = esp_netif_get_handle_from_ifkey(keys[i]);
-            esp_netif_ip_info_t ip;
-            if (n && esp_netif_get_ip_info(n, &ip) == ESP_OK && ip.ip.addr) {
-                s_netif = n;
-                snprintf(s_ip, sizeof(s_ip), IPSTR, IP2STR(&ip.ip));
-                s_has_ip = true;
-            }
-        }
-        return ESP_OK;
-    }
-
-    char name[33] = {0};
-    eh_nvs_get_str("name", name, sizeof(name));
+    ESP_RETURN_ON_ERROR(observe_uplink("WIFI_STA_DEF", IP_EVENT_STA_GOT_IP, IP_EVENT_STA_LOST_IP, &s_sta_ip),
+                        EH_TAG, "station IP");
+    ESP_RETURN_ON_ERROR(observe_uplink("ETH_DEF", IP_EVENT_ETH_GOT_IP, IP_EVENT_ETH_LOST_IP, &s_eth_ip),
+                        EH_TAG, "Ethernet IP");
+#if CONFIG_LWIP_PPP_SUPPORT
+    ESP_RETURN_ON_ERROR(observe_uplink("PPP_DEF", IP_EVENT_PPP_GOT_IP, IP_EVENT_PPP_LOST_IP, &s_ppp_ip),
+                        EH_TAG, "PPP IP");
+#endif
 
 #if CONFIG_EH_NET_OPENETH
+    if (!manage) return ESP_OK;
+    char name[33] = {0};
+    eh_nvs_get_str("name", name, sizeof(name));
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
     phy_config.autonego_timeout_ms = 100;
@@ -118,35 +126,35 @@ esp_err_t eh_net_start(bool manage)
     esp_eth_handle_t eth = NULL;
     ESP_RETURN_ON_ERROR(esp_eth_driver_install(&config, &eth), EH_TAG, "eth install");
     esp_netif_config_t ncfg = ESP_NETIF_DEFAULT_ETH();
-    s_netif = esp_netif_new(&ncfg);
+    esp_netif_t *netif = esp_netif_new(&ncfg);
     if (name[0]) {
-        esp_netif_set_hostname(s_netif, name);
+        esp_netif_set_hostname(netif, name);
     }
-    esp_netif_attach(s_netif, esp_eth_new_netif_glue(eth));
+    esp_netif_attach(netif, esp_eth_new_netif_glue(eth));
     ESP_LOGI(EH_TAG, "network: OpenCores Ethernet (QEMU)");
     return esp_eth_start(eth);
 #else
-    s_netif = esp_netif_create_default_wifi_sta();
-    if (name[0]) {
-        esp_netif_set_hostname(s_netif, name);
-    }
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_RETURN_ON_ERROR(esp_wifi_init(&cfg), EH_TAG, "wifi init");
-    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, on_wifi, NULL);
-    /* Load saved networks before the driver switches to RAM storage */
     ESP_RETURN_ON_ERROR(eh_wifi_init(), EH_TAG, "wifi manager");
-    esp_wifi_set_storage(WIFI_STORAGE_RAM); /* networks live in eh/wifis, not in the driver */
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    return esp_wifi_start();
+    ESP_RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, on_wifi, NULL), EH_TAG, "watch station");
+    return eh_wifi_set_managed(manage);
 #endif
+}
+
+static void format_ip(char buf[16])
+{
+    esp_ip4_addr_t ip = {.addr = uplink_ip()};
+    buf[0] = '\0';
+    if (ip.addr) snprintf(buf, 16, IPSTR, IP2STR(&ip));
 }
 
 void eh_net_info(cJSON *obj)
 {
-    cJSON_AddStringToObject(obj, "ip", s_ip);
+    char ip[16];
+    format_ip(ip);
+    cJSON_AddStringToObject(obj, "ip", ip);
 #if !CONFIG_EH_NET_OPENETH
     wifi_ap_record_t ap;
-    if (s_has_ip && esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+    if (s_sta_ip && esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
         cJSON_AddNumberToObject(obj, "rssi", ap.rssi);
         return;
     }
@@ -156,14 +164,16 @@ void eh_net_info(cJSON *obj)
 
 int eh_net_describe(char *buf, size_t len)
 {
+    char ip[16];
+    format_ip(ip);
 #if CONFIG_EH_NET_OPENETH
-    return snprintf(buf, len, "ethernet(openeth) ip=%s %s", s_ip[0] ? s_ip : "-", s_has_ip ? "up" : "down");
+    return snprintf(buf, len, "ethernet(openeth) ip=%s %s", ip[0] ? ip : "-", ip[0] ? "up" : "down");
 #else
     wifi_ap_record_t ap;
-    if (s_has_ip && esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
-        return snprintf(buf, len, "wifi ssid=%s rssi=%d ch=%d ip=%s", (char *)ap.ssid, ap.rssi, ap.primary, s_ip);
+    if (s_sta_ip && esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+        return snprintf(buf, len, "wifi ssid=%s rssi=%d ch=%d ip=%s", (char *)ap.ssid, ap.rssi, ap.primary, ip);
     }
-    return snprintf(buf, len, "wifi %s ip=%s saved=%d%s", s_has_ip ? "up" : "down", s_ip[0] ? s_ip : "-",
-                    eh_wifi_count(), eh_wifi_count() || !s_managed ? "" : " (no credentials)");
+    if (ip[0]) return snprintf(buf, len, "network up ip=%s", ip);
+    return snprintf(buf, len, "wifi down ip=- saved=%d", eh_wifi_count());
 #endif
 }

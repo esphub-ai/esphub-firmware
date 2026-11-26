@@ -24,6 +24,8 @@ Requires `cc`, `pkg-config` and `libcjson` development headers (Debian package `
 - Immediate config/connect failures, scan failure and no stale hint reuse on the next cycle.
 - Hidden/unseen saved SSIDs and manual visible/hidden joins stay unpinned; failed manual joins and failed persistence preserve existing saved access. Queued manual joins preempt fallback.
 
+- Booting unmanaged never starts the driver. Switching to app ownership releases the SDK station and cancels a queued join. Scan, join and reload cannot reclaim the radio. A failed start can be retried, and the saved station reconnects after the app releases its driver.
+
 ## Limits
 
 This models the C manager's configuration and deterministic control flow, **not the ESP-IDF Wi-Fi driver, ABI, real RF scan/association duration, authentication, DHCP, or task concurrency**. In particular, the fake deliberately rejects a stale targeted channel to exercise manager recovery; real ESP-IDF may discover a moved AP without that failure. The fake emits a deterministic disconnect event during cleanup and cancels pending association events. It does not prove behavior for arbitrary delayed/stale driver events or scheduler interleavings. A target ESP-IDF build and real-device RF validation remain separate checks; no RF latency improvement is claimed here.
