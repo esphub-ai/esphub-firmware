@@ -69,6 +69,12 @@
       "description": "Press A to write and read back 16 persistent EEPROM-style bytes.",
       "entrypoint": "examples/eeprom/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/Storage/EEPROM/EEPROM.ino"
+    },
+    {
+      "id": "multitask",
+      "description": "Run three FreeRTOS tasks pinned to core 0 that log uptime every 100, 200, and 1000 ms while showing a serial-port notice on the LCD.",
+      "entrypoint": "examples/multitask/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/MultiTask/MultiTask.ino"
     }
   ]
 }
