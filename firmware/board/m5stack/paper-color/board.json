@@ -50,6 +50,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/rtc"
     },
     {
+      "id": "speaker-tone",
+      "description": "Play alternating 4 kHz and 8 kHz tones on the onboard speaker.",
+      "entrypoint": "examples/speaker-tone/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/speaker"
+    },
+    {
       "id": "sht40",
       "description": "Read the onboard SHT40 and show temperature and humidity at startup and every two minutes.",
       "entrypoint": "examples/sht40/main.cpp",
