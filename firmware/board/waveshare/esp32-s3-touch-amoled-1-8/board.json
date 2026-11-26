@@ -12,6 +12,18 @@
       "description": "Read the onboard PCF85063 clock on SDA GPIO15 and SCL GPIO14. Log its hours, minutes and seconds without setting the clock.",
       "entrypoint": "examples/rtc-clock/main.c",
       "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.8/blob/01fd3200370a4417b257e8a4c185a04ef931342a/examples/arduino-v2/examples/05_GFX_PCF85063_simpleTime/05_GFX_PCF85063_simpleTime.ino"
+    },
+    {
+      "id": "hello-display-v2",
+      "description": "V2 PCB: Draw color bands and “EspHub” on the 368 × 448 CO5300 display over quad SPI.",
+      "entrypoint": "examples/hello-display-v2/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.8/blob/01fd3200370a4417b257e8a4c185a04ef931342a/examples/arduino-v2/examples/01_HelloWorld/01_HelloWorld.ino"
+    },
+    {
+      "id": "hello-display-v1",
+      "description": "V1 PCB: Draw color bands and “EspHub” on the 368 × 448 SH8601Z display over quad SPI.",
+      "entrypoint": "examples/hello-display-v1/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.8/blob/01fd3200370a4417b257e8a4c185a04ef931342a/examples/arduino/examples/01_HelloWorld/01_HelloWorld.ino"
     }
   ]
 }

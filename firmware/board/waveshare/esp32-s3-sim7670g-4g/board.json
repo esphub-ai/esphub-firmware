@@ -3,7 +3,7 @@
   "model": "Waveshare ESP32-S3-SIM7670G-4G",
   "chip": "esp32s3",
   "flash_mb": 16,
-  "bootloader": "esp32s3-16mb",
+  "bootloader": "esp32s3-16mb-uart",
   "psram": "octal",
   "default_example": "rgb-blink",
   "examples": [

@@ -8,8 +8,11 @@ void app_main(void)
     ESP_ERROR_CHECK(eh_agent_start());
     i2c_master_bus_handle_t bus = example_i2c_bus(GPIO_NUM_47, GPIO_NUM_48);
     i2c_master_dev_handle_t expander = example_i2c_device(bus, 0x24);
-    example_update_bits(expander, 0x03, 0x04, 0x04); // Backlight high
-    example_update_bits(expander, 0x02, 0x04, 0x04); // Enable backlight output
+    // This board uses 16-bit little-endian registers. IO2 is backlight and IO5 selects USB when low.
+    const uint8_t levels[] = {0x03, 0x04, 0x00};
+    const uint8_t outputs[] = {0x02, 0x24, 0x00};
+    ESP_ERROR_CHECK(i2c_master_transmit(expander, levels, sizeof(levels), 100));
+    ESP_ERROR_CHECK(i2c_master_transmit(expander, outputs, sizeof(outputs), 100));
     esp_lcd_rgb_panel_config_t config = {
         .clk_src = LCD_CLK_SRC_DEFAULT,
         .timings = {

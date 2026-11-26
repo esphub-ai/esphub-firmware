@@ -14,9 +14,20 @@ extern "C" void app_main(void)
     pins.pin_scl = 18;
     pins.i2c_addr = 0x3c;
     bus.config(pins);
+    auto geometry = panel.config();
+    geometry.memory_width = 132;
+    geometry.panel_width = 128;
+    geometry.memory_height = geometry.panel_height = 64;
+    geometry.offset_x = 2;
+    panel.config(geometry);
     panel.setBus(&bus);
     oled.setPanel(&panel);
     ESP_ERROR_CHECK(oled.init() ? ESP_OK : ESP_FAIL);
+    // The SH1106 panel has 64 COM lines.
+    oled.startWrite();
+    oled.writeCommand(0xa8);
+    oled.writeCommand(0x3f);
+    oled.endWrite();
     oled.fillScreen(0);
     oled.setTextColor(0xffffff);
     oled.setTextSize(2);
