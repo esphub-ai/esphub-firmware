@@ -14,6 +14,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/display"
     },
     {
+      "id": "button",
+      "description": "Show a startup prompt and report presses of the three Paper Color buttons over serial.",
+      "entrypoint": "examples/button/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/button"
+    },
+    {
       "id": "color-bands",
       "description": "Draw six colored bands and a multicolored label on the e-paper display using an offscreen canvas.",
       "entrypoint": "examples/color-bands/main.cpp",
