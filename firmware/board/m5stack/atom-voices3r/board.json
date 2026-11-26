@@ -8,6 +8,12 @@
   "default_example": "tones",
   "examples": [
     {
+      "id": "sd-wav",
+      "description": "Play PCM WAV files from the root of an Atomic TFCard Base (A135), with status on the serial console.",
+      "entrypoint": "examples/sd-wav/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Advanced/Speaker_SD_wav_file/Speaker_SD_wav_file.ino"
+    },
+    {
       "id": "mic-fft",
       "description": "Analyze microphone audio and report its peak frequency and spectrum on the serial console.",
       "entrypoint": "examples/mic-fft/main.cpp",
