@@ -1,0 +1,5 @@
+dependencies:
+  lovyan03/lovyangfx:
+    git: https://github.com/lovyan03/LovyanGFX.git
+    version: dd228d15a03900ce658fd62e120dc7cc489915dd
+    require: public

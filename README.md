@@ -2,6 +2,8 @@
 
 Firmware sources, board profiles, and build recipes for [EspHub](https://github.com/okou-ai/esphub).
 
+See the [Waveshare, Seeed Studio and LILYGO board index](docs/esp32s3-boards/README.md) for the supported ESP32-S3 profiles, hardware guides and official examples.
+
 ## Build
 
 Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one.

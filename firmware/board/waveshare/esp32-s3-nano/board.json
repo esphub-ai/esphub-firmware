@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Nano",
+  "model": "Waveshare ESP32-S3-Nano",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the red channel of the onboard RGB LED (Arduino LED_RED, native GPIO46).",
+      "entrypoint": "examples/blink/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Nano/ESP32-S3-Nano-Demo-Code.zip"
+    }
+  ]
+}

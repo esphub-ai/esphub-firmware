@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-AUDIO-Board",
+  "model": "Waveshare ESP32-S3-AUDIO-Board",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LED on GPIO38 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/espressif/esp-idf/blob/f5c3654a1c2d2a01f7f67def7a0dc48e691f63c0/examples/get-started/blink/main/blink_example_main.c"
+    }
+  ]
+}

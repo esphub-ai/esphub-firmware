@@ -1,0 +1,17 @@
+{
+  "name": "T-Deck",
+  "model": "LILYGO T-Deck",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw three color bands and “EspHub” on the 240 × 320 ST7789 display.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/Xinyuan-LilyGO/T-Deck/blob/9aac147a313975ad063594b3fe11e28a96d94936/examples/HelloWorld/HelloWorld.ino"
+    }
+  ]
+}

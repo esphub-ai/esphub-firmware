@@ -1,0 +1,6 @@
+dependencies:
+  waveshare/esp_rlcd_st7305:
+    git: https://github.com/waveshareteam/ESP32-S3-Touch-RLCD-4.2B.git
+    version: c35618f5a45e3c231c2b34935a641eccfad58b76
+    path: examples/esp-idf/01_lvgl/components/esp_rlcd_st7305
+    require: public

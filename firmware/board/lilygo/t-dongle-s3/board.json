@@ -1,0 +1,16 @@
+{
+  "name": "T-Dongle-S3",
+  "model": "LILYGO T-Dongle-S3",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard APA102 on data GPIO40 and clock GPIO39.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/Xinyuan-LilyGO/T-Dongle-S3/blob/03d51691e70271aeb988d0d1d930650595176736/examples/led/led.ino"
+    }
+  ]
+}

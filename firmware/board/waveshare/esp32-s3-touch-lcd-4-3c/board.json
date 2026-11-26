@@ -1,0 +1,23 @@
+{
+  "name": "ESP32-S3-Touch-LCD-4.3C",
+  "model": "Waveshare ESP32-S3-Touch-LCD-4.3C",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "display-color-bars",
+  "examples": [
+    {
+      "id": "display-color-bars",
+      "description": "Draw full-screen color bars on the 800 × 480 parallel RGB panel.",
+      "entrypoint": "examples/display-color-bars/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-4.3C/blob/d3ad4603483d41fe08b2227ba57ebb3cb6b1e027/examples/arduino/03_lcd/03_lcd.ino"
+    },
+    {
+      "id": "rtc-clock",
+      "description": "Read the onboard PCF85063 clock on SDA GPIO8 and SCL GPIO9. Log its hours, minutes and seconds without setting the clock.",
+      "entrypoint": "examples/rtc-clock/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-4.3C/blob/d3ad4603483d41fe08b2227ba57ebb3cb6b1e027/examples/arduino/02_rtc/02_rtc.ino"
+    }
+  ]
+}

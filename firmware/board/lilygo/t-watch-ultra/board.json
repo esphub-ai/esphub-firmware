@@ -1,0 +1,17 @@
+{
+  "name": "T-Watch Ultra",
+  "model": "LILYGO T-Watch Ultra",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the 410 × 502 CO5300 display over quad SPI.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/Xinyuan-LilyGO/LilyGoLib/blob/9ebd8096a10a149374b90bf933460b3a6a5e940d/examples/helloworld/helloworld.ino"
+    }
+  ]
+}

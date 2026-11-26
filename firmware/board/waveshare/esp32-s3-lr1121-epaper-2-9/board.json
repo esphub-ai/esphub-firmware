@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-LR1121-ePaper-2.9",
+  "model": "Waveshare ESP32-S3-LR1121-ePaper-2.9",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LED on GPIO21 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-LR1121-ePaper-2.9/blob/9e8ce96f332d49f63adfca2fa2273aa7cda0c073/examples/arduino/01_ws2812_led/01_ws2812_led.ino"
+    }
+  ]
+}

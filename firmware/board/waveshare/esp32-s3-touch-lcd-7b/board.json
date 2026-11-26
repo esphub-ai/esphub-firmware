@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-7B",
+  "model": "Waveshare ESP32-S3-Touch-LCD-7B",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb-uart",
+  "psram": "octal",
+  "default_example": "display-color-bars",
+  "examples": [
+    {
+      "id": "display-color-bars",
+      "description": "Draw full-screen color bars on the 1024 × 600 parallel RGB panel.",
+      "entrypoint": "examples/display-color-bars/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-7B/blob/c652c902db607f7ffb376257393cfd7657aa6428/examples/Arduino/examples/06_LCD/06_LCD.ino"
+    }
+  ]
+}

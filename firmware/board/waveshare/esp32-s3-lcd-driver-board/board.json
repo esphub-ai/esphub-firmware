@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-LCD-Driver-Board",
+  "model": "Waveshare ESP32-S3-LCD-Driver-Board",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands on a connected 240 × 240 SPI ST7789 panel using the board’s LCD connector.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-LCD-Driver-Board/blob/e6713765bdb003ce2fc310b90626cab95d6dc2bc/ESP32-S3-LCD-Driver-Board/ESP-IDF/01_easytest/main/main.c"
+    }
+  ]
+}

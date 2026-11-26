@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-ePaper-3.97",
+  "model": "Waveshare ESP32-S3-ePaper-3.97",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "epaper-pattern",
+  "examples": [
+    {
+      "id": "epaper-pattern",
+      "description": "Refresh the 800 × 480 e-paper once with alternating vertical stripes, then put the panel to sleep.",
+      "entrypoint": "examples/epaper-pattern/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-ePaper-3.97/blob/1ce1c42421c4690aa3a7eef7354599ce00163f59/Arduino/examples/02_E-Paper_Example/02_E-Paper_Example.ino"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-ePaper-13.3E6",
+  "model": "Waveshare ESP32-S3-ePaper-13.3E6",
+  "chip": "esp32s3",
+  "flash_mb": 32,
+  "bootloader": "esp32s3-32mb-opi",
+  "psram": "octal",
+  "default_example": "epaper-color-bars",
+  "examples": [
+    {
+      "id": "epaper-color-bars",
+      "description": "Refresh the dual-controller 13.3-inch e-paper once with six color bars and put the panel to sleep.",
+      "entrypoint": "examples/epaper-color-bars/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-ePaper-13.3E6/blob/f8e9456bd1ca520f638786142fc17a74154f4e05/example/Arduino-3.2.0/examples/03_E-Paper_Example/03_E-Paper_Example.ino"
+    }
+  ]
+}

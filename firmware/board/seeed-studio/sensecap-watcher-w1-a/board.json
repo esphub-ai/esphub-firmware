@@ -1,0 +1,17 @@
+{
+  "name": "SenseCAP Watcher W1-A",
+  "model": "Seeed Studio SenseCAP Watcher W1-A",
+  "chip": "esp32s3",
+  "flash_mb": 32,
+  "bootloader": "esp32s3-32mb-uart",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LED on GPIO40 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/Seeed-Studio/SenseCAP-Watcher-Firmware/blob/8e37f7ccd3d836bb99f483e0f6e74e8252406644/examples/knob_rgb/main/knob_rgb.c"
+    }
+  ]
+}

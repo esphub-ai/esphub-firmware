@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-AMOLED-1.91",
+  "model": "Waveshare ESP32-S3-AMOLED-1.91",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the 536 × 240 RM67162 display over quad SPI.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-AMOLED-1.91/blob/e134d3055101d2751e93124417e132e0c01af8a3/02_Example/Arduino/03_LVGL_V8_Test/03_LVGL_V8_Test.ino"
+    }
+  ]
+}

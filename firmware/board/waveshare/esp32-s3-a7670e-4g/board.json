@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-A7670E-4G",
+  "model": "Waveshare ESP32-S3-A7670E-4G",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb-uart",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LED on GPIO38 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-A7670E-4G/ESP32-S3-A-SIM7670X_4G.zip"
+    }
+  ]
+}

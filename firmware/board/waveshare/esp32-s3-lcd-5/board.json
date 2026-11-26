@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-LCD-5",
+  "model": "Waveshare ESP32-S3-LCD-5",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb-uart",
+  "psram": "octal",
+  "default_example": "display-color-bars",
+  "examples": [
+    {
+      "id": "display-color-bars",
+      "description": "Show full-screen test bars using the panel timing, power and backlight settings for this board.",
+      "entrypoint": "examples/display-color-bars/main.cpp",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-LCD-5/ESP32-S3-Touch-LCD-5-Demo.zip"
+    }
+  ]
+}

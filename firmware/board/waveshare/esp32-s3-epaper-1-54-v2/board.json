@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-ePaper-1.54 V2",
+  "model": "Waveshare ESP32-S3-ePaper-1.54 V2",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "rtc-clock",
+  "examples": [
+    {
+      "id": "rtc-clock",
+      "description": "Read the onboard PCF85063 clock on SDA GPIO47 and SCL GPIO48. Log its hours, minutes and seconds without setting the clock.",
+      "entrypoint": "examples/rtc-clock/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-ePaper-1.54/blob/2f287c01d763e44b4307c48af95044acee5c891e/02_Example/Arduino/02_I2C_PCF85063/02_I2C_PCF85063.ino"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-PhotoPainter",
+  "model": "Waveshare ESP32-S3-PhotoPainter",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the onboard user LED on GPIO45 every half second.",
+      "entrypoint": "examples/blink/main.c",
+      "upstream": "https://github.com/espressif/esp-idf/blob/f5c3654a1c2d2a01f7f67def7a0dc48e691f63c0/examples/get-started/blink/main/blink_example_main.c"
+    }
+  ]
+}

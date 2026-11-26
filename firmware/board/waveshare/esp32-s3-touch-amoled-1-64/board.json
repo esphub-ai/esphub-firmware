@@ -1,0 +1,29 @@
+{
+  "name": "ESP32-S3-Touch-AMOLED-1.64",
+  "model": "Waveshare ESP32-S3-Touch-AMOLED-1.64",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "i2c-device",
+  "examples": [
+    {
+      "id": "i2c-device",
+      "description": "Check the onboard QMI8658 at I²C address 0x6b and print whether it responds.",
+      "entrypoint": "examples/i2c-device/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.64/ESP32-S3-Touch-AMOLED-1.64-Demo.zip"
+    },
+    {
+      "id": "hello-display-v1",
+      "description": "V1 PCB: Draw color bands and “EspHub” on the 280 × 456 CO5300 display over quad SPI.",
+      "entrypoint": "examples/hello-display-v1/main.cpp",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.64/ESP32-S3-Touch-AMOLED-1.64-Demo.zip"
+    },
+    {
+      "id": "hello-display-v1-1",
+      "description": "V1.1 PCB: Draw color bands and “EspHub” on the 280 × 456 CO5300 display over quad SPI.",
+      "entrypoint": "examples/hello-display-v1-1/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.64-v2/blob/21b952243d306692774f3b5bfeb3eb5cff10f851/Arduino/examples/06_LVGL_Test/06_LVGL_Test.ino"
+    }
+  ]
+}

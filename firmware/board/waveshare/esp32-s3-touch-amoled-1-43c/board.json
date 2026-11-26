@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-AMOLED-1.43C",
+  "model": "Waveshare ESP32-S3-Touch-AMOLED-1.43C",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the 466 × 466 CO5300 display over quad SPI.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.43C/blob/8cea11ddae6167dd591d1f5465fd7b615080360f/examples/arduino/examples/05_LVGL_Widgets/05_LVGL_Widgets.ino"
+    }
+  ]
+}

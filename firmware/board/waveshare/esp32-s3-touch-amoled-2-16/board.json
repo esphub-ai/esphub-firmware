@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-AMOLED-2.16",
+  "model": "Waveshare ESP32-S3-Touch-AMOLED-2.16",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the 480 × 480 CO5300 display over quad SPI.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-2.16/blob/e8e5d132978b768cce18901602b89fdb318ad41a/examples/arduino/01_HelloWorld/01_HelloWorld.ino"
+    }
+  ]
+}

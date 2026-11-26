@@ -1,0 +1,23 @@
+{
+  "name": "ESP32-S3-Touch-AMOLED-1.43",
+  "model": "Waveshare ESP32-S3-Touch-AMOLED-1.43",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Identify the onboard SH8601 or CO5300, then draw color bands on the round 466 × 466 AMOLED.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.43/ESP32-S3-AMOLED-1.43-Demo-V3.zip"
+    },
+    {
+      "id": "i2c-device",
+      "description": "Check the onboard QMI8658 at I²C address 0x6b and print whether it responds.",
+      "entrypoint": "examples/i2c-device/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.43/ESP32-S3-AMOLED-1.43-Demo-V3.zip"
+    }
+  ]
+}

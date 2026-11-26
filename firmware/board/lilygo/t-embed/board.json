@@ -1,0 +1,17 @@
+{
+  "name": "T-Embed",
+  "model": "LILYGO T-Embed",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard APA102 on data GPIO42 and clock GPIO45.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/Xinyuan-LilyGO/T-Embed/blob/17867865b2d157a3a40ebe88e6ad3f0ba113aafd/examples/led/led.ino"
+    }
+  ]
+}

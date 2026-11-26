@@ -1,0 +1,29 @@
+{
+  "name": "ESP32-S3-Touch-AMOLED-2.41",
+  "model": "Waveshare ESP32-S3-Touch-AMOLED-2.41",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rtc-clock",
+  "examples": [
+    {
+      "id": "rtc-clock",
+      "description": "Read the onboard PCF85063 clock on SDA GPIO47 and SCL GPIO48. Log its hours, minutes and seconds without setting the clock.",
+      "entrypoint": "examples/rtc-clock/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.41/ESP32-S3-Touch-AMOLED-2.41-Demo.zip"
+    },
+    {
+      "id": "hello-display-v1",
+      "description": "V1 PCB: Draw color bands and “EspHub” on the 450 × 600 RM690B0 display over quad SPI.",
+      "entrypoint": "examples/hello-display-v1/main.cpp",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.41/ESP32-S3-Touch-AMOLED-2.41-Demo.zip"
+    },
+    {
+      "id": "hello-display-v2",
+      "description": "V2 PCB: Draw color bands and “EspHub” on the 450 × 600 RM690B0 display over quad SPI.",
+      "entrypoint": "examples/hello-display-v2/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-2.41-V2/blob/e76efcd688b2f57ce9497af994698b4cde311761/examples/arduino/examples/09_LVGL_Test/09_LVGL_Test.ino"
+    }
+  ]
+}

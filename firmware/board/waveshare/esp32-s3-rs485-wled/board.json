@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-RS485-WLED",
+  "model": "Waveshare ESP32-S3-RS485-WLED",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the first pixel of an external WS2812 strip on the GPIO2 data output. A strip and its power supply are required.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-RS485-WLED/blob/2e7d5977dd2eea6ff3360fc6627d81564d88b066/Example/Arduino-3.2.0/example/01_Led_example/WS2812/WS2812.ino"
+    }
+  ]
+}

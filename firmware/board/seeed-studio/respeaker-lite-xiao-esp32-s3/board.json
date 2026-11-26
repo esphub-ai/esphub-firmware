@@ -1,0 +1,17 @@
+{
+  "name": "reSpeaker Lite + XIAO ESP32-S3",
+  "model": "Seeed Studio reSpeaker Lite + XIAO ESP32-S3",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LED on GPIO1 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/Seeed-Studio/wiki-documents/blob/c4843337a1a064ad6580010e21ff864624667889/sites/en/docs/Sensor/ReSpeaker_Lite/XIAO_ESP32_S3/respeaker_rgb_test.md#L28-L75"
+    }
+  ]
+}

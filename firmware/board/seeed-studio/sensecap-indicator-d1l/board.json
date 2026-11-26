@@ -1,0 +1,16 @@
+{
+  "name": "SenseCAP Indicator D1L",
+  "model": "Seeed Studio SenseCAP Indicator D1L",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb-uart",
+  "default_example": "backlight",
+  "examples": [
+    {
+      "id": "backlight",
+      "description": "Pulse the LCD backlight on GPIO45. The rhythm identifies the running factory app.",
+      "entrypoint": "examples/backlight/main.c",
+      "upstream": "https://github.com/Seeed-Solution/sensecap_indicator_esp32/blob/77edb8d2b9a92fc67965c1b2d4a838f0d09a1800/components/bsp/src/boards/sensecap_indicator_board.c"
+    }
+  ]
+}

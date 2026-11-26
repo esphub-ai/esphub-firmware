@@ -1,0 +1,2 @@
+dependencies:
+  esphome/esp-hub75: "==0.3.5"
