@@ -1,0 +1,18 @@
+dependencies:
+  m5stack/m5unified:
+    git: https://github.com/m5stack/M5Unified.git
+    version: 96576a14247ddc935149145aa6b51943464120f1
+  m5stack/m5gfx: "==0.3.0"
+  mooncake:
+    git: https://github.com/Forairaaaaa/mooncake.git
+    version: c1ab2adeca1b996cecf41f69e4f22d874b97f6ba
+  mooncake_log:
+    git: https://github.com/Forairaaaaa/mooncake_log.git
+    version: fe97aafe5432a9f22c1414b45b59fad37a4bf27e
+  smooth_ui_toolkit:
+    git: https://github.com/Forairaaaaa/smooth_ui_toolkit.git
+    version: c0bd45116ab443b7ad29cdce6c36f9e954a513a4
+  espressif/esp-now: "==2.5.4"
+  espressif/esp_tinyusb: "==1.7.6~1"
+  espressif/tinyusb: "==0.18.0~4"
+  jgromes/radiolib: "==7.2.1"

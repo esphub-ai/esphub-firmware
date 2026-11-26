@@ -1,0 +1,3 @@
+dependencies:
+  launcher:
+    path: "${PWD}/firmware/board/m5stack/cardputer-adv/examples/factory-demo/launcher"

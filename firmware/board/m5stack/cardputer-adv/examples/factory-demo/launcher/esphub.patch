@@ -1,0 +1,554 @@
+diff --git a/main/apps/app_launcher/view/menu/menu.cpp b/main/apps/app_launcher/view/menu/menu.cpp
+index d583d53..16e8930 100644
+--- a/main/apps/app_launcher/view/menu/menu.cpp
++++ b/main/apps/app_launcher/view/menu/menu.cpp
+@@ -3,6 +3,8 @@
+  *
+  * SPDX-License-Identifier: MIT
+  */
++#include "eh_agent.h"
++#include <cstdio>
+ #include "menu.h"
+ #include "../../app_launcher.h"
+ #include <apps/utils/audio/audio.h>
+@@ -177,6 +179,16 @@ void Launcher::update_menu(bool pushCanvas)
+ {
+     _launcher_menu->pushCanvas = pushCanvas;
+     _launcher_menu->update();
++
++    static bool reported = false;
++    if (pushCanvas && !reported && eh_connected()) {
++        char message[96];
++        const bool sprites = GetHAL().canvas.getBuffer() && GetHAL().canvasKeyboardBar.getBuffer()
++                             && GetHAL().canvasSystemBar.getBuffer();
++        std::snprintf(message, sizeof(message), "{\"event\":\"launcher.ready\",\"apps\":%u,\"sprites\":%s}",
++                      static_cast<unsigned>(_launcher_menu->getOptionList().size()), sprites ? "true" : "false");
++        reported = eh_message_send(message, nullptr);
++    }
+ }
+
+ void Launcher::handle_app_open(int index, int appId)
+diff --git a/main/apps/app_set_wifi/app_set_wifi.cpp b/main/apps/app_set_wifi/app_set_wifi.cpp
+index dc6c462..c831ead 100644
+--- a/main/apps/app_set_wifi/app_set_wifi.cpp
++++ b/main/apps/app_set_wifi/app_set_wifi.cpp
+@@ -4,6 +4,8 @@
+  * SPDX-License-Identifier: MIT
+  */
+ #include "app_set_wifi.h"
++#include "eh_agent.h"
++#include <esp_wifi.h>
+ #include "assets/set_wifi_big.h"
+ #include "assets/set_wifi_small.h"
+ #include <apps/utils/audio/audio.h>
+@@ -31,12 +33,14 @@ void AppSetWiFi::onOpen()
+
+     // Reset status
+     _wifi_ssid.clear();
+-    _wifi_password.clear();
+     _input_buffer.clear();
+     _current_state     = STATE_INIT;
+     _connection_result = false;
+
+-    load_saved_wifi_settings();
++    wifi_ap_record_t ap{};
++    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
++        _wifi_ssid.assign(reinterpret_cast<const char*>(ap.ssid), strnlen(reinterpret_cast<const char*>(ap.ssid), 32));
++    }
+
+     // Setup keyboard event handler
+     _key_event_slot_id = GetHAL().keyboard.onKeyEvent.connect(
+@@ -99,7 +103,7 @@ void AppSetWiFi::render_current_input_line()
+     GetHAL().canvas.setCursor(0, cursor_y);
+     GetHAL().canvas.setTextColor(TFT_WHITE, THEME_COLOR_BG);
+     GetHAL().canvas.print(">>> ");
+-    GetHAL().canvas.print(_input_buffer.c_str());
++    GetHAL().canvas.print((_current_state == STATE_WAIT_PASSWORD ? std::string(_input_buffer.size(), '*') : _input_buffer).c_str());
+
+     // Draw blinking cursor
+     if (_cursor_state) {
+@@ -176,25 +180,15 @@ void AppSetWiFi::handle_enter_key()
+
+     // Get password
+     else if (_current_state == STATE_WAIT_PASSWORD) {
+-        if (_input_buffer.empty()) {
+-            return;
+-        }
+-
+-        // Clear the current input line and redraw without cursor
+-        int cursor_y = GetHAL().canvas.getCursorY();
+-        GetHAL().canvas.fillRect(0, cursor_y, GetHAL().canvas.width(), 15, THEME_COLOR_BG);
+-        GetHAL().canvas.setCursor(0, cursor_y);
+-        GetHAL().canvas.setTextColor(TFT_WHITE, THEME_COLOR_BG);
+-        GetHAL().canvas.print(">>> ");
+-        GetHAL().canvas.print(_input_buffer.c_str());
+-        GetHAL().canvas.println();  // Move to next line
+-
+-        _wifi_password = _input_buffer;
+-        mclog::tagInfo(getAppInfo().name, "WiFi password set: \"{}\"", _wifi_password);
++        const bool queued = eh_wifi_join(_wifi_ssid.c_str(), _input_buffer.c_str(), false);
+         _input_buffer.clear();
+-        _current_state = STATE_CONNECTING;
+-        GetHAL().pushCanvas();  // Ensure screen is updated before showing connection status
+-        show_connection_status();
++        _current_state = queued ? STATE_CONNECTING : STATE_FAILED;
++        if (queued) {
++            show_connection_status();
++        } else {
++            _connection_result = false;
++            show_connection_result();
++        }
+     }
+
+     // Retry connection
+@@ -203,7 +197,6 @@ void AppSetWiFi::handle_enter_key()
+         GetHAL().canvas.fillScreen(THEME_COLOR_BG);
+         GetHAL().canvas.setCursor(0, 0);
+         _wifi_ssid.clear();
+-        _wifi_password.clear();
+         _input_buffer.clear();
+         show_ssid_prompt();
+     }
+@@ -237,7 +230,9 @@ void AppSetWiFi::update_cursor()
+ void AppSetWiFi::process_state_machine()
+ {
+     if (_current_state == STATE_CONNECTING) {
+-        connect_to_wifi();
++        const char* state = eh_wifi_join_state();
++        if (strcmp(state, "joining") == 0) return;
++        _connection_result = strcmp(state, "saved") == 0;
+         _current_state = _connection_result ? STATE_SUCCESS : STATE_FAILED;
+         show_connection_result();
+     }
+@@ -265,39 +260,23 @@ void AppSetWiFi::show_password_prompt()
+     GetHAL().canvas.print(">>> ");
+     GetHAL().pushCanvas();
+
+-    // Auto-fill saved password if available
+-    auto_fill_saved_password();
+ }
+
+ void AppSetWiFi::show_connection_status()
+ {
+     GetHAL().canvas.setTextColor(TFT_ORANGE, THEME_COLOR_BG);
+-    GetHAL().canvas.printf("WiFi config:\n- %s\n- %s\n", _wifi_ssid.c_str(), _wifi_password.c_str());
++    GetHAL().canvas.printf("WiFi: %s\n", _wifi_ssid.c_str());
+     GetHAL().canvas.println("Connecting...");
+     GetHAL().canvas.setTextColor(TFT_WHITE, THEME_COLOR_BG);
+     GetHAL().pushCanvas();
+ }
+
+-void AppSetWiFi::connect_to_wifi()
+-{
+-    mclog::tagInfo(getAppInfo().name, "attempting WiFi connection to \"{}\"", _wifi_ssid);
+-
+-    // Init and connect
+-    GetHAL().wifiInit();
+-    _connection_result = GetHAL().wifiConnect(_wifi_ssid, _wifi_password);
+-
+-    mclog::tagInfo(getAppInfo().name, "WiFi connection result: {}", _connection_result ? "success" : "failed");
+-}
+-
+ void AppSetWiFi::show_connection_result()
+ {
+     if (_connection_result) {
+         GetHAL().canvas.setTextColor(TFT_GREEN, THEME_COLOR_BG);
+         GetHAL().canvas.println("Connected successfully!");
+
+-        // Save WiFi settings on successful connection
+-        save_wifi_settings();
+-
+         GetHAL().canvas.setTextColor(TFT_CYAN, THEME_COLOR_BG);
+         GetHAL().canvas.println("WiFi settings saved");
+         GetHAL().canvas.setTextColor(TFT_WHITE, THEME_COLOR_BG);
+@@ -313,29 +292,6 @@ void AppSetWiFi::show_connection_result()
+     GetHAL().pushCanvas();
+ }
+
+-void AppSetWiFi::load_saved_wifi_settings()
+-{
+-    // Load saved SSID and password from settings
+-    _wifi_ssid     = GetHAL().getSettings().GetString("wifi_ssid", "");
+-    _wifi_password = GetHAL().getSettings().GetString("wifi_password", "");
+-
+-    if (!_wifi_ssid.empty()) {
+-        mclog::tagInfo(getAppInfo().name, "loaded saved WiFi SSID: \"{}\"", _wifi_ssid);
+-    }
+-    if (!_wifi_password.empty()) {
+-        mclog::tagInfo(getAppInfo().name, "loaded saved WiFi password (length: {})", _wifi_password.length());
+-    }
+-}
+-
+-void AppSetWiFi::save_wifi_settings()
+-{
+-    // Save SSID and password to settings
+-    GetHAL().getSettings().SetString("wifi_ssid", _wifi_ssid);
+-    GetHAL().getSettings().SetString("wifi_password", _wifi_password);
+-
+-    mclog::tagInfo(getAppInfo().name, "saved WiFi settings - SSID: \"{}\"", _wifi_ssid);
+-}
+-
+ void AppSetWiFi::auto_fill_saved_ssid()
+ {
+     // Auto-fill the input buffer with saved SSID if available
+@@ -345,13 +301,3 @@ void AppSetWiFi::auto_fill_saved_ssid()
+         mclog::tagInfo(getAppInfo().name, "auto-filled SSID: \"{}\"", _wifi_ssid);
+     }
+ }
+-
+-void AppSetWiFi::auto_fill_saved_password()
+-{
+-    // Auto-fill the input buffer with saved password if available
+-    if (!_wifi_password.empty()) {
+-        _input_buffer = _wifi_password;
+-        render_input_prompt();
+-        mclog::tagInfo(getAppInfo().name, "auto-filled password (length: {})", _wifi_password.length());
+-    }
+-}
+diff --git a/main/apps/app_set_wifi/app_set_wifi.h b/main/apps/app_set_wifi/app_set_wifi.h
+index 562797c..277829f 100644
+--- a/main/apps/app_set_wifi/app_set_wifi.h
++++ b/main/apps/app_set_wifi/app_set_wifi.h
+@@ -41,7 +41,6 @@ private:
+     std::string _input_buffer;
+     State_t _current_state = STATE_INIT;
+     std::string _wifi_ssid;
+-    std::string _wifi_password;
+     int _key_event_slot_id  = -1;
+     bool _connection_result = false;
+
+@@ -56,10 +55,6 @@ private:
+     void show_ssid_prompt();
+     void show_password_prompt();
+     void show_connection_status();
+-    void connect_to_wifi();
+     void show_connection_result();
+-    void load_saved_wifi_settings();
+-    void save_wifi_settings();
+     void auto_fill_saved_ssid();
+-    void auto_fill_saved_password();
+ };
+diff --git a/main/apps/app_wifi_scan/app_wifi_scan.cpp b/main/apps/app_wifi_scan/app_wifi_scan.cpp
+index 5e468db..847a711 100644
+--- a/main/apps/app_wifi_scan/app_wifi_scan.cpp
++++ b/main/apps/app_wifi_scan/app_wifi_scan.cpp
+@@ -30,7 +30,6 @@ void AppWifiScan::onOpen()
+ {
+     mclog::tagInfo(getAppInfo().name, "on open");
+
+-    GetHAL().wifiInit();
+     render_page_scanning();
+ }
+
+diff --git a/main/hal/hal.cpp b/main/hal/hal.cpp
+index 9a42654..32eabad 100644
+--- a/main/hal/hal.cpp
++++ b/main/hal/hal.cpp
+@@ -28,6 +28,7 @@ void Hal::init()
+     mclog::tagInfo(_tag, "init");
+
+     M5.begin();
++    M5.Display.setRotation(0);
+     M5.Display.setBrightness(0);
+     M5.Speaker.begin();  // Codec takes some time to initialize
+
+@@ -36,6 +37,7 @@ void Hal::init()
+     keyboard_init();
+     setting_init();
+     spi_init();
++    start_sntp();
+ }
+
+ void Hal::update()
+@@ -111,14 +113,6 @@ void Hal::setting_init()
+ {
+     mclog::tagInfo(_tag, "setting init");
+
+-    esp_err_t ret = nvs_flash_init();
+-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        mclog::tagWarn(_tag, "erasing NVS flash to fix corruption");
+-        ESP_ERROR_CHECK(nvs_flash_erase());
+-        ret = nvs_flash_init();
+-    }
+-    ESP_ERROR_CHECK(ret);
+-
+     _settings = new Settings("cardputer", true);
+ }
+
+@@ -153,7 +147,7 @@ void Hal::keyboard_init()
+ #include <vector>
+ #include <time.h>
+ #include <sys/time.h>
+-#include <esp_sntp.h>
++#include <esp_netif_sntp.h>
+
+ #define DEFAULT_SCAN_LIST_SIZE 6
+ static wifi_ap_record_t _ap_info[DEFAULT_SCAN_LIST_SIZE];
+@@ -210,170 +204,17 @@ void Hal::wifiScan(std::vector<ScanResult_t>& scanResult)
+     mclog::tagInfo(_tag, "wifi scan completed, found {} APs", scanResult.size());
+ }
+
+-static EventGroupHandle_t s_wifi_event_group = NULL;
+-static const int WIFI_CONNECTED_BIT          = BIT0;
+-static const int WIFI_DISCONNECTED_BIT       = BIT1;
+-static const int WIFI_FAIL_BIT               = BIT2;
+-static const int WIFI_STARTED_BIT            = BIT3;
+-
+-static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+-{
+-    const char* TAG = "wifi";
+-
+-    // Wifi started
+-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+-        xEventGroupSetBits(s_wifi_event_group, WIFI_STARTED_BIT);
+-    }
+-
+-    // Disconnected
+-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+-        xEventGroupSetBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
+-        xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+-    }
+-
+-    // Connected
+-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+-        ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+-    }
+-}
+-
+-void Hal::wifiInit()
+-{
+-    mclog::tagInfo(_tag, "wifi init");
+-
+-    if (_is_wifi_inited) {
+-        return;
+-    }
+-
+-    ESP_ERROR_CHECK(nvs_flash_init());
+-    ESP_ERROR_CHECK(esp_netif_init());
+-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+-    esp_netif_t* sta_netif = esp_netif_create_default_wifi_sta();
+-    assert(sta_netif);
+-
+-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+-
+-    if (!s_wifi_event_group) {
+-        s_wifi_event_group = xEventGroupCreate();
+-    }
+-
+-    ESP_ERROR_CHECK(
+-        esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, nullptr, nullptr));
+-    ESP_ERROR_CHECK(
+-        esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, nullptr, nullptr));
+-
+-    ESP_ERROR_CHECK(esp_wifi_start());
+-    _is_wifi_inited = true;
+-}
+-
+-void Hal::wifiDeinit()
++bool Hal::isWifiConnected() const
+ {
+-    mclog::tagInfo(_tag, "wifi deinit");
+-
+-    if (!_is_wifi_inited) {
+-        return;
+-    }
+-
+-    esp_wifi_stop();
+-    esp_wifi_deinit();
+-    _is_wifi_inited = false;
+-}
+-
+-bool Hal::wifiConnect(const std::string& ssid, const std::string& password)
+-{
+-    mclog::tagInfo(_tag, "wifi connect to ssid: {} password: {}", ssid, password);
+-
+-    if (!_is_wifi_inited) {
+-        wifiInit();
+-    }
+-
+-    wifiDisconnect();
+-
+-    // Hold until wifi started
+-    xEventGroupWaitBits(s_wifi_event_group, WIFI_STARTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(3000));
+-
+-    // Reset event status
+-    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_DISCONNECTED_BIT);
+-
+-    // Set Wi-Fi config
+-    wifi_config_t wifi_config = {};
+-    strncpy((char*)wifi_config.sta.ssid, ssid.c_str(), sizeof(wifi_config.sta.ssid));
+-    strncpy((char*)wifi_config.sta.password, password.c_str(), sizeof(wifi_config.sta.password));
+-
+-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+-    ESP_ERROR_CHECK(esp_wifi_connect());
+-
+-    // Wait for connection result
+-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdTRUE, pdFALSE,
+-                                           pdMS_TO_TICKS(10000));
+-
+-    if (bits & WIFI_CONNECTED_BIT) {
+-        mclog::tagInfo(_tag, "connected to SSID: {}", ssid);
+-        _is_wifi_connected = true;
+-        start_sntp();
+-        return true;
+-    } else if (bits & WIFI_FAIL_BIT) {
+-        mclog::tagError(_tag, "failed to connect to SSID: {}", ssid);
+-        return false;
+-    } else {
+-        mclog::tagError(_tag, "wifi connect timeout");
+-        return false;
+-    }
+-}
+-
+-void Hal::wifiDisconnect()
+-{
+-    mclog::tagInfo(_tag, "wifi disconnect");
+-
+-    if (!_is_wifi_inited) {
+-        return;
+-    }
+-
+-    if (!_is_wifi_connected) {
+-        return;
+-    }
+-
+-    // Hold until wifi started
+-    xEventGroupWaitBits(s_wifi_event_group, WIFI_STARTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(3000));
+-
+-    // Disconnect old connection
+-    ESP_ERROR_CHECK(esp_wifi_disconnect());
+-
+-    // Wait for disconnect result
+-    xEventGroupWaitBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(5000));
+-
+-    // Reset event status
+-    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_DISCONNECTED_BIT);
+-
+-    stop_sntp();
+-
+-    _is_wifi_connected = false;
++    wifi_ap_record_t ap{};
++    return esp_wifi_sta_get_ap_info(&ap) == ESP_OK;
+ }
+
+ void Hal::start_sntp()
+ {
+-    mclog::tagInfo(_tag, "start sntp");
+-
+-    if (!_is_wifi_connected) {
+-        mclog::tagError(_tag, "wifi not connected");
+-        return;
+-    }
+-
+-    // Set timezone to UTC (we don't know where this device is)
+-    setenv("TZ", "UTC0", 1);
+-    tzset();
+-
+-    // Stop any previous session before configuring a fresh request.
+-    esp_sntp_stop();
+-    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+-    esp_sntp_setservername(0, "pool.ntp.org");
+-    sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+-    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+-    esp_sntp_init();
++    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
++    config.sync_cb = time_sync_notification_cb;
++    ESP_ERROR_CHECK(esp_netif_sntp_init(&config));
+ }
+
+ void Hal::time_sync_notification_cb(struct timeval* tv)
+@@ -382,18 +223,6 @@ void Hal::time_sync_notification_cb(struct timeval* tv)
+     ESP_LOGI("sntp", "Notification of a time synchronization event");
+ }
+
+-void Hal::stop_sntp()
+-{
+-    mclog::tagInfo(_tag, "stop sntp");
+-
+-    if (!_is_wifi_connected) {
+-        mclog::tagError(_tag, "wifi not connected");
+-        return;
+-    }
+-
+-    esp_sntp_stop();
+-}
+-
+ /* -------------------------------------------------------------------------- */
+ /*                                   EspNow                                   */
+ /* -------------------------------------------------------------------------- */
+@@ -428,15 +257,6 @@ void Hal::espNowInit()
+ {
+     mclog::tagInfo(_tag, "esp now init");
+
+-    if (!_is_wifi_inited) {
+-        wifiInit();
+-    }
+-
+-    if (_is_wifi_connected) {
+-        wifiDisconnect();
+-        espNowDeinit();
+-    }
+-
+     if (_is_esp_now_inited) {
+         mclog::tagInfo(_tag, "esp now already inited");
+         return;
+diff --git a/main/hal/hal.h b/main/hal/hal.h
+index 4db5405..fa71a66 100644
+--- a/main/hal/hal.h
++++ b/main/hal/hal.h
+@@ -69,15 +69,8 @@ public:
+
+     /* ---------------------------------- WiFi ---------------------------------- */
+     using ScanResult_t = std::pair<int, std::string>;
+-    void wifiInit();
+-    void wifiDeinit();
+     void wifiScan(std::vector<ScanResult_t>& scanResult);
+-    bool wifiConnect(const std::string& ssid, const std::string& password);
+-    bool isWifiConnected() const
+-    {
+-        return _is_wifi_connected;
+-    }
+-    void wifiDisconnect();
++    bool isWifiConnected() const;
+
+     /* ---------------------------------- Time ---------------------------------- */
+     bool isTimeSynced() const
+@@ -136,8 +129,6 @@ public:
+ private:
+     std::atomic<bool> _is_time_synced{false};
+     Settings* _settings             = nullptr;
+-    bool _is_wifi_inited            = false;
+-    bool _is_wifi_connected         = false;
+     bool _is_esp_now_inited         = false;
+     bool _is_ir_inited              = false;
+     bool _is_ble_keyboard_inited    = false;
+@@ -151,7 +142,6 @@ private:
+     void i2c_scan();
+     void keyboard_init();
+     void start_sntp();
+-    void stop_sntp();
+     static void time_sync_notification_cb(struct timeval* tv);
+     void setting_init();
+     void spi_init();
+diff --git a/main/hal/utils/ble_hid_device/ble_hid_device_helper.c b/main/hal/utils/ble_hid_device/ble_hid_device_helper.c
+index 7fb506a..180ff3f 100644
+--- a/main/hal/utils/ble_hid_device/ble_hid_device_helper.c
++++ b/main/hal/utils/ble_hid_device/ble_hid_device_helper.c
+@@ -929,12 +929,7 @@ void _demo_app_main(void)
+     ESP_LOGE(TAG, "Please turn on BT HID device or BLE!");
+     return;
+ #endif
+-    ret = nvs_flash_init();
+-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        ESP_ERROR_CHECK(nvs_flash_erase());
+-        ret = nvs_flash_init();
+-    }
+-    ESP_ERROR_CHECK(ret);
++    // EspHub initialized the shared NVS partition before launching the UI.
+
+     ESP_LOGI(TAG, "setting hid gap, mode:%d", HID_DEV_MODE);
+     ret = esp_hid_gap_init(HID_DEV_MODE);
