@@ -24,6 +24,12 @@
       "description": "Send extended NEC frames on GPIO4 and show the incrementing command on the LCD.",
       "entrypoint": "examples/ir-nec/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Basics/ir_nec/ir_nec.ino"
+    },
+    {
+      "id": "imu",
+      "description": "Read the built-in MPU6886 accelerometer and gyroscope and refresh their values on the LCD.",
+      "entrypoint": "examples/imu/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Basics/imu/imu.ino"
     }
   ]
 }
