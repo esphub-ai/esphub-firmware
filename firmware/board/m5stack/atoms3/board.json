@@ -81,6 +81,12 @@
       "description": "Drive a 10 kHz 10-bit LEDC PWM ramp on GPIO5 for the Atomic PWM Base while displaying PWM in green on the LCD.",
       "entrypoint": "examples/atomic-pwm/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPWM/AtomicPWM.ino"
+    },
+    {
+      "id": "atomic-hdriver",
+      "description": "Control the Atomic H-Driver Base with BtnA, display H-Driver on the LCD, and report input voltage and faults over serial.",
+      "entrypoint": "examples/atomic-hdriver/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicHDriver/AtomicHDriver.ino"
     }
   ]
 }
