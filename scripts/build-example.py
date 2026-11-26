@@ -48,9 +48,9 @@ def build(args, board, example, work):
         shutil.copytree(FIRMWARE / "app", project)
         sdkconfig = project / "sdkconfig.defaults"
         with sdkconfig.open("a") as defaults:
-            example_config = entrypoint.parent / "sdkconfig.defaults"
-            if example_config.is_file():
-                defaults.write(example_config.read_text().rstrip() + "\n")
+            example_defaults = entrypoint.parent / "sdkconfig.defaults"
+            if example_defaults.is_file():
+                defaults.write("\n" + example_defaults.read_text() + "\n")
             # OTA apps must use the flash bus selected for the board's bootloader.
             if board["bootloader"].endswith("-opi"):
                 defaults.write("CONFIG_ESPTOOLPY_OCT_FLASH=y\n")
