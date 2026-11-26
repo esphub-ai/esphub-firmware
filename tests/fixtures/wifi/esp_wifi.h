@@ -14,6 +14,12 @@ typedef enum { WIFI_FAST_SCAN, WIFI_ALL_CHANNEL_SCAN } wifi_scan_method_t;
 #define WIFI_SCAN_TYPE_ACTIVE 0
 #define WIFI_CONNECT_AP_BY_SIGNAL 1
 #define WIFI_IF_STA 0
+#define ESP_ERR_WIFI_NOT_STARTED 0x3002
+#define ESP_ERR_WIFI_NOT_INIT 0x3001
+typedef enum { WIFI_MODE_NULL, WIFI_MODE_STA, WIFI_MODE_AP, WIFI_MODE_APSTA } wifi_mode_t;
+typedef struct { int unused; } wifi_init_config_t;
+#define WIFI_INIT_CONFIG_DEFAULT() ((wifi_init_config_t){0})
+#define WIFI_STORAGE_RAM 1
 #define WPA3_SAE_PWE_BOTH 3
 
 typedef struct {
@@ -51,3 +57,11 @@ esp_err_t esp_wifi_clear_ap_list(void);
 esp_err_t esp_wifi_set_config(int interface, wifi_config_t *config);
 esp_err_t esp_wifi_connect(void);
 esp_err_t esp_wifi_disconnect(void);
+
+esp_err_t esp_wifi_get_mode(wifi_mode_t *mode);
+esp_err_t esp_wifi_set_mode(wifi_mode_t mode);
+esp_err_t esp_wifi_init(const wifi_init_config_t *cfg);
+esp_err_t esp_wifi_deinit(void);
+esp_err_t esp_wifi_start(void);
+esp_err_t esp_wifi_stop(void);
+esp_err_t esp_wifi_set_storage(int storage);

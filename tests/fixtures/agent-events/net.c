@@ -17,6 +17,7 @@ typedef struct { int unused; } wifi_init_config_t;
 #define IP_EVENT_ETH_GOT_IP 2
 #define IP_EVENT_STA_LOST_IP 3
 #define IP_EVENT_ETH_LOST_IP 4
+#define WIFI_EVENT_STA_STOP 7
 #define WIFI_EVENT_STA_START 5
 #define WIFI_EVENT_STA_DISCONNECTED 6
 #define ESP_EVENT_ANY_ID -1
@@ -30,17 +31,13 @@ static esp_err_t esp_netif_init(void) { return ESP_OK; }
 static esp_err_t esp_event_loop_create_default(void) { return ESP_OK; }
 static esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key) { return NULL; }
 static esp_err_t esp_netif_get_ip_info(esp_netif_t *netif, esp_netif_ip_info_t *ip) { return ESP_FAIL; }
-static esp_netif_t *esp_netif_create_default_wifi_sta(void) { return NULL; }
-static esp_err_t esp_netif_set_hostname(esp_netif_t *n, const char *name) { return ESP_OK; }
-static esp_err_t esp_wifi_init(const wifi_init_config_t *cfg) { return ESP_OK; }
-static esp_err_t esp_wifi_set_storage(int storage) { return ESP_OK; }
-static esp_err_t esp_wifi_set_mode(int mode) { return ESP_OK; }
-static esp_err_t esp_wifi_start(void) { return ESP_OK; }
+static bool esp_netif_is_netif_up(esp_netif_t *n) { return false; }
 static esp_err_t esp_wifi_sta_get_ap_info(wifi_ap_record_t *ap) { return ESP_FAIL; }
 typedef void (*event_handler_t)(void *, esp_event_base_t, int32_t, void *);
 static event_handler_t handlers[7];
+static void *handler_args[7];
 static esp_err_t esp_event_handler_register(esp_event_base_t base, int32_t id, event_handler_t handler, void *arg)
-{ if (id == ESP_EVENT_ANY_ID) id = WIFI_EVENT_STA_DISCONNECTED; assert(id > 0 && id < 7); handlers[id] = handler; return ESP_OK; }
+{ if (id == ESP_EVENT_ANY_ID) id = WIFI_EVENT_STA_DISCONNECTED; assert(id > 0 && id < 7); handlers[id] = handler; handler_args[id] = arg; return ESP_OK; }
 #include "firmware/components/eh_agent/src/eh_net.c"
 
 eh_config_t g_eh_cfg = EH_CONFIG_DEFAULT();
@@ -51,6 +48,7 @@ void eh_wifi_on_disconnected(int reason) { assert(reason == 7); ++disconnects; }
 void eh_wifi_on_got_ip(void) { ++got_ips; }
 void eh_wifi_reload(void) { }
 esp_err_t eh_wifi_init(void) { return ESP_OK; }
+esp_err_t eh_wifi_set_managed(bool enabled) { return ESP_OK; }
 int eh_wifi_count(void) { return 0; }
 esp_err_t eh_nvs_get_str(const char *key, char *out, size_t len) { out[0] = 0; return ESP_ERR_NOT_FOUND; }
 
@@ -62,15 +60,18 @@ int main(void)
     assert(handlers[IP_EVENT_STA_GOT_IP] && handlers[IP_EVENT_ETH_GOT_IP]);
     assert(handlers[IP_EVENT_STA_LOST_IP] && handlers[IP_EVENT_ETH_LOST_IP]);
     assert(handlers[WIFI_EVENT_STA_DISCONNECTED]);
-    handlers[IP_EVENT_STA_GOT_IP](NULL, IP_EVENT, IP_EVENT_STA_GOT_IP, &ip);
+    handlers[IP_EVENT_STA_GOT_IP](handler_args[IP_EVENT_STA_GOT_IP], IP_EVENT, IP_EVENT_STA_GOT_IP, &ip);
     assert(eh_net_has_ip() && wakes == 1 && got_ips == 1);
-    handlers[WIFI_EVENT_STA_DISCONNECTED](NULL, WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &lost);
-    assert(!eh_net_has_ip() && wakes == 2 && disconnects == 1 && !s_ip[0]);
-    handlers[IP_EVENT_STA_GOT_IP](NULL, IP_EVENT, IP_EVENT_STA_GOT_IP, &ip);
-    handlers[IP_EVENT_STA_LOST_IP](NULL, IP_EVENT, IP_EVENT_STA_LOST_IP, NULL);
-    assert(!eh_net_has_ip() && wakes == 4 && !s_ip[0]);
-    handlers[IP_EVENT_ETH_GOT_IP](NULL, IP_EVENT, IP_EVENT_ETH_GOT_IP, &ip);
-    handlers[IP_EVENT_ETH_LOST_IP](NULL, IP_EVENT, IP_EVENT_ETH_LOST_IP, NULL);
-    assert(!eh_net_has_ip() && wakes == 6 && !s_ip[0]);
+    handlers[WIFI_EVENT_STA_DISCONNECTED](handler_args[WIFI_EVENT_STA_DISCONNECTED], WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &lost);
+    assert(!eh_net_has_ip() && wakes == 2 && disconnects == 1);
+    handlers[IP_EVENT_STA_GOT_IP](handler_args[IP_EVENT_STA_GOT_IP], IP_EVENT, IP_EVENT_STA_GOT_IP, &ip);
+    handlers[IP_EVENT_STA_LOST_IP](handler_args[IP_EVENT_STA_LOST_IP], IP_EVENT, IP_EVENT_STA_LOST_IP, NULL);
+    assert(!eh_net_has_ip() && wakes == 4);
+    handlers[IP_EVENT_ETH_GOT_IP](handler_args[IP_EVENT_ETH_GOT_IP], IP_EVENT, IP_EVENT_ETH_GOT_IP, &ip);
+    assert(eh_net_has_ip() && got_ips == 2); /* Ethernet IP cannot complete a station join. */
+    handlers[WIFI_EVENT_STA_DISCONNECTED](NULL, WIFI_EVENT, WIFI_EVENT_STA_STOP, NULL);
+    assert(eh_net_has_ip()); /* station teardown leaves Ethernet available to the Agent */
+    handlers[IP_EVENT_ETH_LOST_IP](handler_args[IP_EVENT_ETH_LOST_IP], IP_EVENT, IP_EVENT_ETH_LOST_IP, NULL);
+    assert(!eh_net_has_ip() && wakes == 7);
     puts("native network loss wake callbacks: ok");
 }

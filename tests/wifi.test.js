@@ -36,6 +36,7 @@ test("native Wi-Fi scan hints and safe fallback", async (t) => {
       exe,
     ]);
     for (const [scenario, description] of [
+      ["handoff", "release the radio to an app and resume the saved station"],
       ["scan", "deduplicate/sort scans with coherent strongest-AP metadata"],
       ["fresh", "use fresh channel+BSSID with FAST_SCAN without a full retry"],
       ["order", "try visible saved SSIDs strongest first, not saved/MRU order"],

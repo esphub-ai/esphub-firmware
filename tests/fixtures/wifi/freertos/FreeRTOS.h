@@ -6,6 +6,8 @@ typedef int BaseType_t;
 #define BIT1 (1U << 1)
 #define BIT2 (1U << 2)
 #define BIT3 (1U << 3)
+#define BIT4 (1U << 4)
+#define BIT5 (1U << 5)
 #define pdTRUE 1
 #define pdFALSE 0
 #define pdPASS 1

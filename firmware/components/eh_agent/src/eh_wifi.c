@@ -21,6 +21,7 @@
 #include "esp_log.h"
 #include "mbedtls/platform_util.h"
 #include "esp_wifi.h"
+#include "esp_netif.h"
 #include "cJSON.h"
 
 typedef struct {
@@ -33,6 +34,8 @@ typedef struct {
 #define EV_GOT_IP BIT1
 #define EV_DISC BIT2
 #define EV_RECONF BIT3
+#define EV_MANAGED BIT4
+#define EV_CANCEL BIT5
 #define ATTEMPT_TIMEOUT_MS 15000
 #define SCAN_MAX 24
 
@@ -41,9 +44,14 @@ static int s_count;
 static SemaphoreHandle_t s_list_mu;  /* s_nets */
 static SemaphoreHandle_t s_radio_mu; /* scan vs connection attempt */
 static EventGroupHandle_t s_ev;
-static volatile bool s_online;
+static SemaphoreHandle_t s_owner_mu; /* serializes public ownership changes */
+static esp_netif_t *s_sta_netif;     /* only set for the SDK-owned driver */
+static bool s_task_created;
+
+static bool managed(void) { return s_ev && (xEventGroupGetBits(s_ev) & EV_MANAGED); }
+static _Atomic bool s_online;
 static char s_current[33];
-static volatile int s_last_reason;
+static _Atomic int s_last_reason;
 
 static void lock(void) { xSemaphoreTake(s_list_mu, portMAX_DELAY); }
 static void unlock(void) { xSemaphoreGive(s_list_mu); }
@@ -97,7 +105,11 @@ static void load(void)
 
 int eh_wifi_count(void)
 {
-    return s_count;
+    if (!s_list_mu) return 0;
+    lock();
+    int count = s_count;
+    unlock();
+    return count;
 }
 
 esp_err_t eh_wifi_add(const char *ssid, const char *pass, bool hidden)
@@ -258,23 +270,24 @@ int eh_wifi_scan(eh_ap_t *out, int max, uint32_t timeout_ms)
     if (!s_radio_mu || xSemaphoreTake(s_radio_mu, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
         return -1;
     }
-    int n = scan_locked(out, max);
+    int n = managed() ? scan_locked(out, max) : -1;
     xSemaphoreGive(s_radio_mu);
     return n;
 }
 
 bool eh_wifi_current(char *ssid, size_t len)
 {
-    if (!s_online) {
-        return false;
-    }
-    strlcpy(ssid, s_current, len);
-    return true;
+    if (!s_list_mu) return false;
+    lock();
+    bool current = managed() && s_online;
+    if (current) strlcpy(ssid, s_current, len);
+    unlock();
+    return current;
 }
 
 /* ---- events from eh_net.c ---- */
 void eh_wifi_on_started(void) { if (s_ev) xEventGroupSetBits(s_ev, EV_STARTED); }
-void eh_wifi_on_got_ip(void) { if (s_ev) xEventGroupSetBits(s_ev, EV_GOT_IP); }
+void eh_wifi_on_got_ip(void) { if (managed()) xEventGroupSetBits(s_ev, EV_GOT_IP); }
 void eh_wifi_on_disconnected(int reason)
 {
     s_last_reason = reason;
@@ -285,10 +298,9 @@ void eh_wifi_on_disconnected(int reason)
 }
 void eh_wifi_reload(void)
 {
+    if (!s_list_mu || !s_ev) return;
     load();
-    if (s_ev) {
-        xEventGroupSetBits(s_ev, EV_RECONF);
-    }
+    xEventGroupSetBits(s_ev, EV_RECONF);
 }
 
 static TickType_t attempt_remaining(TickType_t started)
@@ -313,7 +325,7 @@ static bool attempt(const net_t *n, const eh_ap_t *hint, TickType_t started)
     wc.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
     wc.sta.pmf_cfg.capable = true;
     wc.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
-    if (esp_wifi_set_config(WIFI_IF_STA, &wc) != ESP_OK) {
+    if (!managed() || esp_wifi_set_config(WIFI_IF_STA, &wc) != ESP_OK) {
         return false;
     }
     xEventGroupClearBits(s_ev, EV_GOT_IP | EV_DISC);
@@ -321,10 +333,13 @@ static bool attempt(const net_t *n, const eh_ap_t *hint, TickType_t started)
     if (esp_wifi_connect() != ESP_OK) {
         return false;
     }
-    EventBits_t b = xEventGroupWaitBits(s_ev, EV_GOT_IP | EV_DISC, pdTRUE, pdFALSE, attempt_remaining(started));
+    EventBits_t b = xEventGroupWaitBits(s_ev, EV_GOT_IP | EV_DISC | EV_CANCEL, pdTRUE, pdFALSE, attempt_remaining(started));
+    if (!managed()) return false;
     if (b & EV_GOT_IP) {
+        lock();
         strlcpy(s_current, n->ssid, sizeof(s_current));
         s_online = true;
+        unlock();
         return true;
     }
     ESP_LOGW(EH_TAG, "wifi: %s failed (%s reason %d)", n->ssid, (b & EV_DISC) ? "disconnect" : "timeout",
@@ -342,7 +357,7 @@ bool eh_wifi_join(const char *ssid, const char *pass, bool hidden)
 {
     if (!ssid || !ssid[0] || strlen(ssid) > 32 || !pass || strlen(pass) > 64 || !s_list_mu) return false;
     lock();
-    bool available = s_join_state != JOIN_RUNNING && s_join_state != JOIN_QUEUED;
+    bool available = managed() && s_join_state != JOIN_RUNNING && s_join_state != JOIN_QUEUED;
     if (available) {
         strlcpy(s_join.ssid, ssid, sizeof(s_join.ssid));
         strlcpy(s_join.pass, pass, sizeof(s_join.pass));
@@ -354,10 +369,24 @@ bool eh_wifi_join(const char *ssid, const char *pass, bool hidden)
     return available;
 }
 
+bool eh_wifi_join_saved(const char *ssid)
+{
+    if (!ssid || !s_list_mu) return false;
+    net_t saved = {0};
+    lock();
+    for (int i = 0; i < s_count; i++) {
+        if (!strcmp(ssid, s_nets[i].ssid)) { saved = s_nets[i]; break; }
+    }
+    unlock();
+    bool queued = saved.ssid[0] && eh_wifi_join(saved.ssid, saved.pass, saved.hidden);
+    mbedtls_platform_zeroize(&saved, sizeof(saved));
+    return queued;
+}
+
 const char *eh_wifi_join_state(void)
 {
     static const char *states[] = {"idle", "joining", "joining", "failed", "saved"};
-    if (!s_list_mu) return "unavailable";
+    if (!managed()) return "unavailable";
     lock();
     const char *state = states[s_join_state];
     unlock();
@@ -375,11 +404,14 @@ static bool join_queued(void)
 static void try_requested_network(void)
 {
     lock();
+    if (!managed() || s_join_state != JOIN_QUEUED) {
+        unlock();
+        return;
+    }
     net_t requested = s_join;
     memset(s_join.pass, 0, sizeof(s_join.pass));
     s_join_state = JOIN_RUNNING;
     unlock();
-    xSemaphoreTake(s_radio_mu, portMAX_DELAY);
     if (s_online) {
         xEventGroupClearBits(s_ev, EV_DISC);
         esp_wifi_disconnect();
@@ -394,7 +426,6 @@ static void try_requested_network(void)
         ok = false;
     }
     mbedtls_platform_zeroize(requested.pass, sizeof(requested.pass));
-    xSemaphoreGive(s_radio_mu);
     lock();
     s_join_state = ok ? JOIN_SAVED : JOIN_FAILED;
     unlock();
@@ -402,11 +433,16 @@ static void try_requested_network(void)
 
 static void wifi_task(void *arg)
 {
-    xEventGroupWaitBits(s_ev, EV_STARTED, pdFALSE, pdFALSE, portMAX_DELAY);
     uint32_t backoff_ms = 2000;
     eh_ap_t *seen = calloc(SCAN_MAX, sizeof(eh_ap_t));
     for (;;) {
-        if (join_queued()) { try_requested_network(); continue; }
+        xEventGroupWaitBits(s_ev, EV_MANAGED | EV_STARTED, pdFALSE, pdTRUE, portMAX_DELAY);
+        if (join_queued()) {
+            xSemaphoreTake(s_radio_mu, portMAX_DELAY);
+            try_requested_network();
+            xSemaphoreGive(s_radio_mu);
+            continue;
+        }
 
         if (s_online) {
             EventBits_t b = xEventGroupWaitBits(s_ev, EV_DISC | EV_RECONF, pdTRUE, pdFALSE, portMAX_DELAY);
@@ -423,9 +459,13 @@ static void wifi_task(void *arg)
                     continue; /* keep the working connection */
                 }
                 ESP_LOGI(EH_TAG, "wifi: current network %s was forgotten, reconnecting", s_current);
-                s_online = false;
-                esp_wifi_disconnect();
-                xEventGroupWaitBits(s_ev, EV_DISC, pdTRUE, pdFALSE, pdMS_TO_TICKS(2000));
+                xSemaphoreTake(s_radio_mu, portMAX_DELAY);
+                if (managed()) {
+                    s_online = false;
+                    esp_wifi_disconnect();
+                    xEventGroupWaitBits(s_ev, EV_DISC, pdTRUE, pdFALSE, pdMS_TO_TICKS(2000));
+                }
+                xSemaphoreGive(s_radio_mu);
             }
             backoff_ms = 2000;
         }
@@ -441,6 +481,10 @@ static void wifi_task(void *arg)
         }
 
         xSemaphoreTake(s_radio_mu, portMAX_DELAY);
+        if (!managed()) {
+            xSemaphoreGive(s_radio_mu);
+            continue;
+        }
         int nseen = seen ? scan_locked(seen, SCAN_MAX) : -1;
         /* order: visible saved networks by signal, then the rest (hidden / not seen) in saved order */
         int order[EH_WIFI_MAX], k = 0;
@@ -462,7 +506,7 @@ static void wifi_task(void *arg)
         }
         bool ok = false;
         for (int x = 0; x < k && !ok; x++) {
-            if (join_queued()) break;
+            if (join_queued() || !managed()) break;
             int i = order[x];
             TickType_t started = xTaskGetTickCount();
             ok = attempt(&nets[i], hints[i], started);
@@ -505,15 +549,87 @@ esp_err_t eh_wifi_init(void)
 {
     s_list_mu = xSemaphoreCreateMutex();
     s_radio_mu = xSemaphoreCreateMutex();
+    s_owner_mu = xSemaphoreCreateMutex();
     s_ev = xEventGroupCreate();
-    if (!s_list_mu || !s_radio_mu || !s_ev) {
-        return ESP_ERR_NO_MEM;
-    }
+    if (!s_list_mu || !s_radio_mu || !s_owner_mu || !s_ev) return ESP_ERR_NO_MEM;
     load();
-    return xTaskCreate(wifi_task, "eh_wifi", 6144, NULL, 3, NULL) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM;
+    return ESP_OK;
+}
+
+/* Both helpers run under the owner and radio mutexes. A failed teardown
+ * retains the netif so the caller can retry without touching an app driver. */
+static esp_err_t stop_station(void)
+{
+    if (!s_sta_netif) return ESP_OK;
+    esp_err_t err = esp_wifi_stop();
+    if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STARTED) return err;
+    err = esp_wifi_deinit();
+    if (err != ESP_OK) return err;
+    esp_netif_destroy_default_wifi(s_sta_netif);
+    s_sta_netif = NULL;
+    return ESP_OK;
+}
+
+static esp_err_t start_station(void)
+{
+    wifi_mode_t mode;
+    if (esp_wifi_get_mode(&mode) == ESP_OK || esp_netif_get_handle_from_ifkey("WIFI_STA_DEF")) {
+        return ESP_ERR_INVALID_STATE; /* the application still owns Wi-Fi */
+    }
+    if (!s_task_created) {
+        if (xTaskCreate(wifi_task, "eh_wifi", 6144, NULL, 3, NULL) != pdPASS) return ESP_ERR_NO_MEM;
+        s_task_created = true;
+    }
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_err_t err = esp_wifi_init(&cfg);
+    if (err != ESP_OK) return err;
+    s_sta_netif = esp_netif_create_default_wifi_sta();
+    char name[33] = {0};
+    eh_nvs_get_str("name", name, sizeof(name));
+    if (name[0]) esp_netif_set_hostname(s_sta_netif, name);
+    err = esp_wifi_set_storage(WIFI_STORAGE_RAM);
+    if (err == ESP_OK) err = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (err == ESP_OK) err = esp_wifi_start();
+    if (err != ESP_OK) {
+        esp_err_t cleanup = stop_station();
+        if (cleanup != ESP_OK) return cleanup;
+    }
+    return err;
+}
+
+esp_err_t eh_wifi_set_managed(bool enabled)
+{
+    if (!s_owner_mu || !s_radio_mu || !s_list_mu || !s_ev) return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(s_owner_mu, portMAX_DELAY);
+    esp_err_t err = ESP_OK;
+    if (enabled != managed() || (!enabled && s_sta_netif)) {
+        /* Close the gate before waiting on an in-flight scan/association. New
+         * requests cannot queue a join or wake the manager past this point. */
+        lock();
+        xEventGroupClearBits(s_ev, EV_MANAGED);
+        if (s_join_state == JOIN_QUEUED) {
+            mbedtls_platform_zeroize(&s_join, sizeof(s_join));
+            s_join_state = JOIN_FAILED;
+        }
+        unlock();
+        if (s_task_created) xEventGroupSetBits(s_ev, EV_CANCEL | EV_DISC | EV_RECONF);
+        xSemaphoreTake(s_radio_mu, portMAX_DELAY);
+        s_online = false;
+        err = stop_station();
+        xEventGroupClearBits(s_ev, EV_STARTED | EV_GOT_IP | EV_DISC | EV_CANCEL);
+        if (enabled && err == ESP_OK) {
+            err = start_station();
+            if (err == ESP_OK) xEventGroupSetBits(s_ev, EV_MANAGED);
+        }
+        xSemaphoreGive(s_radio_mu);
+    }
+    xSemaphoreGive(s_owner_mu);
+    return err;
 }
 
 #else /* QEMU / OpenCores Ethernet: no Wi-Fi */
+esp_err_t eh_wifi_set_managed(bool enabled) { return enabled ? ESP_ERR_NOT_SUPPORTED : ESP_OK; }
+bool eh_wifi_join_saved(const char *ssid) { return false; }
 int eh_wifi_count(void) { return 0; }
 bool eh_wifi_join(const char *ssid, const char *pass, bool hidden) { return false; }
 const char *eh_wifi_join_state(void) { return "unavailable"; }

@@ -6,6 +6,7 @@
 #include <string.h>
 #include "eh_priv.h"
 #include "esp_wifi.h"
+#include "esp_netif.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/event_groups.h"
@@ -16,9 +17,57 @@
 #define RECONF BIT3
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
 
+struct fake_netif { int unused; };
+static struct fake_netif station;
+static bool netif_created, driver_initialized, fail_start;
+static unsigned driver_starts, driver_stops;
+static wifi_mode_t radio_mode;
+
+esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key) { return netif_created ? &station : NULL; }
+esp_netif_t *esp_netif_create_default_wifi_sta(void)
+{
+    assert(!netif_created);
+    netif_created = true;
+    return &station;
+}
+void esp_netif_destroy_default_wifi(void *n)
+{
+    assert(n == &station && netif_created);
+    netif_created = false;
+}
+esp_err_t esp_netif_set_hostname(esp_netif_t *n, const char *name) { return ESP_OK; }
+esp_err_t eh_nvs_get_str(const char *key, char *buf, size_t len) { return ESP_ERR_NOT_FOUND; }
+esp_err_t esp_wifi_init(const wifi_init_config_t *cfg)
+{
+    assert(!driver_initialized);
+    driver_initialized = true;
+    return ESP_OK;
+}
+esp_err_t esp_wifi_get_mode(wifi_mode_t *mode)
+{
+    *mode = radio_mode;
+    return driver_initialized ? ESP_OK : ESP_ERR_WIFI_NOT_INIT;
+}
+esp_err_t esp_wifi_set_mode(wifi_mode_t mode)
+{
+    assert(driver_initialized && mode == WIFI_MODE_STA);
+    radio_mode = mode;
+    return ESP_OK;
+}
+esp_err_t esp_wifi_set_storage(int storage) { assert(storage == WIFI_STORAGE_RAM); return ESP_OK; }
+esp_err_t esp_wifi_start(void)
+{
+    if (fail_start) return ESP_FAIL;
+    driver_starts++;
+    eh_wifi_on_started();
+    return ESP_OK;
+}
+esp_err_t esp_wifi_stop(void) { driver_stops++; return ESP_OK; }
+esp_err_t esp_wifi_deinit(void) { driver_initialized = false; return ESP_OK; }
+
 struct fake_mutex { bool held; };
 struct fake_event_group { EventBits_t bits; };
-static struct fake_mutex mutexes[2];
+static struct fake_mutex mutexes[3];
 static unsigned mutex_count;
 static struct fake_event_group events;
 static TaskFunction_t task;
@@ -111,6 +160,7 @@ BaseType_t xSemaphoreGive(SemaphoreHandle_t mutex)
     return pdTRUE;
 }
 EventGroupHandle_t xEventGroupCreate(void) { return &events; }
+EventBits_t xEventGroupGetBits(EventGroupHandle_t group) { return group->bits; }
 EventBits_t xEventGroupSetBits(EventGroupHandle_t group, EventBits_t bits)
 {
     group->bits |= bits;
@@ -144,8 +194,8 @@ static void deliver_pending(void)
 EventBits_t xEventGroupWaitBits(EventGroupHandle_t group, EventBits_t bits,
                               BaseType_t clear, BaseType_t all, TickType_t ticks)
 {
-    assert(!all);
-    if (bits == (GOT_IP | DISC)) {
+    assert(!all || bits == (BIT4 | STARTED));
+    if (bits == (GOT_IP | DISC | BIT5)) {
         assert(active_attempt >= 0 && attempts[active_attempt].connected);
         attempts[active_attempt].wait_ticks = ticks;
     } else if (bits == DISC) {
@@ -164,12 +214,12 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t group, EventBits_t bits,
             return group->bits;
         }
     }
-    if (group->bits & bits) {
+    if (all ? (group->bits & bits) == bits : (group->bits & bits) != 0) {
         EventBits_t result = group->bits;
         if (clear) group->bits &= ~bits;
         return result;
     }
-    if (bits == (GOT_IP | DISC) || bits == DISC) {
+    if (bits == (GOT_IP | DISC | BIT5) || bits == DISC) {
         assert(ticks != portMAX_DELAY);
         now += ticks; /* Expire a fake wait immediately: never wall-clock sleep. */
         return group->bits;
@@ -180,14 +230,14 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t group, EventBits_t bits,
         now += ticks;
         return group->bits;
     }
-    assert(bits == RECONF || bits == (DISC | RECONF));
+    assert(bits == RECONF || bits == (DISC | RECONF) || bits == (BIT4 | STARTED));
     assert(!mutexes[0].held && !mutexes[1].held);
     char ssid[33];
     finished_online = eh_wifi_current(ssid, sizeof(ssid));
     longjmp(task_end, 1); /* At the production loop's quiescent boundary only. */
 }
 
-static void radio_owned(void) { assert(mutexes[1].held); }
+static void radio_owned(void) { assert(mutexes[1].held && driver_initialized && radio_mode == WIFI_MODE_STA); }
 
 esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block)
 {
@@ -289,8 +339,8 @@ static void init(const char *saved)
 {
     strlcpy(stored, saved, sizeof(stored));
     assert(eh_wifi_init() == ESP_OK);
-    assert(task && mutex_count == 2);
-    eh_wifi_on_started();
+    assert(eh_wifi_set_managed(true) == ESP_OK);
+    assert(task && mutex_count == 3);
 }
 
 static void run(void)
@@ -564,12 +614,56 @@ static void budget_test(const char *scenario)
     }
 }
 
+static void handoff_test(void)
+{
+    strcpy(stored, "[{\"s\":\"saved\",\"p\":\"synthetic-pass\"}]");
+    assert(eh_wifi_init() == ESP_OK);
+    assert(eh_wifi_set_managed(false) == ESP_OK && !task && !driver_starts);
+    assert(eh_wifi_count() == 1 && !eh_wifi_join_saved("saved"));
+    fail_start = true;
+    assert(eh_wifi_set_managed(true) == ESP_FAIL && !driver_initialized && !netif_created);
+    fail_start = false;
+    assert(eh_wifi_set_managed(true) == ESP_OK);
+    assert(eh_wifi_set_managed(true) == ESP_OK && driver_starts == 1);
+    air[air_count++] = ap("saved", -45, 6, 2, WIFI_AUTH_WPA2_PSK);
+    run();
+    assert_current("saved");
+    assert(eh_wifi_join("cancelled", "test", false));
+    assert(eh_wifi_set_managed(false) == ESP_OK && !driver_initialized && !netif_created);
+    const unsigned stops = driver_stops;
+
+    /* The app can now own the entire driver. Even stale events, explicit joins
+     * and credential changes may not end its AP session. */
+    driver_initialized = true;
+    radio_mode = WIFI_MODE_AP;
+    eh_wifi_on_disconnected(201);
+    eh_wifi_on_started();
+    eh_wifi_reload();
+    assert(eh_wifi_set_managed(false) == ESP_OK && stops == driver_stops);
+    assert(eh_wifi_set_managed(true) == ESP_ERR_INVALID_STATE);
+    eh_ap_t aps[2];
+    assert(eh_wifi_scan(aps, 2, 0) < 0);
+    assert(!eh_wifi_join_saved("saved"));
+    assert(!strcmp(eh_wifi_join_state(), "unavailable"));
+    unsigned scans = scan_calls;
+    run();
+    assert(scan_calls == scans && attempt_count == 1 && radio_mode == WIFI_MODE_AP);
+    driver_initialized = false; /* app released AP */
+
+    assert(eh_wifi_set_managed(true) == ESP_OK);
+    run();
+    assert_current("saved");
+    assert(eh_wifi_count() == 1 && attempt_count == 2 && driver_starts == 2 && !writes);
+    assert(!strcmp((char *)attempts[1].config.sta.password, "synthetic-pass"));
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     for (unsigned i = 0; i < ARRAY_LEN(response_delay); i++) response_delay[i] = 7;
     const char *scenario = argv[1];
-    if (!strcmp(scenario, "scan")) scan_test();
+    if (!strcmp(scenario, "handoff")) handoff_test();
+    else if (!strcmp(scenario, "scan")) scan_test();
     else if (!strcmp(scenario, "fresh")) order_test(true);
     else if (!strcmp(scenario, "order")) order_test(false);
     else if (!strcmp(scenario, "other-ap") || !strcmp(scenario, "channel-moved") ||
