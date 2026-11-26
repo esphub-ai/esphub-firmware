@@ -11,6 +11,8 @@ on:
       - 'scripts/firmware-plan.mjs'
       - '.github/actions/build-kit/**'
       - '.github/workflows/build-board.yml'
+      - '.github/workflows/build-variant.yml'
+      - '.github/workflows/build-bootloader.yml'
       - 'shared/*.js'
   pull_request:
     paths:
@@ -22,6 +24,8 @@ on:
       - 'scripts/firmware-plan.mjs'
       - '.github/actions/build-kit/**'
       - '.github/workflows/build-board.yml'
+      - '.github/workflows/build-variant.yml'
+      - '.github/workflows/build-bootloader.yml'
       - 'shared/*.js'
   workflow_dispatch:
     inputs:
