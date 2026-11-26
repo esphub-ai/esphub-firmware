@@ -8,6 +8,12 @@
   "default_example": "tones",
   "examples": [
     {
+      "id": "speaker",
+      "description": "Use button A to control looping audio and master or channel volume.",
+      "entrypoint": "examples/speaker/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Speaker/Speaker.ino"
+    },
+    {
       "id": "microphone",
       "description": "Record continuously and click button A to play recent microphone audio.",
       "entrypoint": "examples/microphone/main.cpp",
