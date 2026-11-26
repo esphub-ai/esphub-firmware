@@ -3,5 +3,15 @@
   "model": "M5Stack Fire v2.7",
   "chip": "esp32",
   "flash_mb": 16,
-  "bootloader": "esp32-16mb"
+  "bootloader": "esp32-16mb",
+  "m5_board_id": 1,
+  "default_example": "bar-graph",
+  "examples": [
+    {
+      "id": "bar-graph",
+      "description": "Animate colored bars and peak markers on the onboard display. Change the palette or feed sensor readings into the plotted heights.",
+      "entrypoint": "examples/bar-graph/main.cpp",
+      "upstream": "https://github.com/m5stack/M5GFX/blob/28d47949bdc84f30881623476f555398e2194313/examples/Basic/BarGraph/BarGraph.ino"
+    }
+  ]
 }

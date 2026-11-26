@@ -3,5 +3,15 @@
   "model": "M5Stack StamPLC",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 21,
+  "default_example": "display",
+  "examples": [
+    {
+      "id": "display",
+      "description": "Cycle the LCD through solid colors, text and basic shapes. Edit the drawing sequence to build a control panel.",
+      "entrypoint": "examples/display/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StamPLC/blob/aebe5711205618ec65e885d6e2d93c5c751c23ef/examples/Basic/Display/Display.ino"
+    }
+  ]
 }

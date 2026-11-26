@@ -3,5 +3,21 @@
   "model": "M5Stack StickC-Plus2",
   "chip": "esp32",
   "flash_mb": 8,
-  "bootloader": "esp32-8mb"
+  "bootloader": "esp32-8mb",
+  "m5_board_id": 5,
+  "default_example": "display-shapes",
+  "examples": [
+    {
+      "id": "display-shapes",
+      "description": "Draw randomly placed, colored circles and squares on the LCD. Change the drawing routine to build a display application.",
+      "entrypoint": "examples/display-shapes/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StickCPlus2/blob/921ec0c0634b6b93873fe123f3a8d1714c68b8f4/examples/Basic/display/display.ino"
+    },
+    {
+      "id": "buttons",
+      "description": "Read button transitions and click counts. The serial log identifies the button and gesture; screens also show a colored indicator.",
+      "entrypoint": "examples/buttons/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Button/Button.ino"
+    }
+  ]
 }

@@ -16,26 +16,14 @@ const bootloaderInputs = [
   "scripts/package-bootloader.py",
   ".github/workflows/build-bootloader.yml",
 ];
-const sharedInputs = {
-  bootloader: [
-    "scripts/package-board-bootloader.py",
-    ".github/workflows/build-board.yml",
-  ],
-  micropython: [
-    "firmware/pyrt/overlay/**",
-    "firmware/pyrt/upstream.json",
-    "firmware/ble.defaults",
-    "firmware/pyrt/apply_overlay.py",
-    "firmware/components/okou_agent/**",
-    ".github/actions/build-micropython/**",
-  ],
-  native: ["firmware/components/okou_agent/**"],
-  setup: [
-    "scripts/package-setup.py",
-    "tools/ble-wifi/provision_usb.py",
-    ".github/actions/build-kit/**",
-  ],
-};
+const appInputs = [
+  "firmware/components/**", "firmware/app/**", "scripts/build-example.py",
+  ".github/workflows/build-board.yml", "scripts/firmware-plan.mjs",
+];
+const kitInputs = [
+  "scripts/package-setup.py", "scripts/board-catalog.mjs", "shared/board-examples.js",
+  "tools/ble-wifi/provision_usb.py", ".github/actions/build-kit/**",
+];
 const digest = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
@@ -101,92 +89,36 @@ function firmwareProfiles(ref, cwd = process.cwd()) {
   const namingInputs = matching(["shared/board-id.js", "shared/firmware-releases.js"]);
   for (const path of files.keys()) {
     const match =
-      /^firmware\/board\/([^/]+)\/([^/]+)\/ci\.json$/.exec(path);
+      /^firmware\/board\/([^/]+)\/([^/]+)\/board\.json$/.exec(path);
     if (!match) continue;
     const dir = posix.dirname(path);
     const board = boardId(match[1], match[2]);
     const { chip, flash_mb, bootloader } = json(dir + "/board.json");
-    const jobs = json(path),
-      tasks = {};
     const sharedBootloader = variants.get(bootloader);
-    {
-      if (
-        sharedBootloader?.target !== chip ||
-        sharedBootloader?.flashMb !== flash_mb
-      )
-        throw Error("Invalid bootloader for " + board);
-      const layouts = matching([`${dir}/layout/*.csv`]);
-      if (!files.has(`${dir}/layout/partitions.csv`))
-        throw Error("Missing partition layout for " + board);
-      const partitions = layouts.map(([file, entry]) => {
-        if (!entry.startsWith("120000 ")) return entry;
-        const target = posix.join(
-          posix.dirname(file),
-          git("show", ref + ":" + file),
-        );
-        if (!files.has(target)) throw Error("Unknown layout " + target);
-        return files.get(target);
-      });
-      tasks.bootloader = {
-        kind: "bootloader",
-        runner: "ubuntu-24.04",
-        container: sharedBootloader.container,
-        fingerprint: digest([
-          board,
-          namingInputs,
-          chip,
-          sharedBootloader.fingerprint,
-          layouts,
-          partitions,
-          ...matching(sharedInputs.bootloader),
-        ]),
-      };
-    }
-    const runtime = jobs.native ? "native" : "micropython";
-    for (const [kind, job] of Object.entries(jobs)) {
-      if (
-        !Object.hasOwn(sharedInputs, kind) ||
-        kind === "bootloader" ||
-        !files.has(`${dir}/${kind}/action.yml`)
-      )
-        throw Error(`Invalid CI task ${board}/${kind}`);
-      const patterns = [
-        ...sharedInputs[kind],
-        `${dir}/${kind}/**`,
-        ...(job.inputs ?? []),
-        ...(kind === "setup" && runtime === "micropython"
-          ? [`${dir}/main.py`]
-          : []),
-        ...(kind === "native"
-          ? [`${dir}/layout/*.csv`, `firmware/partitions/${flash_mb}mb.csv`]
-          : []),
-      ];
-      const sources = matching(patterns);
-      tasks[kind] = {
-        kind,
-        runner: job.runner ?? "ubuntu-24.04",
-        container: job.container ?? "",
-        fingerprint: digest([
-          board,
-          namingInputs,
-          chip,
-          kind === "micropython" ? bootloader : null,
-          job,
-          sources,
-        ]),
-      };
-    }
-    if (tasks.setup) {
-      if (!tasks[runtime])
-        throw Error("USB setup requires both component tasks: " + board);
-      tasks.setup.fingerprint = digest([
-        tasks.setup.fingerprint,
-        tasks.bootloader.fingerprint,
-        tasks[runtime].fingerprint,
-      ]);
-    }
+    if (sharedBootloader?.target !== chip || sharedBootloader.flashMb !== flash_mb)
+      throw Error("Invalid bootloader for " + board);
+    const boardInputs = matching([path, `firmware/partitions/${flash_mb}mb.csv`]);
+    const runner = "ubuntu-24.04";
+    const appContainer = chip === "esp32s31"
+      ? "espressif/idf:release-v6.2@sha256:0e714292d8b4e6e75cb42e25461716221448858e125d96dbfea09732964c412d"
+      : "espressif/idf:v5.5.4";
+    const tasks = {
+      bootloader: {
+        kind: "bootloader", runner, container: sharedBootloader.container,
+        fingerprint: digest([board, namingInputs, boardInputs, sharedBootloader.fingerprint,
+          matching(["scripts/package-board-bootloader.py", ".github/workflows/build-board.yml"])]),
+      },
+      app: {
+        kind: "app", runner, container: appContainer,
+        fingerprint: digest([board, namingInputs, boardInputs, appContainer,
+          matching([...appInputs, `${dir}/examples/**`])]),
+      },
+    };
+    tasks.setup = {
+      kind: "setup", runner, container: "",
+      fingerprint: digest([tasks.bootloader.fingerprint, tasks.app.fingerprint, matching(kitInputs)]),
+    };
     boards[board] = {
-      runtime,
       chip,
       tasks,
       bootloader,
@@ -206,7 +138,7 @@ export function boardPlans(
   const matrix = [];
   for (const [
     board,
-    { chip, tasks, bootloader, blFingerprint, runtime },
+    { chip, tasks, bootloader, blFingerprint },
   ] of Object.entries(after)) {
     if (selected && selected !== board) continue;
     const changed = {};
@@ -217,7 +149,7 @@ export function boardPlans(
     }
     if (!Object.values(changed).some(Boolean)) continue;
     if (changed.setup) {
-      for (const kind of ["bootloader", runtime]) {
+      for (const kind of ["bootloader", "app"]) {
         changed[kind] = true;
       }
     }
@@ -244,8 +176,7 @@ export function boardPlans(
         ? {
             ...kit,
             bootloader: input("bootloader"),
-            runtime: input(runtime),
-            runtime_kind: runtime,
+            app: input("app"),
           }
         : null,
     });
@@ -284,14 +215,14 @@ if (
   const options = {
     manual,
     board: event.inputs?.board ?? "",
-    version: "1.2." + process.env.GITHUB_RUN_NUMBER,
+    version: "2.0." + process.env.GITHUB_RUN_NUMBER,
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
   const plans = boardPlans(before.boards, after.boards, options);
   const cohorts = new Map();
   for (const plan of plans) {
     const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
-    const name = needsBootloader ? plan.bootloader : "runtime-only";
+    const name = needsBootloader ? plan.bootloader : "app-only";
     if (!cohorts.has(name)) {
       cohorts.set(name, {
         name,

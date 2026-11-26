@@ -1,6 +1,6 @@
 # Agent FreeRTOS QEMU probe
 
-Boot a real ESP-IDF v5.4.1 firmware image linking the production `okou_agent` component. This is not the host C shim. Both official QEMU `esp32` and `esp32s3` machines have passed.
+Boot a real ESP-IDF v5.4.1 firmware image linking the production `eh_agent` component. This is not the host C shim. Both official QEMU `esp32` and `esp32s3` machines have passed.
 
 ## Coverage and limits
 
@@ -13,7 +13,7 @@ The probe observes the real Agent task's semaphore through `--wrap=xQueueSemapho
 - Modeled MQTT control notification wakes the task and dispatches a registered command through the real SDK registry.
 - Modeled disconnect wakes the task, enters finite jittered backoff and reconnects on a real FreeRTOS deadline **without another notification**.
 
-Only network startup/IP availability and the `okou_iot_*` transport boundary are linker-wrapped. NVS, Agent state/queues, SDK command dispatch and task scheduling are real firmware. The seeded `qemu.invalid` hub and dummy token are not credentials. No broker, TLS/QoS, physical hardware or real Wi-Fi radio is exercised. OpenETH configuration avoids Wi-Fi initialization; no Ethernet device is needed because network startup is wrapped. Wi-Fi scan behavior is covered separately by host radio-model tests. OTA is outside this probe.
+Only network startup/IP availability and the `eh_iot_*` transport boundary are linker-wrapped. NVS, Agent state/queues, SDK command dispatch and task scheduling are real firmware. The seeded `qemu.invalid` hub and dummy token are not credentials. No broker, TLS/QoS, physical hardware or real Wi-Fi radio is exercised. OpenETH configuration avoids Wi-Fi initialization; no Ethernet device is needed because network startup is wrapped. Wi-Fi scan behavior is covered separately by host radio-model tests. OTA is outside this probe.
 
 ## One-time tool setup (Linux x86-64)
 

@@ -1,6 +1,0 @@
-name: StackChan setup
-description: Build the StackChan setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

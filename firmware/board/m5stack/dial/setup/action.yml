@@ -1,6 +1,0 @@
-name: Dial setup
-description: Build the Dial setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

@@ -3,7 +3,7 @@ set -eo pipefail
 source "$IDF_PATH/export.sh"
 cd "firmware/bootloader/$VARIANT"
 idf.py -DPROJECT_VER="$VERSION" build
-for setting in PM_ENABLE OKOU_BLE_WIFI BT_NIMBLE_ROLE_OBSERVER BT_NIMBLE_ROLE_PERIPHERAL; do
+for setting in PM_ENABLE EH_BLE_WIFI BT_NIMBLE_ROLE_OBSERVER BT_NIMBLE_ROLE_PERIPHERAL; do
   grep -Fx "CONFIG_${setting}=y" sdkconfig
 done
 if grep -Fxq 'CONFIG_FREERTOS_USE_TICKLESS_IDLE=n' sdkconfig.defaults; then

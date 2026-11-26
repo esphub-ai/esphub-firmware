@@ -3,5 +3,15 @@
   "model": "M5Stack StickS3",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 26,
+  "default_example": "scroll-graph",
+  "examples": [
+    {
+      "id": "scroll-graph",
+      "description": "Scroll six colored traces across the screen. Replace the generated samples with live measurements.",
+      "entrypoint": "examples/scroll-graph/main.cpp",
+      "upstream": "https://github.com/m5stack/M5GFX/blob/28d47949bdc84f30881623476f555398e2194313/examples/Basic/ScrollGraph/ScrollGraph.ino"
+    }
+  ]
 }

@@ -1,17 +1,19 @@
 name: Assemble EspHub USB kit
-description: Combine the selected bootloader and runtime for this board.
+description: Combine the selected bootloader and app for this board.
 runs:
   using: composite
   steps:
     - shell: bash
       run: |
         set -euo pipefail
-        mkdir -p components/{bootloader,runtime} dist
+        mkdir -p components/{bootloader,app} dist
         base="esphub-$BOARD_FILE_STEM-$CHIP-$BOOTLOADER_VERSION"
         kit="$base-usb.zip"
-        app="esphub-$BOARD_FILE_STEM-$RUNTIME_KIND-$RUNTIME_VERSION"
+        app="esphub-$BOARD_FILE_STEM-app-$APP_VERSION"
         manifest="$base.json"
         jq -er --arg name "$kit" --arg board "$BOARD" 'select(.board == $board and .usb.file == $name) | .usb.sha256 + "  " + .usb.file' "components/bootloader/$manifest" > components/bootloader/checksum
         (cd components/bootloader && sha256sum -c checksum)
-        (cd components/runtime && sha256sum -c "$app.sha256")
-        python3 scripts/package-setup.py "$BOARD" "components/bootloader/$kit" "components/runtime/$app.bin" dist
+        (cd components/app && sha256sum -c "$app.sha256")
+        export BOOTLOADER_VERSION
+        BOOTLOADER_VERSION=$(jq -er .bootloader_version "components/bootloader/$manifest")
+        python3 scripts/package-setup.py "$BOARD" "components/bootloader/$kit" "components/app/$app.bin" dist

@@ -3,5 +3,15 @@
   "model": "M5Stack AtomS3U",
   "chip": "esp32s3",
   "flash_mb": 8,
-  "bootloader": "esp32s3-8mb"
+  "bootloader": "esp32s3-8mb",
+  "m5_board_id": 138,
+  "default_example": "hello-serial",
+  "examples": [
+    {
+      "id": "hello-serial",
+      "description": "Print a greeting once per second on the serial console. The SDK connects in parallel using the saved Wi-Fi credentials.",
+      "entrypoint": "examples/hello-serial/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/m5atoms3u/program"
+    }
+  ]
 }

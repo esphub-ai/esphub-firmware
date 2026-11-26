@@ -1,6 +1,0 @@
-name: DinMeter micropython
-description: Build the DinMeter micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

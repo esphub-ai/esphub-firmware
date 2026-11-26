@@ -1,6 +1,0 @@
-name: AtomS3R-Ext setup
-description: Build the AtomS3R-Ext setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

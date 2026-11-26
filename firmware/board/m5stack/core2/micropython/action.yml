@@ -1,6 +1,0 @@
-name: Core2 micropython
-description: Build the Core2 micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

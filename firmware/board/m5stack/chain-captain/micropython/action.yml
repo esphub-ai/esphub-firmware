@@ -1,6 +1,0 @@
-name: Chain Captain micropython
-description: Build the Chain Captain micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

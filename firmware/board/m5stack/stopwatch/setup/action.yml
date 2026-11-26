@@ -1,6 +1,0 @@
-name: StopWatch setup
-description: Build the StopWatch setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

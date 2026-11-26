@@ -1,5 +1,5 @@
-export const SDK_ROOT = "firmware/components/okou_agent/";
-export const SDK_HEADER = SDK_ROOT + "include/okou_agent.h";
+export const SDK_ROOT = "firmware/components/eh_agent/";
+export const SDK_HEADER = SDK_ROOT + "include/eh_agent.h";
 
 // A rename can put the base and head in different SDK directories.
 const headerPaths = ["okou_agent", "eh_agent"].map(

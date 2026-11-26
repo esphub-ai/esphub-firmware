@@ -8,8 +8,8 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "esp_timer.h"
-#include "okou_priv.h"
-#include "okou_iot.h"
+#include "eh_priv.h"
+#include "eh_iot.h"
 
 static QueueHandle_t wake_queue;
 static volatile bool taking, has_ip;
@@ -34,7 +34,7 @@ static const char *phase = "startup";
 BaseType_t __real_xQueueSemaphoreTake(QueueHandle_t queue, TickType_t ticks);
 BaseType_t __wrap_xQueueSemaphoreTake(QueueHandle_t queue, TickType_t ticks)
 {
-    bool agent = !strcmp(pcTaskGetName(NULL), "okou_agent");
+    bool agent = !strcmp(pcTaskGetName(NULL), "eh_agent");
     if (agent && !wake_queue) wake_queue = queue;
     bool observe = agent && queue == wake_queue;
     if (observe) {
@@ -49,23 +49,23 @@ BaseType_t __wrap_xQueueSemaphoreTake(QueueHandle_t queue, TickType_t ticks)
     return result;
 }
 
-esp_err_t __wrap_okou_net_start(bool manage) { (void)manage; return ESP_OK; }
-bool __wrap_okou_net_has_ip(void) { return has_ip; }
-bool __wrap_okou_iot_start(const char *boot, const char *hub, const char *token)
+esp_err_t __wrap_eh_net_start(bool manage) { (void)manage; return ESP_OK; }
+bool __wrap_eh_net_has_ip(void) { return has_ip; }
+bool __wrap_eh_iot_start(const char *boot, const char *hub, const char *token)
 {
     CHECK(boot && *boot && !strcmp(hub, "qemu.invalid"));
-    CHECK(!strcmp(token, "okl_dev_qemu_dummy_not_a_credential"));
+    CHECK(!strcmp(token, "eh_dev_qemu_dummy_not_a_credential"));
     start_us = esp_timer_get_time();
     starts++;
     return true;
 }
-void __wrap_okou_iot_stop(void) { stop_us = esp_timer_get_time(); stops++; }
-unsigned __wrap_okou_iot_events(void) { unsigned value = events; events = 0; return value; }
-cJSON *__wrap_okou_iot_control(void) { cJSON *value = control; control = NULL; return value; }
-bool __wrap_okou_iot_publish(cJSON *frame, bool confirm)
+void __wrap_eh_iot_stop(void) { stop_us = esp_timer_get_time(); stops++; }
+unsigned __wrap_eh_iot_events(void) { unsigned value = events; events = 0; return value; }
+cJSON *__wrap_eh_iot_control(void) { cJSON *value = control; control = NULL; return value; }
+bool __wrap_eh_iot_publish(cJSON *frame, bool confirm)
 {
     (void)confirm;
-    CHECK(!strcmp(pcTaskGetName(NULL), "okou_agent"));
+    CHECK(!strcmp(pcTaskGetName(NULL), "eh_agent"));
     CHECK(cJSON_IsObject(frame));
     const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(frame, "t"));
     const char *name = cJSON_GetStringValue(cJSON_GetObjectItem(frame, "name"));
@@ -76,12 +76,12 @@ bool __wrap_okou_iot_publish(cJSON *frame, bool confirm)
     }
     return true;
 }
-static int probe_command(int argc, char **argv, okou_out_t *out)
+static int probe_command(int argc, char **argv, eh_out_t *out)
 {
     CHECK(argc == 1 && !strcmp(argv[0], "qemu.probe"));
-    CHECK(!strcmp(pcTaskGetName(NULL), "okou_agent"));
+    CHECK(!strcmp(pcTaskGetName(NULL), "eh_agent"));
     commands++;
-    okou_outf(out, "real SDK command dispatch");
+    eh_outf(out, "real SDK command dispatch");
     return 0;
 }
 static void idle(const char *name)
@@ -96,24 +96,24 @@ static void idle(const char *name)
 static void subscribed(void)
 {
     events = IOT_SUBSCRIBED;
-    okou_agent_notify();
-    AWAIT(okou_connected(), 300);
+    eh_agent_notify();
+    AWAIT(eh_connected(), 300);
     idle("online_idle");
 }
 void app_main(void)
 {
-    CHECK(okou_nvs_init() == ESP_OK);
-    CHECK(okou_nvs_set_str("hub", "qemu.invalid") == ESP_OK);
-    CHECK(okou_nvs_set_str(OKOU_KEY_TOKEN, "okl_dev_qemu_dummy_not_a_credential") == ESP_OK);
-    CHECK(okou_cmd_register("qemu.probe", "simulator probe", probe_command) == ESP_OK);
-    okou_config_t cfg = OKOU_CONFIG_DEFAULT();
-    CHECK(okou_agent_start(&cfg) == ESP_OK);
+    CHECK(eh_nvs_init() == ESP_OK);
+    CHECK(eh_nvs_set_str("hub", "qemu.invalid") == ESP_OK);
+    CHECK(eh_nvs_set_str(EH_KEY_TOKEN, "eh_dev_qemu_dummy_not_a_credential") == ESP_OK);
+    CHECK(eh_cmd_register("qemu.probe", "simulator probe", probe_command) == ESP_OK);
+    eh_config_t cfg = EH_CONFIG_DEFAULT();
+    CHECK(eh_agent_start_with_config(&cfg) == ESP_OK);
 
     idle("initial_offline");
-    CHECK(!starts && !okou_connected());
+    CHECK(!starts && !eh_connected());
     phase = "net_ip_wakes";
     has_ip = true;
-    okou_agent_notify();
+    eh_agent_notify();
     AWAIT(starts == 1 && taking && wait_ticks != portMAX_DELAY, 300);
     CHECK(wait_ticks > pdMS_TO_TICKS(29000) && wait_ticks <= pdMS_TO_TICKS(30001));
     printf("ESPHUB-AGENT-QEMU PASS net_ip_wakes connecting_deadline\n");
@@ -121,22 +121,22 @@ void app_main(void)
 
     phase = "queued_event_wakes";
     unsigned before = returns;
-    okou_event("qemu.queued", "{\"source\":\"probe\"}");
+    eh_event("qemu.queued", "{\"source\":\"probe\"}");
     AWAIT(published == 1 && returns > before, 300);
     idle("queued_event_wakes");
 
     phase = "mqtt_command_wakes";
     control = cJSON_Parse("{\"command\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"seq\":1,\"op\":\"cmd\",\"args\":{\"name\":\"qemu.probe\",\"argv\":[]}}}");
     CHECK(control);
-    okou_agent_notify();
+    eh_agent_notify();
     AWAIT(commands == 1 && published == 2, 300);
     idle("mqtt_command_wakes");
 
     phase = "disconnect_backoff";
     events = IOT_OFFLINE;
-    okou_agent_notify();
+    eh_agent_notify();
     AWAIT(stops == 1 && taking && wait_ticks != portMAX_DELAY, 300);
-    CHECK(!okou_connected() && starts == 1);
+    CHECK(!eh_connected() && starts == 1);
     TickType_t backoff_ticks = wait_ticks;
     CHECK(backoff_ticks >= pdMS_TO_TICKS(750) && backoff_ticks <= pdMS_TO_TICKS(1201));
     /* No notification is sent here: real FreeRTOS timeout must restart transport. */

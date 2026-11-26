@@ -44,7 +44,7 @@ def package(table, suffix):
         assert len(image) <= min(int(bl[4], 0), int(standby[4], 0))
         assert nvs[1:3] == ["data", "nvs"] and ota_data[1:3] == ["data", "ota"]
         nvs_csv = tmp / "board.csv"
-        nvs_csv.write_text("key,type,encoding,value\nokl,namespace,,\nhold,data,u8,1\n")
+        nvs_csv.write_text("key,type,encoding,value\neh,namespace,,\nhold,data,u8,1\n")
         nvs_bin = tmp / "board-nvs.bin"
         subprocess.run([sys.executable,
                         idf / "components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py",
@@ -70,7 +70,7 @@ This archive preserves NVS and resets boot selection to the bootloader.
     return {"file": usb, "sha256": sha256((out / usb).read_bytes()).hexdigest()}, offsets
 
 
-table = profile / "layout/partitions.csv"
+table = Path(__file__).resolve().parents[1] / "firmware/partitions" / f"{metadata['flash_mb']}mb.csv"
 usb, offsets = package(table, "-usb")
 manifest = {"source_commit": build["source_commit"], "board": board, "chip": chip,
             "version": version, "flash_mb": metadata["flash_mb"],

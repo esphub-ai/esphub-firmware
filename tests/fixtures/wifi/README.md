@@ -6,13 +6,13 @@ Run from the repository root:
 node --test tests/wifi.test.js
 ```
 
-Requires `cc`, `pkg-config` and `libcjson` development headers (Debian package `libcjson-dev`). The Node harness compiles the actual `firmware/components/okou_agent/src/okou_wifi.c` as its own translation unit, then executes each scenario in a fresh process. It does not copy the connection algorithm or inspect source text.
+Requires `cc`, `pkg-config` and `libcjson` development headers (Debian package `libcjson-dev`). The Node harness compiles the actual `firmware/components/eh_agent/src/eh_wifi.c` as its own translation unit, then executes each scenario in a fresh process. It does not copy the connection algorithm or inspect source text.
 
 ## Simulation
 
 - ESP-IDF scan/config/connect/disconnect calls use in-memory AP records. Assertions inspect actual station configuration, SSID order and selected AP.
 - FreeRTOS mutexes check radio/list ownership. Task creation captures the production task; `setjmp`/`longjmp` stops it only at its quiescent online/backoff wait. The production task's lifetime scan allocation is left to process teardown.
-- Pending radio events invoke production `okou_wifi_on_got_ip()` / `okou_wifi_on_disconnected()` hooks. Fake event waits advance an integer tick clock immediately, including through unsigned tick wraparound. There are no wall-clock sleeps, timers, threads, sockets or devices.
+- Pending radio events invoke production `eh_wifi_on_got_ip()` / `eh_wifi_on_disconnected()` hooks. Fake event waits advance an integer tick clock immediately, including through unsigned tick wraparound. There are no wall-clock sleeps, timers, threads, sockets or devices.
 - NVS uses real libcjson and in-memory JSON, including failed persistence and rollback. No scan hint is written to NVS.
 
 ## Coverage

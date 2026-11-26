@@ -1,5 +1,5 @@
 /*
- * USB-serial provisioning: a local console line `OKL-PROVISION <json>` stores the
+ * USB-serial provisioning: a local console line `EH-PROVISION <json>` stores the
  * device token and BLE bootstrap key after the first USB flash. The line is never echoed or logged. Physical USB access already implies
  * full control of the device (esptool can rewrite flash), so this adds no new exposure.
  *
@@ -13,7 +13,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_mac.h"
-#include "okou_agent_ext.h"
+#include "eh_agent_ext.h"
 #include "bootloader.h"
 #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
@@ -24,8 +24,8 @@
 #endif
 
 static const char *TAG = "prov_serial";
-#define PREFIX "OKL-PROVISION "
-#define WIFI_PREFIX "OKL-WIFI "
+#define PREFIX "EH-PROVISION "
+#define WIFI_PREFIX "EH-WIFI "
 #define PROV_LINE_MAX 640
 
 /* Handle commands typed on the local USB console. */
@@ -39,7 +39,7 @@ static void console_line(char *line)
     char *arg;
     while ((arg = strtok_r(NULL, " \t\r\n", &save))) cJSON_AddItemToArray(args, cJSON_CreateString(arg));
     char *output = NULL;
-    int rc = okou_cmd_run(name, args, &output);
+    int rc = eh_cmd_run(name, args, &output);
     const char *message = output ? output : (rc == 0 ? "OK" : "Unknown command. Type help.");
     printf("%s\n", message);
     free(output); cJSON_Delete(args);
@@ -52,12 +52,12 @@ static void wifi_line(const char *payload, bool overflow)
     cJSON *reply = cJSON_CreateObject();
     if (reply) {
         if (cJSON_IsObject(request)) {
-            okou_wifi_setup_command(request, reply);
+            eh_wifi_setup_command(request, reply);
             const char *op = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(request, "op"));
             if (op) cJSON_AddStringToObject(reply, "op", op);
             uint8_t mac[6];
             if (op && !strcmp(op, "wifi.status") && esp_efuse_mac_get_default(mac) == ESP_OK) {
-                cJSON_AddStringToObject(reply, "protocol", "esphub-usb-wifi-v1");
+                cJSON_AddStringToObject(reply, "protocol", "esphub-usb-wifi-v2");
                 char address[18];
                 snprintf(address, sizeof(address), "%02x:%02x:%02x:%02x:%02x:%02x",
                          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -101,19 +101,19 @@ static void serial_task(void *arg)
         if (strncmp(line, PREFIX, strlen(PREFIX)) == 0) {
             char err[96] = "";
             if (overflow) {
-                printf("OKL-PROVISION-ERR line too long\n");
+                printf("EH-PROVISION-ERR line too long\n");
             } else if (prov_apply(line + strlen(PREFIX), err, sizeof(err))) {
                 ESP_LOGI(TAG, "provisioning data stored (usb serial)");
                 char address[18];
-                if (okou_ble_address(address))
-                    printf("OKL-PROVISION-OK {\"ble_address\":\"%s\"}\n", address);
+                if (eh_ble_address(address))
+                    printf("EH-PROVISION-OK {\"ble_address\":\"%s\"}\n", address);
                 else
-                    puts("OKL-PROVISION-OK {}");
+                    puts("EH-PROVISION-OK {}");
                 fflush(stdout);
-                okou_net_reconfigure();
-                okou_agent_reload_config();
+                eh_net_reconfigure();
+                eh_agent_reload_config();
             } else {
-                printf("OKL-PROVISION-ERR %s\n", err);
+                printf("EH-PROVISION-ERR %s\n", err);
             }
         } else if (strncmp(line, WIFI_PREFIX, strlen(WIFI_PREFIX)) == 0) {
             wifi_line(line + strlen(WIFI_PREFIX), overflow);
@@ -145,5 +145,5 @@ void prov_serial_start(void)
     return;
 #endif
     setvbuf(stdin, NULL, _IONBF, 0);
-    xTaskCreate(serial_task, "okl_serial", 4096, NULL, 2, NULL);
+    xTaskCreate(serial_task, "eh_serial", 4096, NULL, 2, NULL);
 }

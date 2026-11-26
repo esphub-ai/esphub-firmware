@@ -4,5 +4,14 @@
   "chip": "esp32s31",
   "flash_mb": 16,
   "bootloader": "esp32s31-16mb",
-  "preview": true
+  "preview": true,
+  "default_example": "hello-world",
+  "examples": [
+    {
+      "id": "hello-world",
+      "description": "Display Hello World and update a counter on touch. Modify the GSP scene and touch controller to build a new interface.",
+      "entrypoint": "examples/hello-world/project/main/main.c",
+      "upstream": "https://github.com/esp-mosaico/esp-mosaico-utils/tree/f58f4f9e5363f908b17a8e1ea8fdf4dd77561ef1/mosaico-tools/templates/hello_world"
+    }
+  ]
 }

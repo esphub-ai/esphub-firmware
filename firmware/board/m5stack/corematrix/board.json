@@ -3,5 +3,15 @@
   "model": "M5Stack CoreMatrix",
   "chip": "esp32c61",
   "flash_mb": 16,
-  "bootloader": "esp32c61-16mb"
+  "bootloader": "esp32c61-16mb",
+  "m5_board_id": 152,
+  "default_example": "heart",
+  "examples": [
+    {
+      "id": "heart",
+      "description": "Draw a heart from a 16-row bitmap on the LED matrix. Edit the bitmap to design a different icon.",
+      "entrypoint": "examples/heart/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/corematrix/program"
+    }
+  ]
 }

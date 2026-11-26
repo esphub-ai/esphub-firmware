@@ -101,7 +101,7 @@ esp_err_t esp_http_client_set_header(esp_http_client_handle_t c, const char *key
 typedef struct { const char *server; } esp_sntp_config_t;
 #define ESP_NETIF_SNTP_DEFAULT_CONFIG(host) ((esp_sntp_config_t){ .server = (host) })
 esp_err_t esp_netif_sntp_init(const esp_sntp_config_t *config);
-#define CONFIG_OKOU_TASK_STACK 4096
-#define CONFIG_OKOU_TASK_PRIO 3
+#define CONFIG_EH_TASK_STACK 4096
+#define CONFIG_EH_TASK_PRIO 3
 #define CONFIG_IDF_TARGET "host"
-#define CONFIG_OKOU_BL_PROFILE "host"
+#define CONFIG_EH_BL_PROFILE "host"

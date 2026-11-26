@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "fake-idf.h"
-#include "firmware/components/okou_agent/src/okou_agent.c"
-#include "firmware/components/okou_agent/src/okou_console.c"
+#include "firmware/components/eh_agent/src/eh_agent.c"
+#include "firmware/components/eh_agent/src/eh_console.c"
 
 struct fake_queue { unsigned cap, size, count, head; unsigned char *items; };
 struct fake_semaphore { bool pending; };
@@ -34,14 +34,14 @@ static void deadline(TickType_t ticks, int64_t at)
     int64_t delay = (int64_t)ticks * portTICK_PERIOD_MS * 1000;
     assert(delay >= at - clock_us && delay <= at - clock_us + portTICK_PERIOD_MS * 1000);
 }
-static void subscribed(void) { transport_events |= IOT_SUBSCRIBED; okou_agent_notify(); }
-static void disconnected(void) { transport_events |= IOT_OFFLINE; okou_agent_notify(); }
+static void subscribed(void) { transport_events |= IOT_SUBSCRIBED; eh_agent_notify(); }
+static void disconnected(void) { transport_events |= IOT_OFFLINE; eh_agent_notify(); }
 static void queue_command(void)
 {
     assert(!control);
     control = cJSON_Parse("{\"command\":{\"id\":\"11111111-2222-3333-4444-555555555555\",\"seq\":1,\"op\":\"echo\",\"args\":{\"value\":42}}}");
     assert(control);
-    okou_agent_notify();
+    eh_agent_notify();
 }
 static esp_err_t echo(const cJSON *args, cJSON *data, char *err, size_t len)
 {
@@ -53,7 +53,7 @@ static esp_err_t echo(const cJSON *args, cJSON *data, char *err, size_t len)
 
 static int local_prints, log_batches;
 static bool fail_console_allocation;
-void *okou_malloc_large(size_t n) { return fail_console_allocation ? NULL : malloc(n); }
+void *eh_malloc_large(size_t n) { return fail_console_allocation ? NULL : malloc(n); }
 static int local_console(const char *fmt, va_list args)
 {
     ++local_prints;
@@ -81,14 +81,14 @@ static void set_logging(bool enabled)
     control = cJSON_Parse(enabled
         ? "{\"command\":{\"id\":\"11111111-2222-3333-4444-555555555551\",\"seq\":1,\"op\":\"logs.set\",\"args\":{\"enabled\":true}}}"
         : "{\"command\":{\"id\":\"11111111-2222-3333-4444-555555555552\",\"seq\":2,\"op\":\"logs.set\",\"args\":{\"enabled\":false}}}");
-    okou_agent_notify();
+    eh_agent_notify();
 }
-bool okou_iot_publish_log(const uint8_t *bytes, size_t len, uint32_t dropped, char wire[OKOU_LOG_WIRE_BYTES])
+bool eh_iot_publish_log(const uint8_t *bytes, size_t len, uint32_t dropped, char wire[EH_LOG_WIRE_BYTES])
 {
     ++log_batches;
     if (is("console-fragments")) {
         if (log_batches == 1) {
-            assert(len == OKOU_LOG_CHUNK_BYTES - 1 && dropped == 5);
+            assert(len == EH_LOG_CHUNK_BYTES - 1 && dropped == 5);
             for (size_t i = 0; i < len; ++i) assert(bytes[i] == 'x');
         } else {
             assert(log_batches == 2 && len == 3 && !memcmp(bytes, "打", 3) && !dropped);
@@ -97,10 +97,10 @@ bool okou_iot_publish_log(const uint8_t *bytes, size_t len, uint32_t dropped, ch
     }
     assert(native_log("MQTT write") == 10); // transport diagnostics never re-enter the ring
     if (log_batches == 1) {
-        assert(len == 8 && !memcmp(bytes, "C:42 py\n", len) && !dropped);
+        assert(len == 8 && !memcmp(bytes, "C:42 ms\n", len) && !dropped);
         return false; // best-effort send failed
     }
-    assert(log_batches == 2 && len == OKOU_LOG_CHUNK_BYTES);
+    assert(log_batches == 2 && len == EH_LOG_CHUNK_BYTES);
     assert(dropped == 8 + 19); // previous send plus bytes evicted from the full ring
     for (size_t i = 0; i < len; ++i) assert(bytes[i] == (uint8_t)('A' + ((i + 19) % 26)));
     return true;
@@ -109,16 +109,15 @@ static void console_scenario(unsigned step, TickType_t ticks)
 {
     if (step == 0) {
         forever(ticks);
-        assert(!okou_console_write("private", 7));
         fail_console_allocation = true;
-        assert(okou_console_set(true) == ESP_ERR_NO_MEM && sink == local_console);
+        assert(eh_console_set(true) == ESP_ERR_NO_MEM && sink == local_console);
         fail_console_allocation = false;
         assert(native_log("local") == 5 && local_prints == 1);
         set_logging(true);
     } else if (step == 1) {
         forever(ticks);
         assert(results == 1 && native_log("C:%d", 42) == 4);
-        assert(okou_console_write(" py\n", 4) && local_prints == 1);
+        assert(native_log(" ms\n") == 4 && local_prints == 1);
     } else if (step == 2 || step == 4) {
         deadline(ticks, clock_us + FLUSH_US);
         clock_us += FLUSH_US;
@@ -127,7 +126,11 @@ static void console_scenario(unsigned step, TickType_t ticks)
         assert(log_batches == 1 && local_prints == 2);
         char burst[RING_BYTES + 19];
         for (size_t i = 0; i < sizeof(burst); ++i) burst[i] = 'A' + (i % 26);
-        assert(okou_console_write(burst, sizeof(burst)));
+        for (size_t off = 0; off < sizeof(burst); off += 128) {
+            size_t amount = sizeof(burst) - off;
+            if (amount > 128) amount = 128;
+            assert(native_log("%.*s", (int)amount, burst + off) == (int)amount);
+        }
     } else if (step == 5) {
         assert(log_batches == 2 && local_prints == 3);
         deadline(ticks, clock_us + FLUSH_US);
@@ -137,7 +140,6 @@ static void console_scenario(unsigned step, TickType_t ticks)
     } else {
         forever(ticks);
         assert(results == 2 && log_batches == 2 && sink == local_console);
-        assert(!okou_console_write("private again", 13));
         assert(native_log("local") == 5 && local_prints == 4);
         finish();
     }
@@ -153,9 +155,9 @@ static void on_wait(TickType_t ticks)
         forever(ticks); assert(starts == 0); finish();
     }
     if (is("boot-ip-wake")) {
-        if (step == 0) { forever(ticks); assert(starts == 0); has_ip = true; okou_agent_notify(); }
+        if (step == 0) { forever(ticks); assert(starts == 0); has_ip = true; eh_agent_notify(); }
         else if (step == 1) { deadline(ticks, s_conn_start_us + CONNECT_TIMEOUT_US); subscribed(); }
-        else { forever(ticks); assert(okou_connected() && hellos == 1); finish(); }
+        else { forever(ticks); assert(eh_connected() && hellos == 1); finish(); }
         return;
     }
     if (is("slow-enroll-clock")) {
@@ -166,14 +168,14 @@ static void on_wait(TickType_t ticks)
     if (is("connecting-network-disconnect")) {
         if (step == 0) {
             deadline(ticks, s_conn_start_us + CONNECT_TIMEOUT_US);
-            has_ip = false; okou_agent_notify();
+            has_ip = false; eh_agent_notify();
         } else { forever(ticks); assert(stops == 1 && !s_iot_started); finish(); }
         return;
     }
     if (is("connecting-reboot")) {
         if (step == 0) {
             deadline(ticks, s_conn_start_us + CONNECT_TIMEOUT_US);
-            okou_schedule_reboot(125); expected_reboot = s_reboot_at_us;
+            eh_schedule_reboot(125); expected_reboot = s_reboot_at_us;
         } else { deadline(ticks, expected_reboot); clock_us = expected_reboot; }
         return;
     }
@@ -181,7 +183,7 @@ static void on_wait(TickType_t ticks)
         if (step == 0) {
             assert(starts == 1 && !s_iot_started);
             deadline(ticks, s_next_connect_us);
-            okou_schedule_reboot(2000); expected_reboot = s_reboot_at_us;
+            eh_schedule_reboot(2000); expected_reboot = s_reboot_at_us;
         } else if (step == 1) {
             deadline(ticks, s_next_connect_us); clock_us = s_next_connect_us; start_ok = true;
         } else {
@@ -193,7 +195,7 @@ static void on_wait(TickType_t ticks)
     if (is("connect-timeout") || is("fresh-connect-timeout")) {
         if (step == 0) {
             deadline(ticks, s_conn_start_us + CONNECT_TIMEOUT_US);
-            if (is("fresh-connect-timeout")) { events_cost_us = CONNECT_TIMEOUT_US; okou_agent_notify(); }
+            if (is("fresh-connect-timeout")) { events_cost_us = CONNECT_TIMEOUT_US; eh_agent_notify(); }
             else clock_us = s_conn_start_us + CONNECT_TIMEOUT_US;
         } else {
             assert(stops == 1 && !s_iot_started);
@@ -234,31 +236,31 @@ static void on_wait(TickType_t ticks)
     if (is("console-fragments")) {
         if (step == 0) {
             forever(ticks);
-            assert(okou_console_set(true) == ESP_OK);
+            assert(eh_console_set(true) == ESP_OK);
             char text[261];
             memset(text, 'x', 260);
             text[260] = 0;
             assert(native_log("%s", text) == 260); // 255 retained, 5 counted
-            assert(okou_console_write(text, OKOU_LOG_CHUNK_BYTES - 1 - 255));
-            assert(okou_console_write("打", 1));   // incomplete character at batch edge
+            assert(native_log("%.*s", EH_LOG_CHUNK_BYTES - 1 - 255, text) == EH_LOG_CHUNK_BYTES - 1 - 255);
+            assert(native_log("%.1s", "打") == 1);   // incomplete character at batch edge
         } else if (step == 1 || step == 2 || step == 4) {
             deadline(ticks, clock_us + FLUSH_US);
             clock_us += FLUSH_US;
         } else if (step == 3) {
             forever(ticks); // partial character alone has no polling deadline
-            assert(log_batches == 1 && okou_console_write("打" + 1, 2));
+            assert(log_batches == 1 && native_log("%s", "打" + 1) == 2);
         } else {
             forever(ticks);
-            assert(log_batches == 2 && okou_console_set(false) == ESP_OK);
+            assert(log_batches == 2 && eh_console_set(false) == ESP_OK);
             finish();
         }
     } else if (is("console-capture")) {
         console_scenario(step, ticks);
     } else if (is("idle-online")) {
-        forever(ticks); assert(okou_connected()); finish();
+        forever(ticks); assert(eh_connected()); finish();
     } else if (is("queued-events")) {
         forever(ticks);
-        if (step == 0) { okou_event("first", "{\"n\":1}"); okou_event("second", "{\"n\":2}"); }
+        if (step == 0) { eh_event("first", "{\"n\":1}"); eh_event("second", "{\"n\":2}"); }
         else { assert(event_count == 2); finish(); }
     } else if (is("wake-latch")) {
         forever(ticks); assert(race_injected && event_count == 1 && isr_gives == 2); finish();
@@ -278,13 +280,13 @@ static void on_wait(TickType_t ticks)
             forever(ticks); assert(commands == 1 && results == 2 && !s_last_receipt); finish();
         }
     } else if (is("hello-failure-recovery")) {
-        assert(step == 0 && stops == 1 && !s_iot_started && !okou_connected());
+        assert(step == 0 && stops == 1 && !s_iot_started && !eh_connected());
         deadline(ticks, s_next_connect_us); finish();
     } else if (is("event-failure-recovery")) {
-        if (step == 0) { forever(ticks); fail_event = true; okou_event("failed", "{}"); }
+        if (step == 0) { forever(ticks); fail_event = true; eh_event("failed", "{}"); }
         else { assert(stops == 1 && !s_iot_started && event_count == 1); deadline(ticks, s_next_connect_us); finish(); }
     } else if (is("network-disconnect")) {
-        if (step == 0) { forever(ticks); has_ip = false; okou_agent_notify(); }
+        if (step == 0) { forever(ticks); has_ip = false; eh_agent_notify(); }
         else { forever(ticks); assert(stops == 1 && !s_iot_started); finish(); }
     } else if (is("mqtt-disconnect")) {
         if (step == 0) { forever(ticks); disconnected(); }
@@ -302,31 +304,31 @@ static void on_wait(TickType_t ticks)
             deadline(ticks, s_next_connect_us); finish();
         }
     } else if (is("reboot-deadline")) {
-        if (step == 0) { forever(ticks); okou_schedule_reboot(250); expected_reboot = s_reboot_at_us; }
+        if (step == 0) { forever(ticks); eh_schedule_reboot(250); expected_reboot = s_reboot_at_us; }
         else { deadline(ticks, expected_reboot); clock_us = expected_reboot; }
     } else if (is("fresh-reboot") || is("failed-publish-reboot-priority")) {
         forever(ticks); assert(step == 0);
-        publish_cost_us = 800000; okou_schedule_reboot(300); expected_reboot = s_reboot_at_us;
+        publish_cost_us = 800000; eh_schedule_reboot(300); expected_reboot = s_reboot_at_us;
         reboot_expected_polls = event_polls + 1;
-        fail_event = is("failed-publish-reboot-priority"); okou_event("slow-publish", "{}");
-#if CONFIG_OKL_URL_OTA
+        fail_event = is("failed-publish-reboot-priority"); eh_event("slow-publish", "{}");
+#if CONFIG_EH_URL_OTA
     } else if (is("ota-pause-resume") || is("ota-paused-reboot")) {
         if (step == 0) {
-            forever(ticks); xEventGroupSetBits(ota_transport, OTA_PAUSE); okou_agent_notify();
-            if (is("ota-paused-reboot")) { okou_schedule_reboot(300); expected_reboot = s_reboot_at_us; }
+            forever(ticks); xEventGroupSetBits(ota_transport, OTA_PAUSE); eh_agent_notify();
+            if (is("ota-paused-reboot")) { eh_schedule_reboot(300); expected_reboot = s_reboot_at_us; }
         } else if (step == 1) {
             assert(stops == 1 && (xEventGroupGetBits(ota_transport) & MQTT_STOPPED));
             if (is("ota-paused-reboot")) { deadline(ticks, expected_reboot); clock_us = expected_reboot; }
-            else { forever(ticks); okou_resume_mqtt(); }
+            else { forever(ticks); eh_resume_mqtt(); }
         } else if (step == 2) {
             assert(starts == 2); deadline(ticks, s_conn_start_us + CONNECT_TIMEOUT_US); subscribed();
-        } else { forever(ticks); assert(okou_connected() && hellos == 2); finish(); }
+        } else { forever(ticks); assert(eh_connected() && hellos == 2); finish(); }
     } else if (is("ota-result-wake")) {
         forever(ticks);
         if (step == 0) {
             pending_install = strdup("{\"t\":\"event\",\"name\":\"install.done\",\"data\":{}}");
-            okou_install_result_ready();
-        } else { assert(final_events == 1 && pending_erases == 1 && okou_connected()); finish(); }
+            eh_install_result_ready();
+        } else { assert(final_events == 1 && pending_erases == 1 && eh_connected()); finish(); }
 #endif
     } else { fprintf(stderr, "unknown scenario: %s\n", scenario); abort(); }
 }
@@ -343,7 +345,7 @@ BaseType_t xSemaphoreTake(SemaphoreHandle_t s, TickType_t ticks)
      * coalescing into one latched token. Task must recheck and drain its queue. */
     if (is("wake-latch") && s_mqtt_up && !race_injected) {
         race_injected = true; in_isr = true;
-        okou_event("race", "{}"); okou_agent_notify(); in_isr = false;
+        eh_event("race", "{}"); eh_agent_notify(); in_isr = false;
     }
     if (s->pending) { s->pending = false; return pdTRUE; }
     on_wait(ticks);
@@ -368,7 +370,7 @@ BaseType_t xQueueReceive(QueueHandle_t q, void *item, TickType_t ticks)
 }
 void vQueueDelete(QueueHandle_t q) { free(q->items); free(q); }
 BaseType_t xTaskCreate(void (*fn)(void *), const char *name, uint32_t stack, void *arg, UBaseType_t prio, void *handle)
-{ if (!strcmp(name, "okou_agent")) { assert(!task_entry); task_entry = fn; } return pdPASS; }
+{ if (!strcmp(name, "eh_agent")) { assert(!task_entry); task_entry = fn; } return pdPASS; }
 void vTaskDelay(TickType_t ticks) { clock_us += (int64_t)ticks * portTICK_PERIOD_MS * 1000; }
 void vTaskDelete(void *task) { abort(); }
 EventGroupHandle_t xEventGroupCreate(void) { return calloc(1, sizeof(struct fake_event_group)); }
@@ -379,16 +381,16 @@ EventBits_t xEventGroupClearBits(EventGroupHandle_t g, EventBits_t bits)
 EventBits_t xEventGroupWaitBits(EventGroupHandle_t g, EventBits_t bits, BaseType_t clear, BaseType_t all, TickType_t ticks)
 { assert((g->bits & bits) == bits); EventBits_t old = g->bits; if (clear) g->bits &= ~bits; return old; }
 
-bool okou_iot_start(const char *boot_id, const char *hub, const char *token)
+bool eh_iot_start(const char *boot_id, const char *hub, const char *token)
 { assert(*boot_id && !strcmp(hub, "hub.test") && !strcmp(token, "token")); ++starts; clock_us += start_cost_us; start_cost_us = 0; return start_ok; }
-void okou_iot_stop(void) { ++stops; clock_us += stop_cost_us; stop_cost_us = 0; }
-unsigned okou_iot_events(void)
+void eh_iot_stop(void) { ++stops; clock_us += stop_cost_us; stop_cost_us = 0; }
+unsigned eh_iot_events(void)
 {
     ++event_polls; clock_us += events_cost_us; events_cost_us = 0;
     unsigned events = transport_events; transport_events = 0; return events;
 }
-cJSON *okou_iot_control(void) { cJSON *frame = control; control = NULL; return frame; }
-bool okou_iot_publish(cJSON *frame, bool confirm)
+cJSON *eh_iot_control(void) { cJSON *frame = control; control = NULL; return frame; }
+bool eh_iot_publish(cJSON *frame, bool confirm)
 {
     const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(frame, "t")); assert(type);
     clock_us += publish_cost_us; publish_cost_us = 0;
@@ -433,20 +435,20 @@ void esp_restart(void)
 size_t strlcpy(char *dst, const char *src, size_t n)
 { size_t len = strlen(src); if (n) { size_t copy = len < n - 1 ? len : n - 1; memcpy(dst, src, copy); dst[copy] = 0; } return len; }
 const char *esp_err_to_name(esp_err_t e) { return "fake-error"; }
-esp_err_t okou_nvs_init(void) { return ESP_OK; }
-esp_err_t okou_nvs_get_str(const char *key, char *buf, size_t len)
+esp_err_t eh_nvs_init(void) { return ESP_OK; }
+esp_err_t eh_nvs_get_str(const char *key, char *buf, size_t len)
 { if (!config_valid) return ESP_ERR_NOT_FOUND; strlcpy(buf, !strcmp(key, "hub") ? "hub.test" : "token", len); return ESP_OK; }
-char *okou_nvs_get_str_alloc(const char *key) { return pending_install ? strdup(pending_install) : NULL; }
-esp_err_t okou_nvs_set_str(const char *key, const char *value) { return ESP_OK; }
-esp_err_t okou_nvs_set_u8(const char *key, uint8_t value) { return ESP_OK; }
-esp_err_t okou_nvs_erase(const char *key)
-{ if (!strcmp(key, OKOU_KEY_PENDING)) { ++pending_erases; free(pending_install); pending_install = NULL; } return ESP_OK; }
-bool okou_hub_host_valid(const char *hub) { return !strcmp(hub, "hub.test"); }
-bool okou_net_has_ip(void) { return has_ip; }
-esp_err_t okou_net_start(bool manage) { return ESP_OK; }
-void okou_registry_builtin_cmds(void) { }
-bool okou_ble_address(char out[18]) { return false; }
-const esp_partition_t *okou_bootloader_partition(void) { return &partition; }
+char *eh_nvs_get_str_alloc(const char *key) { return pending_install ? strdup(pending_install) : NULL; }
+esp_err_t eh_nvs_set_str(const char *key, const char *value) { return ESP_OK; }
+esp_err_t eh_nvs_set_u8(const char *key, uint8_t value) { return ESP_OK; }
+esp_err_t eh_nvs_erase(const char *key)
+{ if (!strcmp(key, EH_KEY_PENDING)) { ++pending_erases; free(pending_install); pending_install = NULL; } return ESP_OK; }
+bool eh_hub_host_valid(const char *hub) { return !strcmp(hub, "hub.test"); }
+bool eh_net_has_ip(void) { return has_ip; }
+esp_err_t eh_net_start(bool manage) { return ESP_OK; }
+void eh_registry_builtin_cmds(void) { }
+bool eh_ble_address(char out[18]) { return false; }
+const esp_partition_t *eh_bootloader_partition(void) { return &partition; }
 const esp_partition_t *esp_ota_get_running_partition(void) { return &partition; }
 const esp_partition_t *esp_ota_get_boot_partition(void) { return &partition; }
 const esp_partition_t *esp_partition_find_first(int type, int subtype, const char *label) { return &partition; }
@@ -459,16 +461,16 @@ size_t heap_caps_get_free_size(unsigned caps) { return 100000; }
 size_t heap_caps_get_largest_free_block(unsigned caps) { return 100000; }
 esp_err_t esp_http_client_set_header(esp_http_client_handle_t c, const char *key, const char *value) { return ESP_OK; }
 esp_err_t esp_netif_sntp_init(const esp_sntp_config_t *config) { return ESP_OK; }
-const char *okou_reset_reason_str(void) { return "host"; }
-const char *okou_ota_state_str(const esp_partition_t *p) { return "valid"; }
-void okou_hex(const uint8_t *in, size_t n, char *out) { memset(out, '0', n * 2); out[n * 2] = 0; }
-void okou_net_info(cJSON *obj) { }
-cJSON *okou_partitions_json(void) { return cJSON_CreateArray(); }
-cJSON *okou_cmd_list_json(void) { return cJSON_CreateArray(); }
-cJSON *okou_param_list_json(void) { return cJSON_CreateArray(); }
-int okou_cmd_run(const char *name, const cJSON *argv, char **out) { return -1000; }
-esp_err_t okou_param_get_json(const char *name, cJSON *data, char *err, size_t len) { return ESP_ERR_NOT_FOUND; }
-esp_err_t okou_param_set_json(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_ERR_NOT_FOUND; }
+const char *eh_reset_reason_str(void) { return "host"; }
+const char *eh_ota_state_str(const esp_partition_t *p) { return "valid"; }
+void eh_hex(const uint8_t *in, size_t n, char *out) { memset(out, '0', n * 2); out[n * 2] = 0; }
+void eh_net_info(cJSON *obj) { }
+cJSON *eh_partitions_json(void) { return cJSON_CreateArray(); }
+cJSON *eh_cmd_list_json(void) { return cJSON_CreateArray(); }
+cJSON *eh_param_list_json(void) { return cJSON_CreateArray(); }
+int eh_cmd_run(const char *name, const cJSON *argv, char **out) { return -1000; }
+esp_err_t eh_param_get_json(const char *name, cJSON *data, char *err, size_t len) { return ESP_ERR_NOT_FOUND; }
+esp_err_t eh_param_set_json(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_ERR_NOT_FOUND; }
 
 int main(int argc, char **argv)
 {
@@ -480,12 +482,12 @@ int main(int argc, char **argv)
     if (is("slow-enroll-clock")) start_cost_us = CONNECT_TIMEOUT_US;
     if (is("hello-failure-recovery")) fail_hello = true;
     /* A producer may notify before start; this must be harmless. */
-    okou_agent_notify();
-    assert(okou_agent_start(NULL) == ESP_OK && task_entry);
-    assert(okou_op_register("echo", echo) == ESP_OK);
+    eh_agent_notify();
+    assert(eh_agent_start() == ESP_OK && task_entry);
+    assert(eh_op_register("echo", echo) == ESP_OK);
     if (is("stable-online-reset") || is("short-online-backoff")) s_backoff_ms = 32000;
     if (is("offline-reboot") || is("sub-tick-reboot") || is("largest-reboot")) {
-        okou_schedule_reboot(is("largest-reboot") ? UINT32_MAX : is("sub-tick-reboot") ? 1 : 125);
+        eh_schedule_reboot(is("largest-reboot") ? UINT32_MAX : is("sub-tick-reboot") ? 1 : 125);
         expected_reboot = s_reboot_at_us;
         if (is("sub-tick-reboot")) clock_us += 999;
     }

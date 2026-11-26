@@ -1,6 +1,0 @@
-name: PaperDIY setup
-description: Build the PaperDIY setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

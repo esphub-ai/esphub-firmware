@@ -1,6 +1,0 @@
-name: Unit CamS3-5MP setup
-description: Build the Unit CamS3-5MP setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

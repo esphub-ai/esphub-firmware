@@ -30,7 +30,7 @@ with (build / "esp-bootloader.elf").open("rb") as elf:
                if symbol["st_shndx"] != "SHN_UNDEF"}
 unexpected = sorted(s for s in symbols if s.startswith(("esp_transport_ws_", "esp_websocket_client_")))
 assert not unexpected, f"WebSocket implementation linked: {unexpected}"
-required = {"esp_transport_ssl_init", "esp_mqtt_client_start", "esp_http_client_perform", "okou_hub_host_valid"}
+required = {"esp_transport_ssl_init", "esp_mqtt_client_start", "esp_http_client_perform", "eh_hub_host_valid"}
 assert required <= symbols, f"Missing native transport or hostname validation: {required - symbols}"
 print(f"{variant} {build}: {len(image)} bytes, SHA-256 {sha256(image).hexdigest()}; ELF transport checks passed")
 

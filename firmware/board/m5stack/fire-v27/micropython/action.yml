@@ -1,6 +1,0 @@
-name: Fire v2.7 micropython
-description: Build the Fire v2.7 micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython

@@ -1,2 +1,2 @@
 #pragma once
-#define CONFIG_OKOU_NET_OPENETH 0
+#define CONFIG_EH_NET_OPENETH 0

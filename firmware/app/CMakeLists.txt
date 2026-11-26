@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.16)
+
+set(EXTRA_COMPONENT_DIRS "${EH_AGENT_DIR}")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(${EH_APP_NAME})
+
+if(EH_M5_BOARD_ID)
+    foreach(component m5stack__m5gfx m5stack__m5unified main)
+        idf_component_get_property(library ${component} COMPONENT_LIB)
+        target_compile_definitions(${library} PRIVATE BOARD_ID=${EH_M5_BOARD_ID})
+    endforeach()
+    idf_component_get_property(gfx m5stack__m5gfx COMPONENT_LIB)
+    idf_component_get_property(psram esp_psram COMPONENT_LIB)
+    target_link_libraries(${gfx} PRIVATE ${psram})
+endif()

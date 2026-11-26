@@ -1,6 +1,0 @@
-name: AtomS3R-CAM setup
-description: Build the AtomS3R-CAM setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

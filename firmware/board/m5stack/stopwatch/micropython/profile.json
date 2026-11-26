@@ -1,7 +1,0 @@
-{
-  "target": "M5STACK_StopWatch",
-  "disable_cmake_options": [
-    "MICROPY_PY_LVGL",
-    "ADF_MODULE_ENABLE"
-  ]
-}

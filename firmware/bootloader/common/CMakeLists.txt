@@ -9,18 +9,18 @@ set(variant_flash "${CMAKE_MATCH_2}MB")
 set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../common/main" "${CMAKE_CURRENT_SOURCE_DIR}/../../components")
 set(SDKCONFIG_DEFAULTS "../../sdkconfig.common;../common/sdkconfig.defaults;sdkconfig.defaults;../../ble.defaults")
 if(NOT DEFINED PROJECT_VER)
-    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../../version.txt" _okl_base LIMIT_COUNT 1)
-    set(PROJECT_VER "${_okl_base}.0-dev")
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../../version.txt" _eh_base LIMIT_COUNT 1)
+    set(PROJECT_VER "${_eh_base}.0-dev")
 endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(esp-bootloader)
 
-if(NOT "${CONFIG_OKOU_BL_PROFILE}" STREQUAL "${ESPHUB_BL}" OR
+if(NOT "${CONFIG_EH_BL_PROFILE}" STREQUAL "${ESPHUB_BL}" OR
    NOT "${CONFIG_ESPTOOLPY_FLASHSIZE}" STREQUAL "${variant_flash}" OR
-   NOT "${CONFIG_OKOU_BOARD_PROFILE}" STREQUAL "" OR CONFIG_SPIRAM)
+   CONFIG_SPIRAM)
     message(FATAL_ERROR "Use a clean sdkconfig for bootloader variant '${ESPHUB_BL}'.")
 endif()
 
 # Let the SDK omit app-only command and boot paths from the bootloader image.
-idf_component_get_property(agent_library okou_agent COMPONENT_LIB)
-target_compile_definitions(${agent_library} PRIVATE OKOU_BOOTLOADER_BUILD)
+idf_component_get_property(agent_library eh_agent COMPONENT_LIB)
+target_compile_definitions(${agent_library} PRIVATE EH_BOOTLOADER_BUILD)

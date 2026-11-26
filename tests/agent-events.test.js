@@ -86,11 +86,11 @@ for (const ota of [false, true]) {
         "-D_GNU_SOURCE",
         "-Werror",
         "-g",
-        `-DCONFIG_OKL_URL_OTA=${Number(ota)}`,
+        `-DCONFIG_EH_URL_OTA=${Number(ota)}`,
         "-I" + dir,
         "-I" + fixture,
         "-I" + resolve("."),
-        "-Ifirmware/components/okou_agent/include",
+        "-Ifirmware/components/eh_agent/include",
       ];
       const exe = join(dir, "agent-test");
       execFileSync(

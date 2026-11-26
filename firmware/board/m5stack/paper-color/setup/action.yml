@@ -1,6 +1,0 @@
-name: Paper Color setup
-description: Build the Paper Color setup release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-kit

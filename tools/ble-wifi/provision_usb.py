@@ -35,7 +35,7 @@ def write_registration(port, registration):
     fields = {key: registration[key] for key in ("hub", "token", "ble_secret")}
     if not all(isinstance(value, str) and value for value in fields.values()):
         raise ValueError("Incomplete registration")
-    record = b"OKL-PROVISION " + json.dumps(fields, separators=(",", ":")).encode() + b"\n"
+    record = b"EH-PROVISION " + json.dumps(fields, separators=(",", ":")).encode() + b"\n"
     port.reset_input_buffer()
     port.write(record)
     port.flush()
@@ -45,14 +45,14 @@ def write_registration(port, registration):
         line += port.read_until(b"\n", 2048)
         if line.endswith(b"\n"):
             reply = line.rstrip(b"\r\n")
-            if reply.startswith(b"OKL-PROVISION-OK "):
+            if reply.startswith(b"EH-PROVISION-OK "):
                 address = json.loads(reply.split(b" ", 1)[1]).get("ble_address")
                 if address is None:
                     return None
                 if not isinstance(address, str) or not re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", address):
                     raise ValueError("Invalid Bluetooth address in USB receipt")
                 return address.lower()
-            if reply.startswith(b"OKL-PROVISION-ERR"):
+            if reply.startswith(b"EH-PROVISION-ERR"):
                 raise RuntimeError("Device rejected the USB registration.")
             line = b""
         if len(line) > 4096:

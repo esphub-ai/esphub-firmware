@@ -1,6 +1,0 @@
-name: Unit CamS3-5MP micropython
-description: Build the Unit CamS3-5MP micropython release assets.
-runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/build-micropython
