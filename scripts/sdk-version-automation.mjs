@@ -364,7 +364,7 @@ export async function reconcileSdkPullRequest({
       root,
       check,
       "success",
-      `SDK ${plan.expectedVersion} matches main ${pr.base.sha} at head ${pr.head.sha}. CI must still pass before merge.`,
+      `SDK ${plan.expectedVersion} matches main ${pr.base.sha} at head ${pr.head.sha}. Board builds are advisory on pull requests.`,
     );
     return {
       number,

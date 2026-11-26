@@ -48,6 +48,9 @@ def build(args, board, example, work):
         shutil.copytree(FIRMWARE / "app", project)
         sdkconfig = project / "sdkconfig.defaults"
         with sdkconfig.open("a") as defaults:
+            example_defaults = entrypoint.parent / "sdkconfig.defaults"
+            if example_defaults.is_file():
+                defaults.write("\n" + example_defaults.read_text() + "\n")
             defaults.write(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partitions}"\n')
             defaults.write(f"CONFIG_ESPTOOLPY_FLASHSIZE_{board['flash_mb']}MB=y\n")
             if board.get("psram"):
