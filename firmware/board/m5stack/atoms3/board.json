@@ -18,6 +18,12 @@
       "description": "Read button transitions and click counts. The serial log identifies the button and gesture; screens also show a colored indicator.",
       "entrypoint": "examples/buttons/main.cpp",
       "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Button/Button.ino"
+    },
+    {
+      "id": "ir-nec",
+      "description": "Send extended NEC frames on GPIO4 and show the incrementing command on the LCD.",
+      "entrypoint": "examples/ir-nec/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Basics/ir_nec/ir_nec.ino"
     }
   ]
 }
