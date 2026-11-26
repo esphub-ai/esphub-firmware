@@ -36,7 +36,7 @@ extern "C" void app_main()
     Field field = Field::hour;
     bool ringing = false;
     int64_t last_tone = 0;
-    int last_rang_date = -1;
+    int64_t last_rang_minute = -1;
     draw_alarm(hour, minute, enabled, field);
     for (;;) {
         M5.update();
@@ -65,10 +65,11 @@ extern "C" void app_main()
 
         m5::rtc_datetime_t now{};
         if (clock.read(now)) {
-            int today = now.date.year * 10000 + now.date.month * 100 + now.date.date;
-            if (!ringing && enabled && last_rang_date != today &&
+            const int date = now.date.year * 10000 + now.date.month * 100 + now.date.date;
+            const int64_t current_minute = static_cast<int64_t>(date) * 1440 + now.time.hours * 60 + now.time.minutes;
+            if (!ringing && enabled && last_rang_minute != current_minute &&
                 now.time.hours == hour && now.time.minutes == minute) {
-                last_rang_date = today;
+                last_rang_minute = current_minute;
                 ringing = true;
                 last_tone = 0;
                 M5.Display.clear();

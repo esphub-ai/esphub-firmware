@@ -17,6 +17,8 @@ extern "C" void app_main()
     }
     auto *fluid = new (memory) FluidBox;
     if (!fluid->begin(M5.Display.width(), M5.Display.height())) {
+        fluid->~FluidBox();
+        heap_caps_free(memory);
         centered("FluidBox init failed", 230, 2);
         return;
     }

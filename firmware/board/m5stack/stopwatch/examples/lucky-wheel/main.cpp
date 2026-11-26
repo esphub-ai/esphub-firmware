@@ -19,7 +19,7 @@ static void draw_wheel(int sectors)
         const float end = (i + 1) * 360.f / sectors;
         d.fillArc(x, y, radius, radius / 2, start, end, colors[i % 5]);
         const float angle = (start + end) * 0.5f * 0.017453293f;
-        char label[4];
+        char label[12];
         snprintf(label, sizeof(label), "%d", i + 1);
         d.setTextSize(3);
         d.setTextDatum(lgfx::textdatum_t::middle_center);

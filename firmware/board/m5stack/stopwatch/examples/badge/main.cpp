@@ -133,6 +133,7 @@ extern "C" void app_main()
     M5.begin();
     auto *image = static_cast<uint8_t *>(heap_caps_malloc(max_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     if (!image || !mount_storage()) {
+        heap_caps_free(image);
         centered("Badge storage unavailable", 230, 2);
         return;
     }
