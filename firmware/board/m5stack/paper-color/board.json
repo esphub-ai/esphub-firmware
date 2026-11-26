@@ -29,6 +29,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/button"
     },
     {
+      "id": "easy-tag",
+      "description": "Choose one of three microSD PNG name tags with A, B or C, then retain the image in deep sleep.",
+      "entrypoint": "examples/easy-tag/main.cpp",
+      "upstream": "https://github.com/nananauno/M5PEasyTag/tree/bcef44354ad910c78c55e15124aa4fd0853947fd"
+    },
+    {
       "id": "ir-nec",
       "description": "Send NEC infrared frames on the onboard transmitter and show the current address and command.",
       "entrypoint": "examples/ir-nec/main.cpp",
