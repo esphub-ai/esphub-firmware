@@ -50,6 +50,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/rtc"
     },
     {
+      "id": "mic-record",
+      "description": "Hold Button A to record audio, then release it to play the recording on the onboard speaker.",
+      "entrypoint": "examples/mic-record/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/mic"
+    },
+    {
       "id": "speaker-tone",
       "description": "Play alternating 4 kHz and 8 kHz tones on the onboard speaker.",
       "entrypoint": "examples/speaker-tone/main.cpp",
