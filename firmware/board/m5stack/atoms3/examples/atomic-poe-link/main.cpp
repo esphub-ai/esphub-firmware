@@ -48,6 +48,10 @@ void showLabel(const char* label, int y)
     display.setTextColor(TFT_GREEN, TFT_BLACK);
     display.setTextDatum(middle_center);
     display.setFont(&fonts::Orbitron_Light_24);
+    display.setTextSize(1);
+    if (display.textWidth(label) > display.width() - 8) {
+        display.setTextSize(0.85f);
+    }
     display.drawString(label, display.width() / 2, y);
 }
 }  // namespace
