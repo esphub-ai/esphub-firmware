@@ -1,4 +1,5 @@
 // https://docs.m5stack.com/en/arduino/m5air_quality/sen55
+// https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/hardware/sen55/airq_sen55_example.py
 #include "eh_agent.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
@@ -12,6 +13,7 @@ constexpr uint8_t address = 0x69;
 constexpr uint32_t frequency = 100000;
 constexpr uint16_t reset = 0xd304;
 constexpr uint16_t startMeasurement = 0x0021;
+constexpr uint16_t readDataReady = 0x0202;
 constexpr uint16_t readMeasuredValues = 0x03c4;
 constexpr size_t fieldCount = 8;
 
@@ -48,9 +50,9 @@ uint8_t crc8(const uint8_t* word)
     return crc;
 }
 
-bool readSample(uint16_t (&words)[fieldCount])
+bool readWords(uint16_t command, uint16_t* words, size_t count)
 {
-    if (!send(readMeasuredValues)) {
+    if (!send(command)) {
         return false;
     }
     vTaskDelay(pdMS_TO_TICKS(20) + 1);
@@ -59,12 +61,12 @@ bool readSample(uint16_t (&words)[fieldCount])
         return false;
     }
     uint8_t bytes[fieldCount * 3];
-    const bool read = bus.read(bytes, sizeof(bytes), true);
+    const bool read = bus.read(bytes, count * 3, true);
     const bool stopped = bus.stop();
     if (!read || !stopped) {
         return false;
     }
-    for (size_t i = 0; i < fieldCount; ++i) {
+    for (size_t i = 0; i < count; ++i) {
         const auto* word = bytes + i*3;
         if (crc8(word) != word[2]) {
             return false;
@@ -124,17 +126,26 @@ extern "C" void app_main()
         std::puts("SEN55: start failed");
         return;
     }
-    vTaskDelay(pdMS_TO_TICKS(50) + 1);
+    vTaskDelay(pdMS_TO_TICKS(1000) + 1);
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
+        M5.update();
+        uint16_t ready = 0;
+        if (!readWords(readDataReady, &ready, 1)) {
+            std::puts("SEN55: data-ready read failed");
+            continue;
+        }
+        if (!(ready & 1)) {
+            continue;
+        }
+
         uint16_t words[fieldCount];
-        if (readSample(words)) {
+        if (readWords(readMeasuredValues, words, fieldCount)) {
             show(nullptr, words);
         } else {
             show("Read failed");
             std::puts("SEN55: read failed");
         }
-        M5.update();
     }
 }
