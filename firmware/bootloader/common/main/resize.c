@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "bootloader.h"
 #include "eh_agent_ext.h"
@@ -15,6 +16,7 @@
 #include "esp_flash_internal.h"
 #endif
 #include "mbedtls/base64.h"
+#include "nvs.h"
 
 #define SECTOR 4096U
 #define APP_ALIGNMENT 65536U
@@ -30,7 +32,7 @@ static const esp_partition_t *filesystem(void)
     return esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS, "data");
 }
 
-bool current_layout(uint32_t *app_size, uint32_t *data_size)
+static bool current_layout(uint32_t *app_size, uint32_t *data_size)
 {
     const esp_partition_t *app = app_slot(), *data = filesystem();
     uint32_t flash_size;
@@ -40,6 +42,56 @@ bool current_layout(uint32_t *app_size, uint32_t *data_size)
     *app_size = app->size;
     *data_size = data->size;
     return true;
+}
+
+static bool reboot_pending;
+
+esp_err_t launcher_install(const cJSON *args, cJSON *result, char *error, size_t error_len)
+{
+    if (reboot_pending) return ESP_ERR_INVALID_STATE;
+    const char *kind = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(args, "kind"));
+    const cJSON *image = cJSON_GetObjectItemCaseSensitive(args, "image_size");
+    uint32_t app, data;
+    if (kind && !strcmp(kind, "app") && cJSON_IsNumber(image) && current_layout(&app, &data) &&
+        image->valuedouble > app) {
+        snprintf(error, error_len, "Image %lu bytes, app slot %lu, maximum after resize %lu",
+                 (unsigned long)image->valuedouble, (unsigned long)app,
+                 (unsigned long)((app + data - 2 * SECTOR) & ~(APP_ALIGNMENT - 1)));
+        return ESP_ERR_INVALID_SIZE;
+    }
+    return eh_install_op(args, result, error, error_len);
+}
+
+// Convert only our in-progress marker. The existing OTA event delivery code
+// persists a terminal event until the Hub acknowledges it, across reboots.
+void reconcile_resize(void)
+{
+    char *saved = eh_nvs_get_str_alloc(EH_KEY_PENDING);
+    if (!saved) return;
+    cJSON *marker = cJSON_Parse(saved);
+    free(saved);
+    const char *kind = cJSON_GetStringValue(cJSON_GetObjectItem(marker, "kind"));
+    if (!kind || strcmp(kind, "resize_app")) { cJSON_Delete(marker); return; }
+    uint32_t app, data;
+    const cJSON *wanted = cJSON_GetObjectItem(marker, "app_size_bytes");
+    const cJSON *fs = cJSON_GetObjectItem(marker, "data_size_bytes");
+    bool active = current_layout(&app, &data) && cJSON_IsNumber(wanted) && wanted->valuedouble == app &&
+                  cJSON_IsNumber(fs) && fs->valuedouble == data;
+    if (!active) cJSON_AddStringToObject(marker, "error", "Requested layout is not active");
+    cJSON *frame = cJSON_CreateObject();
+    if (frame && cJSON_AddItemToObject(frame, "data", marker)) {
+        marker = NULL;
+        if (cJSON_AddStringToObject(frame, "t", "event") &&
+            cJSON_AddStringToObject(frame, "name", active ? "install.done" : "install.failed")) {
+            char *encoded = cJSON_PrintUnformatted(frame);
+            if (encoded) {
+                eh_nvs_set_str(EH_KEY_PENDING, encoded);
+                free(encoded);
+            }
+        }
+    }
+    cJSON_Delete(frame);
+    cJSON_Delete(marker);
 }
 
 void report_layout(void)
@@ -147,7 +199,7 @@ static esp_err_t apply_resize(const esp_partition_t *app, const esp_partition_t 
 esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error_len)
 {
     uint32_t old_size, old_data;
-    if (launcher_ota_busy() || !current_layout(&old_size, &old_data)) return ESP_ERR_INVALID_STATE;
+    if (reboot_pending || !current_layout(&old_size, &old_data)) return ESP_ERR_INVALID_STATE;
     const cJSON *requested = cJSON_GetObjectItemCaseSensitive(args, "app_size_bytes");
     uint32_t total = old_size + old_data;
     if (total < APP_ALIGNMENT + 2 * SECTOR || !cJSON_IsNumber(requested) ||
@@ -184,13 +236,20 @@ esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error
         pending = cJSON_PrintUnformatted(marker);
     cJSON_Delete(marker);
     if (!pending) return ESP_ERR_NO_MEM;
-    launcher_ota_set_busy(true);
+    // An accepted install owns this NVS key until its terminal receipt is delivered.
+    char existing;
+    if (eh_nvs_get_str(EH_KEY_PENDING, &existing, sizeof(existing)) != ESP_ERR_NVS_NOT_FOUND) {
+        free(pending);
+        strlcpy(error, "OTA transfer already pending", error_len);
+        return ESP_ERR_INVALID_STATE;
+    }
     esp_err_t rc = apply_resize(app, data, size, seed, pending);
     free(pending);
     if (rc != ESP_OK) {
-        launcher_ota_set_busy(false);
+        eh_nvs_erase(EH_KEY_PENDING);
         return rc;
     }
+    reboot_pending = true;
     cJSON_AddBoolToObject(result, "rebooting", true);
     eh_schedule_reboot(1000);
     return ESP_OK;

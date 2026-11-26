@@ -72,8 +72,6 @@ export function replaceSdkVersion(header, version) {
 function isSdkInput(path, root) {
   if (!path.startsWith(root)) return false;
   const relative = path.slice(root.length);
-  // Older trees stored the Launcher-only HTTPS installer here. No SDK target compiled it.
-  if (relative === "src/eh_install.c") return false;
   return (
     !/\.(?:md|markdown|mdown|mdx)$/i.test(relative) &&
     !/(?:^|\/)(?:docs?|tests?|__tests__)(?:\/|$)/i.test(relative) &&

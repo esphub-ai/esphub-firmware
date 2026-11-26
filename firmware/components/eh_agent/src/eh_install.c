@@ -13,8 +13,7 @@
 #include "esp_crt_bundle.h"
 #include "esp_app_format.h"
 #include "esp_app_desc.h"
-#include "bootloader.h"
-#include <stdatomic.h>
+#include "eh_install.h"
 #include "eh_agent.h"
 #include "eh_agent_ext.h"
 #include "sdkconfig.h"
@@ -29,10 +28,7 @@ typedef struct {
     char url[URL_LIMIT + 1];
     char id[37];
 } inst_t;
-static atomic_bool s_running;
-
-bool launcher_ota_busy(void) { return atomic_load(&s_running); }
-void launcher_ota_set_busy(bool busy) { atomic_store(&s_running, busy); }
+static volatile bool s_running;
 
 static const esp_partition_t *app_partition(void)
 {
@@ -193,7 +189,6 @@ static bool run_install(inst_t *in)
     uint8_t *buf = malloc(CHUNK), *header = malloc(CHUNK);
     int64_t length = 0;
     uint32_t written = 0;
-    char capacity_error[128];
     const char *fail = NULL;
     if (!c || !buf || !header) { fail = "Out of memory"; goto out; }
     if (!target || target->address == esp_ota_get_running_partition()->address) { fail = "Incompatible partition layout"; goto out; }
@@ -201,17 +196,7 @@ static bool run_install(inst_t *in)
     eh_set_install_state("downloading");
     fail = open_download(c, private_artifact, &safe_redirect, &length);
     if (fail) goto out;
-    if (length > limit) {
-        uint32_t app_bytes, data_bytes;
-        if (!bootloader && current_layout(&app_bytes, &data_bytes)) {
-            snprintf(capacity_error, sizeof(capacity_error),
-                     "Image %lld bytes, app slot %lu, maximum after resize %lu",
-                     (long long)length, (unsigned long)app_bytes,
-                     (unsigned long)((app_bytes + data_bytes - 8192) & ~65535U));
-            fail = capacity_error;
-        } else fail = "Download exceeds target size";
-        goto out;
-    }
+    if (length > limit) { fail = "Download exceeds target size"; goto out; }
     for (;;) {
         int n = esp_http_client_read(c, (char *)buf, CHUNK);
         if (n < 0) { fail = "HTTPS read failed"; goto out; }
@@ -321,18 +306,6 @@ void eh_install_reconcile_boot(void)
     if (!saved) return;
     cJSON *marker = cJSON_Parse(saved);
     free(saved);
-    const char *kind = cJSON_GetStringValue(cJSON_GetObjectItem(marker, "kind"));
-    if (kind && !strcmp(kind, "resize_app")) {
-        uint32_t app_bytes, data_bytes;
-        const cJSON *wanted = cJSON_GetObjectItem(marker, "app_size_bytes");
-        const cJSON *filesystem = cJSON_GetObjectItem(marker, "data_size_bytes");
-        bool active = current_layout(&app_bytes, &data_bytes) &&
-                      cJSON_IsNumber(wanted) && wanted->valuedouble == app_bytes &&
-                      cJSON_IsNumber(filesystem) && filesystem->valuedouble == data_bytes;
-        if (!active) cJSON_AddStringToObject(marker, "error", "Requested layout is not active");
-        save_result(active ? "install.done" : "install.failed", marker, NULL);
-        return;
-    }
     const char *target = cJSON_GetStringValue(cJSON_GetObjectItem(marker, "target"));
     if (target && !strcmp(target, esp_ota_get_running_partition()->label)) {
         cJSON_DeleteItemFromObject(marker, "target");

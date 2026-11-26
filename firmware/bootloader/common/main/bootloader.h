@@ -9,9 +9,8 @@
 
 esp_err_t resize_app(const cJSON *args, cJSON *result, char *err, size_t errlen);
 void report_layout(void);
-bool current_layout(uint32_t *app_size, uint32_t *data_size);
-bool launcher_ota_busy(void);
-void launcher_ota_set_busy(bool busy);
+esp_err_t launcher_install(const cJSON *args, cJSON *result, char *err, size_t errlen);
+void reconcile_resize(void);
 
 
 /* Store a provisioning JSON object (BLE bootstrap key/hub/token/name) in NVS namespace eh. */
