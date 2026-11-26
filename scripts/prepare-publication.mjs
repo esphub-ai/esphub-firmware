@@ -7,19 +7,22 @@ const repo = "okou-ai/esphub-firmware";
 const id = process.env.SOURCE_RUN ?? "";
 const board = process.env.BOARD;
 if (!/^\d+$/.test(id)) throw Error("Invalid source run ID");
-const api = (path, paginate = false) =>
-  JSON.parse(
-    execFileSync(
-      "gh",
-      [
-        "api",
-        `repos/${repo}/actions/runs/${id}${path}`,
-        ...(paginate ? ["--paginate", "--slurp"] : []),
-      ],
-      { encoding: "utf8" },
-    ),
-  );
-const run = api("");
+const api = (path, pageFilter) =>
+  execFileSync(
+    "gh",
+    [
+      "api",
+      `repos/${repo}/actions/runs/${id}${path}`,
+      ...(path ? ["--paginate"] : []),
+      "--jq",
+      pageFilter,
+    ],
+    { encoding: "utf8" },
+  )
+    .trim()
+    .split("\n")
+    .map((page) => JSON.parse(page));
+const [run] = api("", ".");
 if (
   run.head_repository.full_name !== repo ||
   run.head_branch !== "main" ||
@@ -42,12 +45,16 @@ if (!Object.hasOwn(boards, board))
 const profile = boards[board];
 const stem = boardFileStem(board);
 const names = new Set(
-  api("/artifacts?per_page=100", true)
-    .flatMap(({ artifacts }) => artifacts)
-    .filter(({ expired }) => !expired)
-    .map(({ name }) => name),
+  api(
+    "/artifacts?per_page=100",
+    `[.artifacts[] | select(.expired == false and (.name | startswith(${JSON.stringify(stem + ".")}))) | .name]`,
+  ).flat(),
 );
-const jobs = api("/jobs?per_page=100", true).flatMap((page) => page.jobs);
+const boardSegment = JSON.stringify(`/ ${board} / `);
+const jobs = api(
+  "/jobs?per_page=100",
+  `[.jobs[] | select(.name | contains(${boardSegment})) | {name, conclusion}]`,
+).flat();
 const selected = Object.values(profile.tasks).filter(({ kind }) => {
   const name = kind === "setup" ? "USB kit" : kind;
   const matches = jobs.filter((job) =>
