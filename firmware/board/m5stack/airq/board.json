@@ -8,6 +8,12 @@
   "default_example": "hello-display",
   "examples": [
     {
+      "id": "scd40",
+      "description": "Show CO₂, temperature and humidity from the AirQ onboard SCD40 sensor.",
+      "entrypoint": "examples/scd40/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/m5air_quality/scd40"
+    },
+    {
       "id": "display",
       "description": "Continuously draw random circles and rectangles on the AirQ e-paper screen.",
       "entrypoint": "examples/display/main.cpp",
