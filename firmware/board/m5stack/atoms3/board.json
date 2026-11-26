@@ -105,6 +105,12 @@
       "description": "Mount the Atomic GPS Base microSD card, show its space usage and exercise FAT directory and file operations in an isolated test directory.",
       "entrypoint": "examples/atomic-gps-microsd/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicGPS/MicroSD/MicroSD.ino"
+    },
+    {
+      "id": "atomic-poe-link",
+      "description": "Read the Atomic PoE Base W5500 Ethernet link and show Unknown, ON or OFF on the LCD and serial console.",
+      "entrypoint": "examples/atomic-poe-link/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/LinkStatus/LinkStatus.ino"
     }
   ]
 }
