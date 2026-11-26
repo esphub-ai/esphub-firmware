@@ -394,19 +394,18 @@ index 158f18c..b6377da 100644
   * @brief Disconnects the STA interface while keeping the AP enabled.
   *
 diff --git a/main/apps/app_server/app_server.cpp b/main/apps/app_server/app_server.cpp
-index 6809e97..68d3784 100644
+index 6809e97..0260405 100644
 --- a/main/apps/app_server/app_server.cpp
 +++ b/main/apps/app_server/app_server.cpp
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,7 @@
   * SPDX-License-Identifier: MIT
   */
  #include "apps/app_server/app_server.h"
 +#include "paper_network.h"
-+#include "lwip/sockets.h"
  #include <cstdio>
  #include <cstdlib>
  #include <cstring>
-@@ -16,6 +18,9 @@
+@@ -16,6 +17,9 @@
  #include <strings.h>
  
  #include "esp_log.h"
@@ -416,7 +415,7 @@ index 6809e97..68d3784 100644
  #include "esp_netif.h"
  #include "lwip/inet.h"
  #include "esp_http_server.h"
-@@ -41,7 +46,7 @@ extern PhotoSlideshow photo_slideshow;
+@@ -41,7 +45,7 @@ extern PhotoSlideshow photo_slideshow;
  #define TAG "app_server"
  
  /* ==== Constants ==== */
@@ -425,7 +424,7 @@ index 6809e97..68d3784 100644
  
  #ifndef APP_ASSETS_USE_EMBEDDED
  #define APP_ASSETS_USE_EMBEDDED 0
-@@ -53,7 +58,7 @@ extern const char _binary_index_html_end[] asm("_binary_index_html_end");
+@@ -53,7 +57,7 @@ extern const char _binary_index_html_end[] asm("_binary_index_html_end");
  #endif
  
  #define SCAN_TIMEOUT_MS    (8000)
@@ -434,7 +433,7 @@ index 6809e97..68d3784 100644
  #define UPLOAD_MAX_SIZE    (2 * 1024 * 1024)
  #define PHOTOS_PER_PAGE    (16)
  #define MAX_PHOTOS         (500)
-@@ -301,27 +306,15 @@ static esp_err_t generate_next_photo_name(const char *ext, const char *algorithm
+@@ -301,27 +305,15 @@ static esp_err_t generate_next_photo_name(const char *ext, const char *algorithm
  /* ==== WiFi (via hal_wifi library) ==== */
  static int perform_wifi_scan(void)
  {
@@ -471,7 +470,7 @@ index 6809e97..68d3784 100644
      }
      if (g_scan_cache) {
          free(g_scan_cache);
-@@ -353,20 +346,6 @@ static void app_server_clear_connecting_state(void)
+@@ -353,20 +345,6 @@ static void app_server_clear_connecting_state(void)
      g_dev_state.conn_err[0] = 0;
  }
  
@@ -492,7 +491,7 @@ index 6809e97..68d3784 100644
  static void app_server_set_connect_failed_state(const char *message)
  {
      strlcpy(g_dev_state.conn_err, message, sizeof(g_dev_state.conn_err));
-@@ -374,20 +353,30 @@ static void app_server_set_connect_failed_state(const char *message)
+@@ -374,20 +352,30 @@ static void app_server_set_connect_failed_state(const char *message)
  
  static int perform_wifi_connect(const char *ssid, const char *pass)
  {
@@ -534,7 +533,7 @@ index 6809e97..68d3784 100644
      if (err == ESP_ERR_TIMEOUT) {
          app_server_set_connect_failed_state("connection timeout");
      } else {
-@@ -416,7 +405,7 @@ static esp_err_t h_get_modes(httpd_req_t *req)
+@@ -416,7 +404,7 @@ static esp_err_t h_get_modes(httpd_req_t *req)
  
  static esp_err_t h_wifi_scan(httpd_req_t *req)
  {
@@ -543,22 +542,10 @@ index 6809e97..68d3784 100644
      cJSON *r = cJSON_CreateObject();
      cJSON *a = cJSON_AddArrayToObject(r, "networks");
  
-@@ -433,6 +422,82 @@ static esp_err_t h_wifi_scan(httpd_req_t *req)
+@@ -433,6 +421,70 @@ static esp_err_t h_wifi_scan(httpd_req_t *req)
      return ESP_OK;
  }
  
-+// Ethernet/USB clients keep their socket across a Wi-Fi handoff and can get the
-+// actual outcome. Only the client on the disappearing interface needs to move.
-+static bool request_on_wifi(httpd_req_t *req, bool leaving_hotspot)
-+{
-+    struct sockaddr_storage local{};
-+    socklen_t size = sizeof(local);
-+    if (getsockname(httpd_req_to_sockfd(req), reinterpret_cast<sockaddr *>(&local), &size) < 0 ||
-+        local.ss_family != AF_INET) return true;
-+    uint32_t wifi_ip = leaving_hotspot ? paper_hotspot_ipv4() : paper_network::station_ipv4();
-+    return wifi_ip && reinterpret_cast<const sockaddr_in *>(&local)->sin_addr.s_addr == wifi_ip;
-+}
-+
 +static esp_err_t acknowledge_handoff(httpd_req_t *req, bool to_hotspot, const char *device_name)
 +{
 +    char response[160];
@@ -596,7 +583,7 @@ index 6809e97..68d3784 100644
 +    }
 +
 +    const bool changing_owner = local != hotspot;
-+    if (changing_owner && request_on_wifi(req, hotspot)) {
++    if (changing_owner && paper_network::socket_on_wifi(httpd_req_to_sockfd(req), hotspot)) {
 +        acknowledged = true; // a partial response must never be sent a second time
 +        if (acknowledge_handoff(req, local, device_name) != ESP_OK) return ESP_FAIL;
 +    }
@@ -626,7 +613,7 @@ index 6809e97..68d3784 100644
  static esp_err_t h_wifi_config(httpd_req_t *req)
  {
      char buf[512];
-@@ -465,10 +530,16 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
+@@ -465,10 +517,16 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
      }
  
      char ssid_buf[64]        = {0};
@@ -644,7 +631,7 @@ index 6809e97..68d3784 100644
      if (has_ssid) {
          strlcpy(ssid_buf, ssid_j->valuestring, sizeof(ssid_buf));
      }
-@@ -483,55 +554,10 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
+@@ -483,55 +541,10 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
      }
      cJSON_Delete(j);
  
@@ -704,7 +691,7 @@ index 6809e97..68d3784 100644
  
      if (has_boot_sound || has_device_name) {
          hal.settingsLock();
-@@ -554,6 +580,8 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
+@@ -554,6 +567,8 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
          }
      }
  
@@ -713,7 +700,7 @@ index 6809e97..68d3784 100644
      bool saved_boot_sound                                    = false;
      char saved_device_name[sizeof(hal.settings.device_name)] = {0};
      hal.settingsLock();
-@@ -573,13 +601,13 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
+@@ -573,13 +588,13 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
  static esp_err_t h_wifi_status(httpd_req_t *req)
  {
      cJSON *r                                                = cJSON_CreateObject();
@@ -729,7 +716,7 @@ index 6809e97..68d3784 100644
  
      hal.settingsLock();
      boot_sound = hal.settings.boot_sound;
-@@ -597,7 +625,7 @@ static esp_err_t h_wifi_status(httpd_req_t *req)
+@@ -597,7 +612,7 @@ static esp_err_t h_wifi_status(httpd_req_t *req)
      cJSON_AddStringToObject(r, "error", conn_err[0] ? conn_err : NULL);
  
      if (connected) {
@@ -738,7 +725,7 @@ index 6809e97..68d3784 100644
          cJSON_AddStringToObject(r, "ip", ip.c_str());
      }
      cJSON_AddBoolToObject(r, "boot_sound", boot_sound);
-@@ -614,9 +642,9 @@ static esp_err_t h_device_ready(httpd_req_t *req)
+@@ -614,9 +629,9 @@ static esp_err_t h_device_ready(httpd_req_t *req)
      cJSON *mode = cJSON_AddObjectToObject(r, "mode");
      cJSON *ui   = cJSON_AddObjectToObject(r, "ui");
  
@@ -751,12 +738,12 @@ index 6809e97..68d3784 100644
      char current_mode[sizeof(g_dev_state.current_mode)]     = {0};
      char requested_mode[sizeof(g_dev_state.requested_mode)] = {0};
      char conn_err[sizeof(g_dev_state.conn_err)]             = {0};
-@@ -652,11 +680,15 @@ static esp_err_t h_device_ready(httpd_req_t *req)
+@@ -652,11 +667,15 @@ static esp_err_t h_device_ready(httpd_req_t *req)
  
  static esp_err_t h_wifi_disconnect(httpd_req_t *req)
  {
 -    app_manager_disconnect_sta_keep_ap();
-+    bool handoff = !paper_hotspot_ipv4() && request_on_wifi(req, false);
++    bool handoff = !paper_hotspot_ipv4() && paper_network::socket_on_wifi(httpd_req_to_sockfd(req), false);
 +    if (handoff && acknowledge_handoff(req, true, nullptr) != ESP_OK) return ESP_FAIL;
 +    esp_err_t err = app_manager_disconnect_sta_keep_ap();
 +    if (err != ESP_OK) return handoff ? err : send_error_response(req, 500, "hotspot unavailable");
@@ -769,7 +756,7 @@ index 6809e97..68d3784 100644
      cJSON_AddStringToObject(r, "status", "disconnected");
      send_json_response(req, r);
      cJSON_Delete(r);
-@@ -820,7 +852,8 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+@@ -820,7 +839,8 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
          return NULL;
      };
  
@@ -779,7 +766,7 @@ index 6809e97..68d3784 100644
      size_t flen        = 0;
      char action[32]    = "upload_only";
      char algorithm[16] = "dither";
-@@ -861,10 +894,7 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+@@ -861,10 +881,7 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
              }
          }
  
@@ -791,7 +778,7 @@ index 6809e97..68d3784 100644
          size_t vlen = val_end - hdr_end;
  
          if (mem_find(part, hdr_end - part, "name=\"file\"", 11) && mem_find(part, hdr_end - part, "filename=\"", 10)) {
-@@ -873,14 +903,12 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+@@ -873,14 +890,12 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
                  fn_s += 10;
                  const char *fn_e = (const char *)memchr(fn_s, '"', hdr_end - fn_s);
                  if (fn_e) {
@@ -810,7 +797,7 @@ index 6809e97..68d3784 100644
                  }
              }
              filedata = hdr_end;
-@@ -907,7 +935,7 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+@@ -907,7 +922,7 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
      }
  
      char ext[16];
@@ -819,7 +806,7 @@ index 6809e97..68d3784 100644
          const char *dot = strrchr(orig_fn, '.');
          if (dot) {
              const char *e = dot + 1;
-@@ -942,8 +970,13 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+@@ -942,8 +957,13 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
          free(body);
          return send_error_response(req, 500, "write fail");
      }
@@ -835,7 +822,7 @@ index 6809e97..68d3784 100644
      hal_storage_unlock();
  
      cJSON *r = cJSON_CreateObject();
-@@ -1005,10 +1038,10 @@ static esp_err_t h_storage(httpd_req_t *req)
+@@ -1005,10 +1025,10 @@ static esp_err_t h_storage(httpd_req_t *req)
      uint64_t used  = 0;
  
      hal_storage_prepare_photo_fs_access();
@@ -848,7 +835,7 @@ index 6809e97..68d3784 100644
      }
  
      cJSON *r = cJSON_CreateObject();
-@@ -1174,20 +1207,17 @@ static esp_err_t h_mode_switch(httpd_req_t *req)
+@@ -1174,20 +1194,17 @@ static esp_err_t h_mode_switch(httpd_req_t *req)
          return send_error_response(req, 400, "invalid mode");
      }
  
@@ -874,7 +861,7 @@ index 6809e97..68d3784 100644
      return ESP_OK;
  }
  
-@@ -1255,11 +1285,10 @@ static esp_err_t h_photos_display(httpd_req_t *req)
+@@ -1255,11 +1272,10 @@ static esp_err_t h_photos_display(httpd_req_t *req)
  
      strlcpy(g_dev_state.current_image, name, sizeof(g_dev_state.current_image));
  
@@ -887,7 +874,7 @@ index 6809e97..68d3784 100644
      send_json_response(req, r);
      cJSON_Delete(r);
      return ESP_OK;
-@@ -1311,38 +1340,6 @@ static esp_err_t h_system_reset(httpd_req_t *req)
+@@ -1311,38 +1327,6 @@ static esp_err_t h_system_reset(httpd_req_t *req)
      return ESP_OK;
  }
  
@@ -926,7 +913,7 @@ index 6809e97..68d3784 100644
  // HTTP Error (404) Handler - Redirects all requests to the root page
  esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
  {
-@@ -1391,22 +1388,11 @@ esp_err_t app_server_init(void)
+@@ -1391,22 +1375,11 @@ esp_err_t app_server_init(void)
      }
  
      /* WiFi events — additional listener, does not own the WiFi lifecycle. */
@@ -954,7 +941,7 @@ index 6809e97..68d3784 100644
  
      esp_log_level_set("wifi", ESP_LOG_ERROR);
      esp_log_level_set("httpd", ESP_LOG_ERROR);
-@@ -1415,8 +1401,6 @@ esp_err_t app_server_init(void)
+@@ -1415,8 +1388,6 @@ esp_err_t app_server_init(void)
      esp_log_level_set("httpd_parse", ESP_LOG_ERROR);
      esp_log_level_set("example_dns_redirect_server", ESP_LOG_ERROR);
  
@@ -963,7 +950,7 @@ index 6809e97..68d3784 100644
      /* HTTP server */
      httpd_config_t hc   = HTTPD_DEFAULT_CONFIG();
      hc.max_uri_handlers = 20;
-@@ -1489,6 +1473,7 @@ esp_err_t app_server_stop(void)
+@@ -1489,6 +1460,7 @@ esp_err_t app_server_stop(void)
  
  void app_server_sync_mode(const char *mode_id)
  {
@@ -971,7 +958,7 @@ index 6809e97..68d3784 100644
      strlcpy(g_dev_state.current_mode, mode_id, sizeof(g_dev_state.current_mode));
      if (mode_id && mode_id[0]) {
          strlcpy(g_dev_state.requested_mode, mode_id, sizeof(g_dev_state.requested_mode));
-@@ -1500,15 +1485,15 @@ void app_server_sync_mode(const char *mode_id)
+@@ -1500,15 +1472,15 @@ void app_server_sync_mode(const char *mode_id)
  device_state_t app_server_get_state(void)
  {
      device_state_t s = {};

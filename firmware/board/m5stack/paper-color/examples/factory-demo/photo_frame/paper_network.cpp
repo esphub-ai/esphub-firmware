@@ -4,6 +4,8 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "lwip/inet.h"
+#include "lwip/sockets.h"
 #include "sdkconfig.h"
 #include <atomic>
 #include <cstdio>
@@ -93,6 +95,42 @@ uint32_t station_ipv4()
     esp_netif_t *station = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     esp_netif_ip_info_t ip;
     return station && esp_netif_get_ip_info(station, &ip) == ESP_OK ? ip.ip.addr : 0;
+}
+
+// A client on the departing Wi-Fi interface needs an acknowledgement before
+// teardown. An independent uplink can receive the actual result afterwards.
+bool socket_on_wifi(int fd, bool hotspot)
+{
+    sockaddr_storage local{};
+    socklen_t size = sizeof(local);
+    if (getsockname(fd, reinterpret_cast<sockaddr *>(&local), &size) < 0) return true;
+
+    std::lock_guard<std::mutex> guard(radio);
+    auto *netif = hotspot ? access_point : esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (!netif) return false;
+    uint32_t local_ipv4;
+    if (local.ss_family == AF_INET) {
+        local_ipv4 = reinterpret_cast<const sockaddr_in *>(&local)->sin_addr.s_addr;
+#if CONFIG_LWIP_IPV6
+    } else if (local.ss_family == AF_INET6) {
+        const auto &addr = *reinterpret_cast<const sockaddr_in6 *>(&local);
+        if (!IN6_IS_ADDR_V4MAPPED(&addr.sin6_addr)) {
+            if (addr.sin6_scope_id)
+                return addr.sin6_scope_id == static_cast<uint32_t>(esp_netif_get_netif_impl_index(netif));
+            esp_ip6_addr_t ips[CONFIG_LWIP_IPV6_NUM_ADDRESSES];
+            int count = esp_netif_get_all_ip6(netif, ips);
+            for (int i = 0; i < count; ++i)
+                if (!memcmp(ips[i].addr, addr.sin6_addr.s6_addr, sizeof(ips[i].addr))) return true;
+            return false;
+        }
+        // IDF's dual-stack HTTP listener reports IPv4 peers as ::ffff:a.b.c.d.
+        memcpy(&local_ipv4, addr.sin6_addr.s6_addr + 12, sizeof(local_ipv4));
+#endif
+    } else {
+        return true;
+    }
+    esp_netif_ip_info_t ip{};
+    return esp_netif_get_ip_info(netif, &ip) == ESP_OK && ip.ip.addr == local_ipv4;
 }
 
 int hotspot_clients()
