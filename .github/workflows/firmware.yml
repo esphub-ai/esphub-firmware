@@ -25,6 +25,7 @@ on:
       - 'tools/ble-wifi/provision_usb.py'
       - 'scripts/build-example.py'
       - 'scripts/firmware-plan.mjs'
+      - 'tests/firmware-plan.test.js'
       - 'scripts/firmware-coverage.mjs'
       - 'scripts/board-catalog.mjs'
       - '.github/workflows/firmware.yml'
@@ -69,6 +70,11 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with: {node-version: 24}
+      - name: Validate the PR board catalog and build selection
+        if: github.event_name == 'pull_request' || inputs.pr_number != ''
+        run: |
+          node scripts/board-catalog.mjs
+          node --test tests/firmware-plan.test.js
       - id: plan
         env:
           PR_CI_BASE_SHA: ${{ needs.context.outputs.base_sha }}

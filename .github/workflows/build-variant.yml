@@ -16,7 +16,7 @@ jobs:
       version: ${{ fromJSON(inputs.cohort).bootloader.version }}
   board:
     needs: bootloader
-    if: ${{ !cancelled() && (needs.bootloader.result == 'success' || needs.bootloader.result == 'skipped') }}
+    if: ${{ !cancelled() && fromJSON(inputs.cohort).name != 'examples' && (needs.bootloader.result == 'success' || needs.bootloader.result == 'skipped') }}
     name: ${{ matrix.profile.board }}
     strategy:
       fail-fast: false
@@ -29,3 +29,36 @@ jobs:
     uses: ./.github/workflows/build-board.yml
     with:
       profile: ${{ toJSON(matrix.profile) }}
+  examples:
+    if: fromJSON(inputs.cohort).name == 'examples'
+    name: ${{ matrix.profile.board }} / ${{ join(matrix.profile.examples, ', ') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(inputs.cohort).boards }}
+    runs-on: ${{ matrix.profile.components[0].runner }}
+    container: ${{ matrix.profile.components[0].container }}
+    concurrency:
+      group: ${{ matrix.profile.components[0].buildGroup }}
+      queue: max
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Build changed examples
+        shell: bash
+        env:
+          BOARD: ${{ matrix.profile.board }}
+          EXAMPLES: ${{ join(matrix.profile.examples, ' ') }}
+          VERSION: ${{ matrix.profile.components[0].version }}
+        run: |
+          set -eo pipefail
+          source "$IDF_PATH/export.sh"
+          read -ra examples <<< "$EXAMPLES"
+          for example in "${examples[@]}"; do
+            python3 scripts/build-example.py "$BOARD" --example "$example" --version "$VERSION"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.profile.fileStem }}.app
+          path: dist/
+          if-no-files-found: error
