@@ -1,10 +1,20 @@
 // SPDX-License-Identifier: MIT
 #include "eh_agent.h"
+#include "example_i2c.h"
 #include "LovyanGFX.hpp"
 
 extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK(eh_agent_start());
+    // ALDO1 supplies the OLED and its I2C pull-ups on the V3.0 carrier.
+    auto power_bus = example_i2c_bus(GPIO_NUM_42, GPIO_NUM_41);
+    auto axp2101 = example_i2c_device(power_bus, 0x34);
+    example_update_bits(axp2101, 0x92, 0x1f, 28); // 3.3 V
+    example_update_bits(axp2101, 0x90, 0x01, 0x01);
+    ESP_ERROR_CHECK(i2c_master_bus_rm_device(axp2101));
+    ESP_ERROR_CHECK(i2c_del_master_bus(power_bus));
+    vTaskDelay(pdMS_TO_TICKS(30));
+
     static lgfx::Bus_I2C bus;
     static lgfx::Panel_SH110x panel;
     static lgfx::LGFX_Device oled;
