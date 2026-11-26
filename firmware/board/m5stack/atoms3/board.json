@@ -30,6 +30,12 @@
       "description": "Read the built-in MPU6886 accelerometer and gyroscope and refresh their values on the LCD.",
       "entrypoint": "examples/imu/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Basics/imu/imu.ino"
+    },
+    {
+      "id": "i2c-tester",
+      "description": "Continuously scan the external I2C bus and show responding addresses on the LCD.",
+      "entrypoint": "examples/i2c-tester/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/I2C_Tester/I2C_Tester.ino"
     }
   ]
 }
