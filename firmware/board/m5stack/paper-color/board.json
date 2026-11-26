@@ -44,6 +44,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/rgb_led"
     },
     {
+      "id": "rtc-local",
+      "description": "Set the onboard RTC to a sample local date and time, then refresh the displayed clock each minute.",
+      "entrypoint": "examples/rtc-local/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/rtc"
+    },
+    {
       "id": "sht40",
       "description": "Read the onboard SHT40 and show temperature and humidity at startup and every two minutes.",
       "entrypoint": "examples/sht40/main.cpp",
