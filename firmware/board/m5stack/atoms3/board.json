@@ -36,6 +36,12 @@
       "description": "Continuously scan the external I2C bus and show responding addresses on the LCD.",
       "entrypoint": "examples/i2c-tester/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/I2C_Tester/I2C_Tester.ino"
+    },
+    {
+      "id": "counter",
+      "description": "Increment a persistent NVS counter on each boot and restart after 10 seconds.",
+      "entrypoint": "examples/counter/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/Storage/Counter/Counter.ino"
     }
   ]
 }
