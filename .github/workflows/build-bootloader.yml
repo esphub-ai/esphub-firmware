@@ -35,6 +35,15 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/work" -w /work -e VARIANT -e VERSION -e GITHUB_SHA \
             "$IDF_IMAGE" bash scripts/build-bootloader.sh
+      - name: Check launcher image size
+        run: |
+          size=$(stat --format=%s shared-bl/esp-bootloader.bin)
+          limit=$((0x140000))  # 1.25 MiB per launcher slot
+          echo "$VARIANT: $size / $limit bytes"
+          if (( size > limit )); then
+            echo "::error::$VARIANT exceeds the launcher limit by $((size - limit)) bytes"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: bl-${{ inputs.variant }}
