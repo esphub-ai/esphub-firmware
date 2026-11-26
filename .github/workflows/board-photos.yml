@@ -20,7 +20,7 @@ jobs:
 
   publish:
     needs: check
-    if: github.event_name != 'pull_request' && github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true'
+    if: github.event_name != 'pull_request' && github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true'
     concurrency: { group: board-photos-production, cancel-in-progress: false }
     environment: production
     runs-on: ubuntu-latest

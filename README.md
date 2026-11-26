@@ -1,6 +1,6 @@
 # EspHub firmware
 
-Firmware sources, board profiles, and build recipes for [EspHub](https://github.com/okou-ai/esphub).
+Firmware sources, board profiles, and build recipes for [EspHub](https://github.com/esphub-ai/esphub).
 
 See the [Waveshare, Seeed Studio and LILYGO board index](docs/esp32s3-boards/README.md) for the supported ESP32-S3 profiles, hardware guides and official examples.
 
@@ -32,7 +32,7 @@ SDK version automation runs here on PRs. It bumps changes to the SDK on same-rep
 
 ## Remote console
 
-Use `logs.set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs.read`. See the [wire protocol and memory limits](https://github.com/okou-ai/esphub/blob/main/docs/iot.md#remote-console).
+Use `logs.set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs.read`. See the [wire protocol and memory limits](https://github.com/esphub-ai/esphub/blob/main/docs/iot.md#remote-console).
 
 ## Production publishing
 

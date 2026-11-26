@@ -66,7 +66,7 @@ test("firmware planning uses the dispatched PR snapshots without a manual rebuil
 });
 
 test("only production pushes and unscoped main dispatches can record coverage", () => {
-  const env = { GITHUB_REPOSITORY: "okou-ai/esphub-firmware", GITHUB_REF: "refs/heads/main", GITHUB_EVENT_NAME: "workflow_dispatch" };
+  const env = { GITHUB_REPOSITORY: "esphub-ai/esphub-firmware", GITHUB_REF: "refs/heads/main", GITHUB_EVENT_NAME: "workflow_dispatch" };
   assert.equal(isMainBuildBatch({}, env), true);
   assert.equal(firmwareEventContext({ inputs: {} }, env).manual, false);
   assert.equal(isMainBuildBatch({}, { ...env, GITHUB_EVENT_NAME: "push" }), true);

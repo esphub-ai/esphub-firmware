@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reconcile:
-    if: github.repository == 'okou-ai/esphub-firmware'
+    if: github.repository == 'esphub-ai/esphub-firmware'
     runs-on: ubuntu-latest
     permissions:
       contents: write
