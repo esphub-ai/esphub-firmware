@@ -94,6 +94,12 @@ void eh_wifi_saved_json(cJSON *arr);
 /* Blocking scan (~2-3 s), serialised with connection attempts; one entry per SSID, strongest first. */
 int eh_wifi_scan(eh_ap_t *out, int max, uint32_t timeout_ms);
 bool eh_wifi_current(char *ssid, size_t len);
+/* Optional local device portal alongside the SDK station. NULL closes the portal.
+ * The station keeps all provisioning and retry state in the SDK. */
+esp_err_t eh_wifi_set_portal(const char *ssid, uint8_t channel);
+int eh_wifi_portal_clients(void); /* negative if the portal is inactive */
+esp_err_t eh_wifi_set_station_paused(bool paused);
+bool eh_wifi_join_saved(const char *ssid);
 const char *eh_wifi_auth_str(int auth);
 void eh_wifi_setup_command(cJSON *request, cJSON *reply);
 bool eh_mqtt_connected(void); /* socket up (hello may not be acked yet) */

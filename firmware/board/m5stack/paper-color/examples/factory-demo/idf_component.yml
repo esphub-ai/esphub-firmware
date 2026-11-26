@@ -1,0 +1,3 @@
+dependencies:
+  photo_frame:
+    path: "${PWD}/firmware/board/m5stack/paper-color/examples/factory-demo/photo_frame"

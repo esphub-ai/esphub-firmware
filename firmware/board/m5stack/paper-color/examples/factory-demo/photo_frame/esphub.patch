@@ -1,0 +1,1408 @@
+diff --git a/main/apps/app_manager/app_manager.cpp b/main/apps/app_manager/app_manager.cpp
+index 3a7aaf5..abffd05 100644
+--- a/main/apps/app_manager/app_manager.cpp
++++ b/main/apps/app_manager/app_manager.cpp
+@@ -52,9 +52,7 @@ static uint32_t g_ap_auto_off_timer     = 0;
+ static bool g_ap_auto_off_timer_running = false;
+ 
+ // ---- WiFi auto-reconnect ----
+-static uint32_t g_wifi_reconnect_last_try_ms         = 0;
+-static constexpr uint32_t WIFI_RECONNECT_INTERVAL_MS = 10000;
+-static bool g_wifi_reconnect_paused                  = false;
++
+ static uint32_t g_low_power_last_activity_ms         = 0;
+ static bool g_refresh_in_progress                    = false;
+ static constexpr uint32_t LOW_POWER_IDLE_SHUTDOWN_MS = 60000;
+@@ -79,64 +77,28 @@ static void get_ap_name(char* ap_name, size_t ap_name_size)
+ 
+ static esp_err_t ensure_apsta_started()
+ {
+-    if (WiFi.getMode() == WiFiMode::APSTA) {
+-        return ESP_OK;
+-    }
+-
+-    char ap_name[32];
+-    get_ap_name(ap_name, sizeof(ap_name));
+-
+-    esp_err_t err = WiFi.setMode(WiFiMode::APSTA);
+-    if (err != ESP_OK) {
+-        return err;
+-    }
+-
+-    err = WiFi.softAP(ap_name, "", 6);
+-    if (err != ESP_OK) {
+-        return err;
+-    }
+-
+-    ESP_LOGI(g_tag, "AP SSID: %s", ap_name);
+-    ESP_LOGI(g_tag, "AP IP : %s", WiFi.softAPIP().c_str());
+-    ESP_LOGI(g_tag, "AP MAC : %s", WiFi.macAddressAP().c_str());
+-    return ESP_OK;
++    if (eh_wifi_portal_clients() >= 0) return ESP_OK;
++    char name[32];
++    get_ap_name(name, sizeof(name));
++    esp_err_t err = eh_wifi_set_portal(name, 6);
++    if (err == ESP_OK) ESP_LOGI(g_tag, "AP SSID: %s", name);
++    return err;
+ }
+ 
+ static esp_err_t disconnect_sta_keep_ap_internal()
+ {
+-    g_wifi_reconnect_last_try_ms = 0;
+-    g_ap_auto_off_timer_running  = false;
+-
++    g_ap_auto_off_timer_running=false;
+     esp_err_t err = ensure_apsta_started();
+-    if (err != ESP_OK) {
+-        return err;
+-    }
+-
+-    err = WiFi.disconnect();
+-    if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_CONNECT) {
+-        return err;
+-    }
+-
+-    return ESP_OK;
++    return err == ESP_OK ? eh_wifi_set_station_paused(true) : err;
+ }
+ 
+ static esp_err_t ensure_sta_connected_if_needed(bool wait_for_connect)
+ {
+     esp_err_t err = ensure_apsta_started();
+-    if (err != ESP_OK) {
+-        return err;
+-    }
+-
+-    if (!mode_requires_sta(g_current_mode) || !hal.settings.wifi_ssid[0]) {
+-        return ESP_OK;
+-    }
+-
+-    uint32_t timeout_ms = wait_for_connect ? 15000 : 0;
+-    err                 = WiFi.connect(hal.settings.wifi_ssid, hal.settings.wifi_password, timeout_ms);
+-    if (err == ESP_OK && wait_for_connect) {
+-        ESP_LOGI(g_tag, "STA IP : %s", WiFi.localIP().c_str());
+-    }
+-    return err;
++    if (err != ESP_OK || !mode_requires_sta(g_current_mode) || !eh_wifi_count()) return err;
++    err = eh_wifi_set_station_paused(false);
++    if (err != ESP_OK || !wait_for_connect) return err;
++    return wait_for_station(15000);
+ }
+ 
+ // ---- Mode management ----
+@@ -210,9 +172,7 @@ static bool should_idle_power_off_in_low_power_mode()
+         return false;
+     }
+ 
+-    WiFiMode current_wifi_mode = WiFi.getMode();
+-    bool ap_active             = (current_wifi_mode == WiFiMode::APSTA || current_wifi_mode == WiFiMode::AP);
+-    bool has_ap_clients        = ap_active && (WiFi.softAPgetStationNum() > 0);
++    bool has_ap_clients = eh_wifi_portal_clients() > 0;
+     if (has_ap_clients) {
+         app_manager_mark_activity();
+         return false;
+@@ -274,9 +234,8 @@ static bool run_rtc_wake_one_shot_cycle()
+     if (g_current_mode == APP_MODE_EZDATA) {
+         ezdata_photo_push.init(0);
+ 
+-        ESP_ERROR_CHECK(WiFi.begin());
+         ESP_ERROR_CHECK(ensure_apsta_started());
+-        if (hal.settings.wifi_ssid[0]) {
++        if (eh_wifi_count()) {
+             esp_err_t connect_err = ensure_sta_connected_if_needed(true);
+             if (connect_err != ESP_OK) {
+                 ESP_LOGW(g_tag, "RTC one-shot STA connect failed: %s", esp_err_to_name(connect_err));
+@@ -343,18 +302,6 @@ static void switch_app_mode(AppMode target_mode)
+     apply_current_mode_setting();
+ }
+ 
+-// ---- Pause WiFi auto-reconnect (used during scanning/provisioning) ----
+-
+-void app_manager_pause_wifi_reconnect(void)
+-{
+-    g_wifi_reconnect_paused = true;
+-}
+-
+-void app_manager_resume_wifi_reconnect(void)
+-{
+-    g_wifi_reconnect_paused = false;
+-}
+-
+ esp_err_t app_manager_disconnect_sta_keep_ap(void)
+ {
+     return disconnect_sta_keep_ap_internal();
+@@ -518,8 +465,6 @@ void app_manager_factory_reset_machine()
+     cstring_copy(hal.settings.device_name, "papercolor", sizeof(hal.settings.device_name));
+     hal.settingsUnlock();
+ 
+-    hal.settingsSave(SETTING_WIFI_SSID);
+-    hal.settingsSave(SETTING_WIFI_PASSWORD);
+     hal.settingsSave(SETTING_ROTATION);
+     hal.settingsSave(SETTING_AUTO_SLIDESHOW);
+     hal.settingsSave(SETTING_INTERVAL);
+@@ -623,10 +568,10 @@ static void app_task(void* param)
+         // ==================== WiFi AP auto-off ====================
+ #if WIFI_AP_AUTO_OFF_ENABLE
+         {
+-            WiFiMode current_wifi_mode = WiFi.getMode();
+-            bool ap_active             = (current_wifi_mode == WiFiMode::APSTA || current_wifi_mode == WiFiMode::AP);
+-            bool sta_connected         = WiFi.isConnected();
+-            bool has_ap_clients        = WiFi.softAPgetStationNum() > 0;
++            int clients = eh_wifi_portal_clients();
++            bool ap_active = clients >= 0;
++            bool sta_connected         = station_connected();
++            bool has_ap_clients        = clients > 0;
+ 
+             if (ap_active && !has_ap_clients && sta_connected) {
+                 if (!g_ap_auto_off_timer_running) {
+@@ -638,7 +583,7 @@ static void app_task(void* param)
+                 uint32_t elapsed_ms = millis_() - g_ap_auto_off_timer;
+                 uint32_t timeout_ms = (uint32_t)WIFI_AP_AUTO_OFF_TIMEOUT_MIN * 60000UL;
+                 if (elapsed_ms >= timeout_ms) {
+-                    WiFi.softAPdisconnect();
++                    eh_wifi_set_portal(nullptr, 0);
+                     g_ap_auto_off_timer_running = false;
+                     ESP_LOGI(g_tag, "AP auto-off: closed after %d min", WIFI_AP_AUTO_OFF_TIMEOUT_MIN);
+                 }
+@@ -653,23 +598,12 @@ static void app_task(void* param)
+             static uint32_t s_last_wifi_check = 0;
+             if (millis_() - s_last_wifi_check >= 3000) {
+                 s_last_wifi_check = millis_();
+-                if (mode_requires_sta(g_current_mode) && hal.settings.wifi_ssid[0] && !WiFi.isConnected()) {
++                if (mode_requires_sta(g_current_mode) && eh_wifi_count() && !station_connected()) {
+                     hal.statusEventSend(OPERATION_EVENT_WAITING_WIFI);
+                 }
+             }
+ 
+-            if (mode_requires_sta(g_current_mode) && hal.settings.wifi_ssid[0] && !WiFi.isConnected() &&
+-                !g_wifi_reconnect_paused) {
+-                uint32_t now = millis_();
+-                if (g_wifi_reconnect_last_try_ms == 0 ||
+-                    now - g_wifi_reconnect_last_try_ms >= WIFI_RECONNECT_INTERVAL_MS) {
+-                    g_wifi_reconnect_last_try_ms = now;
+-                    ESP_LOGI(g_tag, "WiFi disconnected, retrying STA connect to %s", hal.settings.wifi_ssid);
+-                    WiFi.connect(hal.settings.wifi_ssid, hal.settings.wifi_password, 0);
+-                }
+-            } else {
+-                g_wifi_reconnect_last_try_ms = 0;
+-            }
++
+         }
+ 
+         // ==================== Dual-mode update ====================
+@@ -736,9 +670,8 @@ esp_err_t app_manager_start()
+         photo_slideshow.init("/data", hal.settings.auto_slideshow ? (uint8_t)hal.settings.interval_minutes : 0);
+     }
+ 
+-    ESP_ERROR_CHECK(WiFi.begin());
+     ESP_ERROR_CHECK(ensure_apsta_started());
+-    if (mode_requires_sta(g_current_mode) && hal.settings.wifi_ssid[0]) {
++    if (mode_requires_sta(g_current_mode) && eh_wifi_count()) {
+         esp_err_t connect_err = ensure_sta_connected_if_needed(true);
+         if (connect_err != ESP_OK) {
+             ESP_LOGW(g_tag, "Initial STA connect failed: %s", esp_err_to_name(connect_err));
+@@ -753,10 +686,10 @@ esp_err_t app_manager_start()
+     } else if (g_current_mode == APP_MODE_NONE) {
+         // Factory default: no mode selected, show the QR code to guide setup
+         need_qrcode = true;
+-    } else if (!hal.settings.wifi_ssid[0]) {
++    } else if (!eh_wifi_count()) {
+         // Mode selected but WiFi is not configured
+         need_qrcode = true;
+-    } else if (mode_requires_sta(g_current_mode) && !WiFi.isConnected()) {
++    } else if (mode_requires_sta(g_current_mode) && !station_connected()) {
+         // WiFi is configured but connection failed
+         hal.statusEventSend(OPERATION_EVENT_WAITING_WIFI);
+         need_qrcode = true;
+diff --git a/main/apps/app_manager/app_manager.h b/main/apps/app_manager/app_manager.h
+index 158f18c..803221c 100644
+--- a/main/apps/app_manager/app_manager.h
++++ b/main/apps/app_manager/app_manager.h
+@@ -64,16 +64,6 @@ esp_err_t app_manager_apply_mode(const char* mode_id);
+  */
+ esp_err_t app_manager_set_current_mode(const char* mode_id);
+ 
+-/**
+- * @brief Pauses automatic Wi-Fi reconnect attempts.
+- */
+-void app_manager_pause_wifi_reconnect(void);
+-
+-/**
+- * @brief Resumes automatic Wi-Fi reconnect attempts.
+- */
+-void app_manager_resume_wifi_reconnect(void);
+-
+ /**
+  * @brief Disconnects the STA interface while keeping the AP enabled.
+  *
+diff --git a/main/apps/app_server/app_server.cpp b/main/apps/app_server/app_server.cpp
+index 6809e97..9e76a81 100644
+--- a/main/apps/app_server/app_server.cpp
++++ b/main/apps/app_server/app_server.cpp
+@@ -16,6 +16,9 @@
+ #include <strings.h>
+ 
+ #include "esp_log.h"
++#include "esp_timer.h"
++#include "esp_event.h"
++#include "esp_check.h"
+ #include "esp_netif.h"
+ #include "lwip/inet.h"
+ #include "esp_http_server.h"
+@@ -301,27 +304,15 @@ static esp_err_t generate_next_photo_name(const char *ext, const char *algorithm
+ /* ==== WiFi (via hal_wifi library) ==== */
+ static int perform_wifi_scan(void)
+ {
+-    // Pause auto-reconnect to avoid scan contention causing esp_wifi_scan_start to fail
+-    app_manager_pause_wifi_reconnect();
+-
+-    std::vector<hal_wifi::WiFiScanResult> results;
+-    esp_err_t err = WiFi.scanNetworks(results, false, SCAN_TIMEOUT_MS);
+-
+-    app_manager_resume_wifi_reconnect();
+-
+-    if (err != ESP_OK) {
+-        return -1;
+-    }
+-
+-    wifi_network_t *cache = (wifi_network_t *)malloc(results.size() * sizeof(wifi_network_t));
+-    int cnt               = 0;
+-    if (cache) {
+-        for (size_t i = 0; i < results.size(); i++) {
+-            strlcpy(cache[i].ssid, results[i].ssid.c_str(), sizeof(cache[i].ssid));
+-            cache[i].rssi   = results[i].rssi;
+-            cache[i].secure = results[i].authmode != WIFI_AUTH_OPEN;
+-            cnt++;
+-        }
++    eh_ap_t results[20];
++    int cnt = eh_wifi_scan(results, 20, SCAN_TIMEOUT_MS);
++    if (cnt < 0) return -1;
++    auto *cache = static_cast<wifi_network_t *>(calloc(cnt, sizeof(wifi_network_t)));
++    if (cnt && !cache) return -1;
++    for (int i = 0; i < cnt; i++) {
++        strlcpy(cache[i].ssid, results[i].ssid, sizeof(cache[i].ssid));
++        cache[i].rssi = results[i].rssi;
++        cache[i].secure = results[i].auth != WIFI_AUTH_OPEN;
+     }
+     if (g_scan_cache) {
+         free(g_scan_cache);
+@@ -374,20 +365,26 @@ static void app_server_set_connect_failed_state(const char *message)
+ 
+ static int perform_wifi_connect(const char *ssid, const char *pass)
+ {
+-    // Pause auto-reconnect to avoid connection contention
+-    app_manager_pause_wifi_reconnect();
+-    WiFi.disconnect();
+-    vTaskDelay(pdMS_TO_TICKS(200));
+-
+-    esp_err_t err = WiFi.connect(ssid, pass ? pass : "", CONNECT_TIMEOUT_MS);
+-
+-    app_manager_resume_wifi_reconnect();
+-
+-    if (err == ESP_OK) {
++    if ((!pass || !*pass) && station_connected() && station_ssid() == ssid) {
+         app_server_clear_connecting_state();
+         return 0;
+     }
+-
++    bool queued = (!pass || !*pass) && eh_wifi_join_saved(ssid);
++    if (!queued) queued = eh_wifi_join(ssid, pass ? pass : "", false);
++    esp_err_t err = ESP_FAIL;
++    if (queued) {
++        const int64_t deadline = esp_timer_get_time() + int64_t(CONNECT_TIMEOUT_MS) * 1000;
++        while (esp_timer_get_time() < deadline) {
++            const char *state = eh_wifi_join_state();
++            if (!strcmp(state, "failed")) break;
++            if (!strcmp(state, "saved") && station_ssid() == ssid) {
++                app_server_clear_connecting_state();
++                return 0;
++            }
++            vTaskDelay(pdMS_TO_TICKS(100));
++        }
++        if (esp_timer_get_time() >= deadline) err = ESP_ERR_TIMEOUT;
++    }
+     if (err == ESP_ERR_TIMEOUT) {
+         app_server_set_connect_failed_state("connection timeout");
+     } else {
+@@ -488,40 +485,9 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
+     }
+ 
+     if (has_ssid) {
+-        char connect_pass[sizeof(hal.settings.wifi_password)] = {0};
+-        if (pass_buf[0]) {
+-            strlcpy(connect_pass, pass_buf, sizeof(connect_pass));
+-        } else {
+-            hal.settingsLock();
+-            strlcpy(connect_pass, hal.settings.wifi_password, sizeof(connect_pass));
+-            hal.settingsUnlock();
+-        }
+-
+-        // Skip reconnect if the SSID and password are unchanged and already connected
+-        bool skip_connect = false;
+-        if (WiFi.isConnected()) {
+-            hal.settingsLock();
+-            skip_connect = (strcmp(ssid_buf, hal.settings.wifi_ssid) == 0 &&
+-                            strcmp(connect_pass, hal.settings.wifi_password) == 0);
+-            hal.settingsUnlock();
+-        }
+-
+-        strlcpy(hal.settings.wifi_ssid, ssid_buf, sizeof(hal.settings.wifi_ssid));
+-        if (pass_buf[0]) {
+-            strlcpy(hal.settings.wifi_password, pass_buf, sizeof(hal.settings.wifi_password));
+-        }
+-        hal.settingsSave(SETTING_WIFI_SSID);
+-        if (pass_buf[0]) {
+-            hal.settingsSave(SETTING_WIFI_PASSWORD);
+-        }
+-
+-        if (!skip_connect) {
+-            app_server_set_connecting_state(mode_buf[0] ? mode_buf : nullptr);
+-            if (perform_wifi_connect(ssid_buf, connect_pass) != 0) {
+-                return send_error_response(req, 500, "wifi connect failed");
+-            }
+-        } else {
+-            app_server_clear_connecting_state();
++        app_server_set_connecting_state(mode_buf[0] ? mode_buf : nullptr);
++        if (perform_wifi_connect(ssid_buf, pass_buf) != 0) {
++            return send_error_response(req, 500, "wifi connect failed");
+         }
+     }
+ 
+@@ -573,13 +539,13 @@ static esp_err_t h_wifi_config(httpd_req_t *req)
+ static esp_err_t h_wifi_status(httpd_req_t *req)
+ {
+     cJSON *r                                                = cJSON_CreateObject();
+-    std::string ssid                                        = WiFi.SSID();
++    std::string ssid                                        = station_ssid();
+     bool boot_sound                                         = false;
+     char device_name[sizeof(hal.settings.device_name)]      = {0};
+     char current_mode[sizeof(g_dev_state.current_mode)]     = {0};
+     char requested_mode[sizeof(g_dev_state.requested_mode)] = {0};
+     char conn_err[sizeof(g_dev_state.conn_err)]             = {0};
+-    bool connected                                          = WiFi.isConnected();
++    bool connected                                          = station_connected();
+ 
+     hal.settingsLock();
+     boot_sound = hal.settings.boot_sound;
+@@ -597,7 +563,7 @@ static esp_err_t h_wifi_status(httpd_req_t *req)
+     cJSON_AddStringToObject(r, "error", conn_err[0] ? conn_err : NULL);
+ 
+     if (connected) {
+-        std::string ip = WiFi.localIP();
++        std::string ip = station_ip();
+         cJSON_AddStringToObject(r, "ip", ip.c_str());
+     }
+     cJSON_AddBoolToObject(r, "boot_sound", boot_sound);
+@@ -614,9 +580,9 @@ static esp_err_t h_device_ready(httpd_req_t *req)
+     cJSON *mode = cJSON_AddObjectToObject(r, "mode");
+     cJSON *ui   = cJSON_AddObjectToObject(r, "ui");
+ 
+-    bool connected                                          = WiFi.isConnected();
+-    std::string ssid                                        = WiFi.SSID();
+-    std::string ip                                          = connected ? WiFi.localIP() : std::string();
++    bool connected                                          = station_connected();
++    std::string ssid                                        = station_ssid();
++    std::string ip                                          = connected ? station_ip() : std::string();
+     char current_mode[sizeof(g_dev_state.current_mode)]     = {0};
+     char requested_mode[sizeof(g_dev_state.requested_mode)] = {0};
+     char conn_err[sizeof(g_dev_state.conn_err)]             = {0};
+@@ -820,7 +786,8 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+         return NULL;
+     };
+ 
+-    const char *filedata = NULL, *orig_fn = NULL;
++    const char *filedata = NULL;
++    char orig_fn[128] = {};
+     size_t flen        = 0;
+     char action[32]    = "upload_only";
+     char algorithm[16] = "dither";
+@@ -861,10 +828,7 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+             }
+         }
+ 
+-        const char *val_end = next ? next : end;
+-        while (val_end > hdr_end && (val_end[-1] == '\n' || val_end[-1] == '\r')) {
+-            val_end--;
+-        }
++        const char *val_end = next ? next - 2 : end;
+         size_t vlen = val_end - hdr_end;
+ 
+         if (mem_find(part, hdr_end - part, "name=\"file\"", 11) && mem_find(part, hdr_end - part, "filename=\"", 10)) {
+@@ -873,14 +837,12 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+                 fn_s += 10;
+                 const char *fn_e = (const char *)memchr(fn_s, '"', hdr_end - fn_s);
+                 if (fn_e) {
+-                    char fnbuf[128];
+                     size_t fnl = fn_e - fn_s;
+-                    if (fnl >= sizeof(fnbuf)) {
+-                        fnl = sizeof(fnbuf) - 1;
++                    if (fnl >= sizeof(orig_fn)) {
++                        fnl = sizeof(orig_fn) - 1;
+                     }
+-                    memcpy(fnbuf, fn_s, fnl);
+-                    fnbuf[fnl] = 0;
+-                    orig_fn    = fnbuf;
++                    memcpy(orig_fn, fn_s, fnl);
++                    orig_fn[fnl] = 0;
+                 }
+             }
+             filedata = hdr_end;
+@@ -907,7 +869,7 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+     }
+ 
+     char ext[16];
+-    if (orig_fn && *orig_fn) {
++    if (orig_fn[0]) {
+         const char *dot = strrchr(orig_fn, '.');
+         if (dot) {
+             const char *e = dot + 1;
+@@ -942,8 +904,13 @@ static esp_err_t h_photos_upload(httpd_req_t *req)
+         free(body);
+         return send_error_response(req, 500, "write fail");
+     }
+-    fwrite(filedata, 1, flen, f);
+-    fclose(f);
++    const size_t written = fwrite(filedata, 1, flen, f);
++    if (fclose(f) != 0 || written != flen) {
++        unlink(path);
++        hal_storage_unlock();
++        free(body);
++        return send_error_response(req, 500, "write fail");
++    }
+     hal_storage_unlock();
+ 
+     cJSON *r = cJSON_CreateObject();
+@@ -1255,11 +1222,10 @@ static esp_err_t h_photos_display(httpd_req_t *req)
+ 
+     strlcpy(g_dev_state.current_image, name, sizeof(g_dev_state.current_image));
+ 
+-    cJSON_Delete(j);
+-
+     cJSON *r = cJSON_CreateObject();
+     cJSON_AddStringToObject(r, "status", "ok");
+     cJSON_AddStringToObject(r, "displaying", name);
++    cJSON_Delete(j);
+     send_json_response(req, r);
+     cJSON_Delete(r);
+     return ESP_OK;
+@@ -1391,22 +1357,11 @@ esp_err_t app_server_init(void)
+     }
+ 
+     /* WiFi events — additional listener, does not own the WiFi lifecycle. */
+-    WiFi.onEvent([](WiFiEvent ev, void *data) {
+-        switch (ev) {
+-            case WiFiEvent::STA_GOT_IP:
+-                ESP_LOGI(TAG, ">>> STA GOT IP");
+-                hal.statusEventSend(OPERATION_EVENT_STARTUP_SUCCESS);
+-                break;
+-            case WiFiEvent::AP_STA_CONNECTED:
+-                ESP_LOGI(TAG, ">>> AP: station connected");
+-                break;
+-            case WiFiEvent::AP_STA_DISCONNECTED:
+-                ESP_LOGI(TAG, ">>> AP: station leaved");
+-                break;
+-            default:
+-                break;
+-        }
+-    });
++    // The app only observes connectivity; the SDK exclusively owns the station.
++    ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
++        [](void *, esp_event_base_t, int32_t, void *) {
++            hal.statusEventSend(OPERATION_EVENT_STARTUP_SUCCESS);
++        }, nullptr), TAG, "IP listener");
+ 
+     esp_log_level_set("wifi", ESP_LOG_ERROR);
+     esp_log_level_set("httpd", ESP_LOG_ERROR);
+@@ -1500,15 +1455,15 @@ void app_server_sync_mode(const char *mode_id)
+ device_state_t app_server_get_state(void)
+ {
+     device_state_t s = {};
+-    s.wifi_connected = WiFi.isConnected();
++    s.wifi_connected = station_connected();
+     if (s.wifi_connected) {
+-        std::string ip = WiFi.localIP();
++        std::string ip = station_ip();
+         strlcpy(s.ip_address, ip.c_str(), sizeof(s.ip_address));
+     }
+     strlcpy(s.current_mode, g_dev_state.current_mode, sizeof(s.current_mode));
+     strlcpy(s.requested_mode, g_dev_state.requested_mode, sizeof(s.requested_mode));
+     strlcpy(s.current_image, g_dev_state.current_image, sizeof(s.current_image));
+-    strlcpy(s.connected_ssid, WiFi.SSID().c_str(), sizeof(s.connected_ssid));
++    strlcpy(s.connected_ssid, station_ssid().c_str(), sizeof(s.connected_ssid));
+     strlcpy(s.conn_err, g_dev_state.conn_err, sizeof(s.conn_err));
+     return s;
+ }
+diff --git a/main/hal/ezdata/hal_ezdata.cpp b/main/hal/ezdata/hal_ezdata.cpp
+index 8b931fa..10c6f89 100644
+--- a/main/hal/ezdata/hal_ezdata.cpp
++++ b/main/hal/ezdata/hal_ezdata.cpp
+@@ -789,7 +789,7 @@ static void _ezdata_daemon(void *param)
+             ESP_LOGI(TAG, "daemon stop requested before token ready");
+             break;
+         }
+-        if (!hal_wifi::WiFi.isConnected()) {
++        if (!hal_wifi::station_connected()) {
+             vTaskDelay(pdMS_TO_TICKS(500));
+             continue;
+         }
+@@ -811,7 +811,7 @@ static void _ezdata_daemon(void *param)
+                 break;
+             }
+ 
+-            if (!hal_wifi::WiFi.isConnected()) {
++            if (!hal_wifi::station_connected()) {
+                 if (_mqtt_is_connected) {
+                     _mqtt_is_connected   = false;
+                     hal.ezdata_connected = false;
+diff --git a/main/hal/hal.cpp b/main/hal/hal.cpp
+index f8afd70..93af62e 100644
+--- a/main/hal/hal.cpp
++++ b/main/hal/hal.cpp
+@@ -267,11 +267,7 @@ void Hal::powerOff()
+ void Hal::settingsInit()
+ {
+     ESP_LOGI(TAG, "settingsInit start");
+-    esp_err_t err = nvs_flash_init();
+-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        nvs_flash_erase();
+-        nvs_flash_init();
+-    }
++    migrate_saved_network();
+ 
+     // Defaults (first boot / garbage NVS)
+     memset(&settings, 0, sizeof(settings));
+@@ -291,12 +287,6 @@ void Hal::settingsInit()
+         has_nvs = true;
+         size_t value_size;
+ 
+-        value_size = sizeof(settings.wifi_ssid);
+-        nvs_get_str(nvs_handle, "wifi_ssid", settings.wifi_ssid, &value_size);
+-
+-        value_size = sizeof(settings.wifi_password);
+-        nvs_get_str(nvs_handle, "wifi_pass", settings.wifi_password, &value_size);
+-
+         uint8_t value_u8;
+         if (nvs_get_u8(nvs_handle, "rotation", &value_u8) == ESP_OK && value_u8 <= 1) settings.rotation = value_u8;
+ 
+@@ -363,25 +353,6 @@ void Hal::settingsSave(SettingKey key)
+     bool changed = false;
+ 
+     switch (key) {
+-        case SETTING_WIFI_SSID: {
+-            char prev[64] = {};
+-            size_t sz     = sizeof(prev);
+-            if (nvs_get_str(h, "wifi_ssid", prev, &sz) != ESP_OK || cstring_compare(prev, settings.wifi_ssid) != 0) {
+-                nvs_set_str(h, "wifi_ssid", settings.wifi_ssid);
+-                changed = true;
+-            }
+-            break;
+-        }
+-        case SETTING_WIFI_PASSWORD: {
+-            char prev[64] = {};
+-            size_t sz     = sizeof(prev);
+-            if (nvs_get_str(h, "wifi_pass", prev, &sz) != ESP_OK ||
+-                cstring_compare(prev, settings.wifi_password) != 0) {
+-                nvs_set_str(h, "wifi_pass", settings.wifi_password);
+-                changed = true;
+-            }
+-            break;
+-        }
+         case SETTING_ROTATION: {
+             uint8_t v;
+             if (nvs_get_u8(h, "rotation", &v) != ESP_OK || v != settings.rotation) {
+diff --git a/main/hal/hal.h b/main/hal/hal.h
+index 5fdcd53..afaa2ff 100644
+--- a/main/hal/hal.h
++++ b/main/hal/hal.h
+@@ -17,8 +17,6 @@
+  * @brief Identifiers for persisted settings values.
+  */
+ enum SettingKey : uint8_t {
+-    SETTING_WIFI_SSID,
+-    SETTING_WIFI_PASSWORD,
+     SETTING_ROTATION,
+     SETTING_AUTO_SLIDESHOW,
+     SETTING_INTERVAL,
+@@ -57,8 +55,6 @@ size_t cstring_copy(char* dst, const char* src, size_t dst_size);
+  * @brief Persisted device settings.
+  */
+ struct Settings {
+-    char wifi_ssid[64];
+-    char wifi_password[64];
+     uint8_t rotation;  // 0=landscape, 1=portrait
+     bool auto_slideshow;
+     int interval_minutes;
+diff --git a/main/hal/wifi/hal_wifi.cpp b/main/hal/wifi/hal_wifi.cpp
+index aa1d9b4..99cc445 100644
+--- a/main/hal/wifi/hal_wifi.cpp
++++ b/main/hal/wifi/hal_wifi.cpp
+@@ -1,538 +1,68 @@
+-/*
+- * SPDX-FileCopyrightText: 2026 M5Stack Technology CO LTD
+- *
++/* SPDX-FileCopyrightText: 2026 M5Stack Technology CO LTD
+  * SPDX-License-Identifier: MIT
+- */
++ * EspHub SDK adaptation. */
+ #include "hal_wifi.h"
+-
+-#include <cstdio>
+-#include <cstring>
+-
+-#include "esp_log.h"
+-#include "esp_mac.h"
++#include "nvs.h"
++#include "esp_netif.h"
++#include "esp_timer.h"
++#include "freertos/FreeRTOS.h"
+ #include "freertos/task.h"
+-#include "nvs_flash.h"
++#include "mbedtls/platform_util.h"
++#include <cstring>
+ 
+ namespace hal_wifi {
+-
+-static const char* TAG = "WiFiMgr";
+-
+-// Event group bit definitions
+-static constexpr int BIT_CONNECTED = BIT0;
+-static constexpr int BIT_FAIL      = BIT1;
+-static constexpr int BIT_GOT_IP    = BIT2;
+-static constexpr int BIT_SCAN_DONE = BIT3;
+-
+-// Global instance
+-WiFiManager WiFi;
+-
+-WiFiManager::WiFiManager()
+-{
++bool station_connected() {
++    char ssid[33];
++    return eh_wifi_current(ssid, sizeof(ssid)) && eh_net_has_ip();
+ }
+-WiFiManager::~WiFiManager()
+-{
+-    end();
++std::string station_ssid() {
++    char ssid[33] = {};
++    return eh_wifi_current(ssid, sizeof(ssid)) ? ssid : "";
+ }
+-
+-// --------------- Initialization ---------------
+-esp_err_t WiFiManager::begin()
+-{
+-    if (_initialized) return ESP_OK;
+-
+-    // 1. NVS
+-    esp_err_t ret = nvs_flash_init();
+-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        nvs_flash_erase();
+-        ret = nvs_flash_init();
+-    }
+-    ESP_ERROR_CHECK(ret);
+-
+-    // 2. netif + event loop
+-    ESP_ERROR_CHECK(esp_netif_init());
+-    esp_err_t err = esp_event_loop_create_default();
+-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+-        ESP_ERROR_CHECK(err);
++std::string station_ip() {
++    esp_netif_ip_info_t ip{};
++    auto netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
++    char address[16] = {};
++    if (netif && esp_netif_get_ip_info(netif, &ip) == ESP_OK && ip.ip.addr) {
++        snprintf(address, sizeof(address), IPSTR, IP2STR(&ip.ip));
+     }
+-
+-    // 3. Create the default AP and STA netifs for later use by mode
+-    _sta_netif = esp_netif_create_default_wifi_sta();
+-    _ap_netif  = esp_netif_create_default_wifi_ap();
+-
+-    // 4. Initialize WiFi
+-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+-
+-    // 5. Event group
+-    _event_group = xEventGroupCreate();
+-
+-    // 6. Register events
+-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &WiFiManager::eventHandlerStatic,
+-                                                        this, &_wifi_handler_inst));
+-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID, &WiFiManager::eventHandlerStatic,
+-                                                        this, &_ip_handler_inst));
+-
+-    // 7. Use RAM storage mode to avoid restart leftovers (optional)
+-    esp_wifi_set_storage(WIFI_STORAGE_RAM);
+-
+-    _initialized = true;
+-    ESP_LOGI(TAG, "WiFiManager initialized");
+-    return ESP_OK;
++    return address;
+ }
+-
+-esp_err_t WiFiManager::end()
+-{
+-    if (!_initialized) return ESP_OK;
+-
+-    esp_wifi_stop();
+-    esp_wifi_deinit();
+-
+-    if (_wifi_handler_inst) {
+-        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, _wifi_handler_inst);
+-        _wifi_handler_inst = nullptr;
+-    }
+-    if (_ip_handler_inst) {
+-        esp_event_handler_instance_unregister(IP_EVENT, ESP_EVENT_ANY_ID, _ip_handler_inst);
+-        _ip_handler_inst = nullptr;
+-    }
+-
+-    if (_sta_netif) {
+-        esp_netif_destroy_default_wifi(_sta_netif);
+-        _sta_netif = nullptr;
+-    }
+-    if (_ap_netif) {
+-        esp_netif_destroy_default_wifi(_ap_netif);
+-        _ap_netif = nullptr;
++esp_err_t wait_for_station(uint32_t timeout_ms) {
++    int64_t deadline=esp_timer_get_time() + int64_t(timeout_ms)*1000;
++    while (!station_connected()) {
++        if (esp_timer_get_time() >= deadline) return ESP_ERR_TIMEOUT;
++        vTaskDelay(pdMS_TO_TICKS(100));
+     }
+-
+-    if (_event_group) {
+-        vEventGroupDelete(_event_group);
+-        _event_group = nullptr;
+-    }
+-
+-    _mode        = WiFiMode::OFF;
+-    _initialized = false;
+     return ESP_OK;
+ }
+ 
+-// --------------- Events ---------------
+-void WiFiManager::eventHandlerStatic(void* arg, esp_event_base_t base, int32_t id, void* data)
+-{
+-    static_cast<WiFiManager*>(arg)->eventHandler(base, id, data);
+-}
+-
+-void WiFiManager::eventHandler(esp_event_base_t base, int32_t id, void* data)
+-{
+-    if (base == WIFI_EVENT) {
+-        switch (id) {
+-            case WIFI_EVENT_STA_START:
+-                ESP_LOGD(TAG, "STA_START");
+-                fireEvent(WiFiEvent::STA_START, data);
+-                break;
+-            case WIFI_EVENT_STA_STOP:
+-                ESP_LOGD(TAG, "STA_STOP");
+-                fireEvent(WiFiEvent::STA_STOP, data);
+-                break;
+-            case WIFI_EVENT_STA_CONNECTED:
+-                ESP_LOGD(TAG, "STA_CONNECTED");
+-                _sta_connected = true;
+-                xEventGroupSetBits(_event_group, BIT_CONNECTED);
+-                fireEvent(WiFiEvent::STA_CONNECTED, data);
+-                break;
+-            case WIFI_EVENT_STA_DISCONNECTED: {
+-                ESP_LOGD(TAG, "STA_DISCONNECTED");
+-                _sta_connected = false;
+-                _sta_got_ip    = false;
+-                xEventGroupSetBits(_event_group, BIT_FAIL);
+-                fireEvent(WiFiEvent::STA_DISCONNECTED, data);
+-                break;
+-            }
+-            case WIFI_EVENT_AP_START:
+-                ESP_LOGD(TAG, "AP_START");
+-                fireEvent(WiFiEvent::AP_START, data);
+-                break;
+-            case WIFI_EVENT_AP_STOP:
+-                ESP_LOGD(TAG, "AP_STOP");
+-                fireEvent(WiFiEvent::AP_STOP, data);
+-                break;
+-            case WIFI_EVENT_AP_STACONNECTED: {
+-                auto* e = static_cast<wifi_event_ap_staconnected_t*>(data);
+-                ESP_LOGD(TAG, "AP_STA_CONN MAC=" MACSTR, MAC2STR(e->mac));
+-                fireEvent(WiFiEvent::AP_STA_CONNECTED, data);
+-                break;
++void migrate_saved_network() {
++    nvs_handle_t nvs;
++    if (nvs_open("papercolor", NVS_READWRITE, &nvs) != ESP_OK) return;
++    char ssid[33] = {}, pass[65] = {};
++    size_t slen=sizeof(ssid), plen=sizeof(pass);
++    esp_err_t ss=nvs_get_str(nvs,"wifi_ssid",ssid,&slen);
++    esp_err_t pw=nvs_get_str(nvs,"wifi_pass",pass,&plen);
++    if (ss==ESP_OK && ssid[0] && (pw==ESP_OK || pw==ESP_ERR_NVS_NOT_FOUND)) {
++        cJSON* nets=cJSON_CreateArray();
++        if (nets) {
++            eh_wifi_saved_json(nets);
++            bool known=false;
++            cJSON* network;
++            cJSON_ArrayForEach(network,nets) {
++                const char* name=cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(network,"ssid"));
++                if (name && strcmp(name,ssid)==0) {known=true; break;}
+             }
+-            case WIFI_EVENT_AP_STADISCONNECTED: {
+-                auto* e = static_cast<wifi_event_ap_stadisconnected_t*>(data);
+-                ESP_LOGD(TAG, "AP_STA_DISC MAC=" MACSTR, MAC2STR(e->mac));
+-                fireEvent(WiFiEvent::AP_STA_DISCONNECTED, data);
+-                break;
+-            }
+-            case WIFI_EVENT_SCAN_DONE:
+-                ESP_LOGD(TAG, "SCAN_DONE");
+-                xEventGroupSetBits(_event_group, BIT_SCAN_DONE);
+-                fireEvent(WiFiEvent::SCAN_DONE, data);
+-                break;
+-            default:
+-                break;
+-        }
+-    } else if (base == IP_EVENT) {
+-        switch (id) {
+-            case IP_EVENT_STA_GOT_IP: {
+-                auto* e      = static_cast<ip_event_got_ip_t*>(data);
+-                _sta_ip      = e->ip_info.ip;
+-                _sta_gw      = e->ip_info.gw;
+-                _sta_netmask = e->ip_info.netmask;
+-                _sta_got_ip  = true;
+-                ESP_LOGI(TAG, "GOT_IP: " IPSTR, IP2STR(&e->ip_info.ip));
+-                xEventGroupSetBits(_event_group, BIT_GOT_IP);
+-                fireEvent(WiFiEvent::STA_GOT_IP, data);
+-                break;
++            cJSON_Delete(nets);
++            if (known || (eh_wifi_count()<EH_WIFI_MAX && eh_wifi_add(ssid,pass,false)==ESP_OK)) {
++                nvs_erase_key(nvs,"wifi_ssid");
++                nvs_erase_key(nvs,"wifi_pass");
++                nvs_commit(nvs);
+             }
+-            case IP_EVENT_STA_LOST_IP:
+-                _sta_got_ip = false;
+-                fireEvent(WiFiEvent::STA_LOST_IP, data);
+-                break;
+-            default:
+-                break;
+         }
+     }
++    mbedtls_platform_zeroize(pass,sizeof(pass));
++    nvs_close(nvs);
+ }
+-
+-void WiFiManager::fireEvent(WiFiEvent ev, void* data)
+-{
+-    if (_user_cb) _user_cb(ev, data);
+-}
+-
+-void WiFiManager::onEvent(EventCallback cb)
+-{
+-    _user_cb = std::move(cb);
+-}
+-
+-// --------------- Mode ---------------
+-esp_err_t WiFiManager::setMode(WiFiMode mode)
+-{
+-    if (!_initialized) begin();
+-    wifi_mode_t cur;
+-    esp_wifi_get_mode(&cur);
+-    wifi_mode_t target = static_cast<wifi_mode_t>(mode);
+-
+-    if (cur == target) {
+-        _mode = mode;
+-        return ESP_OK;
+-    }
+-
+-    // If Wi-Fi is already running, stop it first, change the mode, then start it again
+-    bool was_started = (cur != WIFI_MODE_NULL);
+-    if (was_started) esp_wifi_stop();
+-
+-    esp_err_t err = esp_wifi_set_mode(target);
+-    if (err != ESP_OK) return err;
+-
+-    if (target != WIFI_MODE_NULL) {
+-        err = esp_wifi_start();
+-        if (err != ESP_OK) return err;
+-    }
+-
+-    _mode = mode;
+-    return ESP_OK;
+ }
+-
+-WiFiMode WiFiManager::getMode() const
+-{
+-    return _mode;
+-}
+-
+-// --------------- STA ---------------
+-esp_err_t WiFiManager::connect(const std::string& ssid, const std::string& password, uint32_t timeout_ms)
+-{
+-    if (!_initialized) begin();
+-
+-    // If currently in AP mode, upgrade to APSTA
+-    WiFiMode target = _mode;
+-    if (_mode == WiFiMode::OFF) {
+-        target = WiFiMode::STA;
+-    } else if (_mode == WiFiMode::AP) {
+-        target = WiFiMode::APSTA;
+-    } else {
+-        target = _mode;
+-    }
+-    ESP_ERROR_CHECK(setMode(target));
+-
+-    wifi_config_t cfg{};
+-    std::strncpy(reinterpret_cast<char*>(cfg.sta.ssid), ssid.c_str(), sizeof(cfg.sta.ssid) - 1);
+-    std::strncpy(reinterpret_cast<char*>(cfg.sta.password), password.c_str(), sizeof(cfg.sta.password) - 1);
+-    cfg.sta.threshold.authmode = password.empty() ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA2_PSK;
+-    cfg.sta.pmf_cfg.capable    = true;
+-    cfg.sta.pmf_cfg.required   = false;
+-
+-    _configured_ssid     = ssid;
+-    _configured_password = password;
+-
+-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
+-
+-    xEventGroupClearBits(_event_group, BIT_CONNECTED | BIT_FAIL | BIT_GOT_IP);
+-
+-    esp_err_t err = esp_wifi_connect();
+-    if (err != ESP_OK) {
+-        ESP_LOGE(TAG, "esp_wifi_connect fail: %s", esp_err_to_name(err));
+-        return err;
+-    }
+-
+-    if (timeout_ms == 0) return ESP_OK;  // Asynchronous
+-
+-    EventBits_t bits =
+-        xEventGroupWaitBits(_event_group, BIT_GOT_IP | BIT_FAIL, pdFALSE, pdFALSE, pdMS_TO_TICKS(timeout_ms));
+-
+-    if (bits & BIT_GOT_IP) return ESP_OK;
+-    if (bits & BIT_FAIL) return ESP_FAIL;
+-    return ESP_ERR_TIMEOUT;
+-}
+-
+-esp_err_t WiFiManager::disconnect()
+-{
+-    return esp_wifi_disconnect();
+-}
+-
+-bool WiFiManager::isConnected() const
+-{
+-    return _sta_connected && _sta_got_ip;
+-}
+-
+-static std::string ip4ToString(const esp_ip4_addr_t& ip)
+-{
+-    char buf[16];
+-    snprintf(buf, sizeof(buf), IPSTR, IP2STR(&ip));
+-    return std::string(buf);
+-}
+-
+-std::string WiFiManager::localIP() const
+-{
+-    return ip4ToString(_sta_ip);
+-}
+-std::string WiFiManager::gatewayIP() const
+-{
+-    return ip4ToString(_sta_gw);
+-}
+-std::string WiFiManager::subnetMask() const
+-{
+-    return ip4ToString(_sta_netmask);
+-}
+-
+-std::string WiFiManager::macAddressSTA() const
+-{
+-    uint8_t mac[6]{};
+-    esp_wifi_get_mac(WIFI_IF_STA, mac);
+-    char buf[18];
+-    snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+-    return std::string(buf);
+-}
+-
+-int8_t WiFiManager::RSSI()
+-{
+-    wifi_ap_record_t info{};
+-    if (esp_wifi_sta_get_ap_info(&info) == ESP_OK) return info.rssi;
+-    return 0;
+-}
+-
+-std::string WiFiManager::SSID()
+-{
+-    wifi_ap_record_t info{};
+-    if (esp_wifi_sta_get_ap_info(&info) == ESP_OK) {
+-        return reinterpret_cast<const char*>(info.ssid);
+-    }
+-    return _configured_ssid;
+-}
+-
+-std::string WiFiManager::BSSID()
+-{
+-    wifi_ap_record_t info{};
+-    if (esp_wifi_sta_get_ap_info(&info) == ESP_OK) {
+-        char buf[18];
+-        snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X", info.bssid[0], info.bssid[1], info.bssid[2],
+-                 info.bssid[3], info.bssid[4], info.bssid[5]);
+-        return std::string(buf);
+-    }
+-    return "";
+-}
+-
+-uint8_t WiFiManager::channel()
+-{
+-    wifi_ap_record_t info{};
+-    if (esp_wifi_sta_get_ap_info(&info) == ESP_OK) {
+-        return info.primary;
+-    }
+-    return 0;
+-}
+-
+-wifi_auth_mode_t WiFiManager::authMode()
+-{
+-    wifi_ap_record_t info{};
+-    if (esp_wifi_sta_get_ap_info(&info) == ESP_OK) {
+-        return info.authmode;
+-    }
+-    return WIFI_AUTH_OPEN;
+-}
+-
+-// --------------- AP ---------------
+-esp_err_t WiFiManager::softAP(const std::string& ssid, const std::string& password, uint8_t channel, bool hidden,
+-                              uint8_t max_connection)
+-{
+-    if (!_initialized) begin();
+-
+-    WiFiMode target = _mode;
+-    if (_mode == WiFiMode::OFF) {
+-        target = WiFiMode::AP;
+-    } else if (_mode == WiFiMode::STA) {
+-        target = WiFiMode::APSTA;
+-    } else {
+-        target = _mode;
+-    }
+-    ESP_ERROR_CHECK(setMode(target));
+-
+-    wifi_config_t cfg{};
+-    std::strncpy(reinterpret_cast<char*>(cfg.ap.ssid), ssid.c_str(), sizeof(cfg.ap.ssid) - 1);
+-    cfg.ap.ssid_len         = ssid.length();
+-    cfg.ap.channel          = channel;
+-    cfg.ap.max_connection   = max_connection;
+-    cfg.ap.ssid_hidden      = hidden ? 1 : 0;
+-    cfg.ap.pmf_cfg.required = false;
+-
+-    if (password.empty()) {
+-        cfg.ap.authmode = WIFI_AUTH_OPEN;
+-    } else {
+-        std::strncpy(reinterpret_cast<char*>(cfg.ap.password), password.c_str(), sizeof(cfg.ap.password) - 1);
+-        cfg.ap.authmode = WIFI_AUTH_WPA2_PSK;
+-    }
+-
+-    esp_err_t err = esp_wifi_set_config(WIFI_IF_AP, &cfg);
+-    if (err != ESP_OK) return err;
+-
+-    err = esp_wifi_start();
+-    if (err != ESP_OK && err != ESP_ERR_WIFI_CONN) return err;
+-
+-    return ESP_OK;
+-}
+-
+-esp_err_t WiFiManager::softAPdisconnect(bool wifioff)
+-{
+-    if (_mode == WiFiMode::APSTA) {
+-        setMode(WiFiMode::STA);
+-    } else if (_mode == WiFiMode::AP) {
+-        setMode(wifioff ? WiFiMode::OFF : WiFiMode::OFF);
+-    }
+-    return ESP_OK;
+-}
+-
+-std::string WiFiManager::softAPIP() const
+-{
+-    esp_netif_ip_info_t ip{};
+-    if (_ap_netif && esp_netif_get_ip_info(_ap_netif, &ip) == ESP_OK) {
+-        return ip4ToString(ip.ip);
+-    }
+-    return "0.0.0.0";
+-}
+-
+-std::string WiFiManager::macAddressAP() const
+-{
+-    uint8_t mac[6]{};
+-    esp_wifi_get_mac(WIFI_IF_AP, mac);
+-    char buf[18];
+-    snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+-    return std::string(buf);
+-}
+-
+-uint8_t WiFiManager::softAPgetStationNum() const
+-{
+-    wifi_sta_list_t list{};
+-    if (esp_wifi_ap_get_sta_list(&list) == ESP_OK) return list.num;
+-    return 0;
+-}
+-
+-// --------------- Scan ---------------
+-esp_err_t WiFiManager::ensureStaForScan(WiFiMode& restore_mode)
+-{
+-    restore_mode = _mode;
+-    if (_mode == WiFiMode::OFF) return setMode(WiFiMode::STA);
+-    if (_mode == WiFiMode::AP) return setMode(WiFiMode::APSTA);
+-    return ESP_OK;
+-}
+-
+-esp_err_t WiFiManager::scanNetworks(std::vector<WiFiScanResult>& results, bool show_hidden, uint32_t timeout_ms)
+-{
+-    if (!_initialized) begin();
+-
+-    WiFiMode restore_mode;
+-    ensureStaForScan(restore_mode);
+-
+-    wifi_scan_config_t sc{};
+-    sc.ssid                 = nullptr;
+-    sc.bssid                = nullptr;
+-    sc.channel              = 0;
+-    sc.show_hidden          = show_hidden;
+-    sc.scan_type            = WIFI_SCAN_TYPE_ACTIVE;
+-    sc.scan_time.active.min = 100;
+-    sc.scan_time.active.max = 300;
+-
+-    xEventGroupClearBits(_event_group, BIT_SCAN_DONE);
+-
+-    esp_err_t err = esp_wifi_scan_start(&sc, false);  // Asynchronous
+-    if (err != ESP_OK) {
+-        ESP_LOGE(TAG, "scan_start fail: %s", esp_err_to_name(err));
+-        return err;
+-    }
+-
+-    EventBits_t bits = xEventGroupWaitBits(_event_group, BIT_SCAN_DONE, pdTRUE, pdFALSE, pdMS_TO_TICKS(timeout_ms));
+-
+-    if (!(bits & BIT_SCAN_DONE)) {
+-        esp_wifi_scan_stop();
+-        return ESP_ERR_TIMEOUT;
+-    }
+-
+-    return getScanResults(results);
+-}
+-
+-esp_err_t WiFiManager::scanNetworksAsync(bool show_hidden)
+-{
+-    if (!_initialized) begin();
+-    WiFiMode restore_mode;
+-    ensureStaForScan(restore_mode);
+-
+-    wifi_scan_config_t sc{};
+-    sc.show_hidden          = show_hidden;
+-    sc.scan_type            = WIFI_SCAN_TYPE_ACTIVE;
+-    sc.scan_time.active.min = 100;
+-    sc.scan_time.active.max = 300;
+-
+-    xEventGroupClearBits(_event_group, BIT_SCAN_DONE);
+-    return esp_wifi_scan_start(&sc, false);
+-}
+-
+-esp_err_t WiFiManager::getScanResults(std::vector<WiFiScanResult>& results)
+-{
+-    uint16_t num  = 0;
+-    esp_err_t err = esp_wifi_scan_get_ap_num(&num);
+-    if (err != ESP_OK) return err;
+-
+-    if (num == 0) {
+-        results.clear();
+-        return ESP_OK;
+-    }
+-
+-    std::vector<wifi_ap_record_t> records(num);
+-    err = esp_wifi_scan_get_ap_records(&num, records.data());
+-    if (err != ESP_OK) return err;
+-
+-    results.clear();
+-    results.reserve(num);
+-    for (uint16_t i = 0; i < num; ++i) {
+-        WiFiScanResult r;
+-        r.ssid = reinterpret_cast<const char*>(records[i].ssid);
+-        std::memcpy(r.bssid, records[i].bssid, 6);
+-        r.rssi     = records[i].rssi;
+-        r.channel  = records[i].primary;
+-        r.authmode = records[i].authmode;
+-        results.push_back(std::move(r));
+-    }
+-    return ESP_OK;
+-}
+-
+-}  // namespace hal_wifi
+\ No newline at end of file
+diff --git a/main/hal/wifi/hal_wifi.h b/main/hal/wifi/hal_wifi.h
+index f2c8638..6713ff9 100644
+--- a/main/hal/wifi/hal_wifi.h
++++ b/main/hal/wifi/hal_wifi.h
+@@ -1,165 +1,16 @@
+-/*
+- * SPDX-FileCopyrightText: 2026 M5Stack Technology CO LTD
+- *
++/* SPDX-FileCopyrightText: 2026 M5Stack Technology CO LTD
+  * SPDX-License-Identifier: MIT
+- */
++ * EspHub SDK adaptation. */
+ #pragma once
+-
+-#include <functional>
+ #include <string>
+ #include <vector>
+-#include <cstdint>
+-
+-#include "esp_err.h"
+-#include "esp_wifi.h"
+-#include "esp_event.h"
+-#include "esp_netif.h"
+-#include "freertos/FreeRTOS.h"
+-#include "freertos/event_groups.h"
+-
++#include <esp_wifi_types.h>
++#include "eh_agent.h"
++#include "eh_agent_ext.h"
+ namespace hal_wifi {
+-
+-/**
+- * @brief Wi-Fi scan result.
+- */
+-struct WiFiScanResult {
+-    std::string ssid;
+-    uint8_t bssid[6];
+-    int8_t rssi;
+-    uint8_t channel;
+-    wifi_auth_mode_t authmode;
+-};
+-
+-/**
+- * @brief Supported Wi-Fi operating modes.
+- */
+-enum class WiFiMode {
+-    OFF   = WIFI_MODE_NULL,
+-    STA   = WIFI_MODE_STA,
+-    AP    = WIFI_MODE_AP,
+-    APSTA = WIFI_MODE_APSTA,
+-};
+-
+-/**
+- * @brief Event types delivered to user callbacks.
+- */
+-enum class WiFiEvent {
+-    STA_START,
+-    STA_STOP,
+-    STA_CONNECTED,
+-    STA_DISCONNECTED,
+-    STA_GOT_IP,
+-    STA_LOST_IP,
+-    AP_START,
+-    AP_STOP,
+-    AP_STA_CONNECTED,
+-    AP_STA_DISCONNECTED,
+-    SCAN_DONE,
+-};
+-
+-using EventCallback = std::function<void(WiFiEvent event, void* data)>;
+-
+-/**
+- * @brief Wi-Fi manager wrapper around ESP-IDF networking.
+- */
+-class WiFiManager {
+-public:
+-    WiFiManager();
+-    ~WiFiManager();
+-
+-    WiFiManager(const WiFiManager&)            = delete;
+-    WiFiManager& operator=(const WiFiManager&) = delete;
+-
+-    /** @brief Initializes Wi-Fi, NVS, and networking objects. */
+-    esp_err_t begin();
+-
+-    /** @brief Deinitializes Wi-Fi and releases networking objects. */
+-    esp_err_t end();
+-
+-    /** @brief Sets the active Wi-Fi mode. */
+-    esp_err_t setMode(WiFiMode mode);
+-    /** @brief Returns the current Wi-Fi mode. */
+-    WiFiMode getMode() const;
+-
+-    /** @brief Connects to an access point. */
+-    esp_err_t connect(const std::string& ssid, const std::string& password, uint32_t timeout_ms = 15000);
+-    /** @brief Disconnects from the current access point. */
+-    esp_err_t disconnect();
+-    /** @brief Returns whether STA is connected. */
+-    bool isConnected() const;
+-    /** @brief Returns the STA IP address. */
+-    std::string localIP() const;
+-    /** @brief Returns the STA gateway address. */
+-    std::string gatewayIP() const;
+-    /** @brief Returns the STA subnet mask. */
+-    std::string subnetMask() const;
+-    /** @brief Returns the STA MAC address. */
+-    std::string macAddressSTA() const;
+-    /** @brief Returns the current STA RSSI. */
+-    int8_t RSSI();
+-    /** @brief Returns the connected SSID. */
+-    std::string SSID();
+-    /** @brief Returns the connected BSSID. */
+-    std::string BSSID();
+-    /** @brief Returns the current channel. */
+-    uint8_t channel();
+-    /** @brief Returns the current STA auth mode. */
+-    wifi_auth_mode_t authMode();
+-
+-    /** @brief Starts an access point. */
+-    esp_err_t softAP(const std::string& ssid, const std::string& password = "", uint8_t channel = 1,
+-                     bool hidden = false, uint8_t max_connection = 4);
+-    /** @brief Stops the access point. */
+-    esp_err_t softAPdisconnect(bool wifioff = false);
+-    /** @brief Returns the AP IP address. */
+-    std::string softAPIP() const;
+-    /** @brief Returns the AP MAC address. */
+-    std::string macAddressAP() const;
+-    /** @brief Returns the number of connected AP stations. */
+-    uint8_t softAPgetStationNum() const;
+-
+-    /** @brief Runs a synchronous Wi-Fi scan. */
+-    esp_err_t scanNetworks(std::vector<WiFiScanResult>& results, bool show_hidden = false, uint32_t timeout_ms = 10000);
+-
+-    /** @brief Starts an asynchronous Wi-Fi scan. */
+-    esp_err_t scanNetworksAsync(bool show_hidden = false);
+-    /** @brief Collects asynchronous scan results. */
+-    esp_err_t getScanResults(std::vector<WiFiScanResult>& results);
+-
+-    /** @brief Registers a user event callback. */
+-    void onEvent(EventCallback cb);
+-
+-private:
+-    static void eventHandlerStatic(void* arg, esp_event_base_t base, int32_t id, void* data);
+-    void eventHandler(esp_event_base_t base, int32_t id, void* data);
+-
+-    void fireEvent(WiFiEvent ev, void* data);
+-
+-    esp_err_t ensureStaForScan(WiFiMode& restore_mode);
+-
+-private:
+-    bool _initialized       = false;
+-    WiFiMode _mode          = WiFiMode::OFF;
+-    esp_netif_t* _sta_netif = nullptr;
+-    esp_netif_t* _ap_netif  = nullptr;
+-
+-    esp_event_handler_instance_t _wifi_handler_inst = nullptr;
+-    esp_event_handler_instance_t _ip_handler_inst   = nullptr;
+-
+-    EventGroupHandle_t _event_group = nullptr;
+-
+-    EventCallback _user_cb;
+-
+-    volatile bool _sta_connected = false;
+-    volatile bool _sta_got_ip    = false;
+-    esp_ip4_addr_t _sta_ip{};
+-    esp_ip4_addr_t _sta_gw{};
+-    esp_ip4_addr_t _sta_netmask{};
+-
+-    std::string _configured_ssid;
+-    std::string _configured_password;
+-};
+-
+-extern WiFiManager WiFi;
+-
+-}  // namespace hal_wifi
++bool station_connected();
++std::string station_ssid();
++std::string station_ip();
++esp_err_t wait_for_station(uint32_t timeout_ms);
++void migrate_saved_network();
++}

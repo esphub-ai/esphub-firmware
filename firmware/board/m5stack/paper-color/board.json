@@ -12,6 +12,12 @@
       "description": "Draw six colored bands and a multicolored label on the e-paper display using an offscreen canvas.",
       "entrypoint": "examples/color-bands/main.cpp",
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/program"
+    },
+    {
+      "id": "factory-demo",
+      "description": "M5Stack PaperColor factory photo frame with a local gallery and EzData.",
+      "entrypoint": "examples/factory-demo/main.cpp",
+      "upstream": "https://github.com/m5stack/M5PaperColor-UserDemo/tree/884a7b7ebe1d5f1ca55c0dc4864f7708636677ea"
     }
   ],
   "psram": "octal"
