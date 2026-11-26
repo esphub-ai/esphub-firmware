@@ -1,0 +1,47 @@
+name: ESP-IDF sccache experiment
+on:
+  push:
+    branches: [experiment/sccache-firmware]
+permissions:
+  contents: read
+jobs:
+  esp32s3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container: espressif/idf:v5.5.4
+    env:
+      SCCACHE_DIR: /tmp/esphub-sccache
+      SCCACHE_CACHE_SIZE: 1G
+      SCCACHE_IDLE_TIMEOUT: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install pinned sccache
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset=sccache-v0.20.1-x86_64-unknown-linux-musl
+          curl -fsSL "https://github.com/mozilla/sccache/releases/download/v0.20.1/$asset.tar.gz" -o "/tmp/$asset.tar.gz"
+          echo "c9f6c5a3ae84d9da0956b28c357a365827bda33f3383647fc0b67484c74a5ea9  /tmp/$asset.tar.gz" | sha256sum -c
+          tar xzf "/tmp/$asset.tar.gz" -C /tmp "$asset/sccache"
+          install "/tmp/$asset/sccache" /usr/local/bin/sccache
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: /tmp/esphub-sccache
+          key: esphub-sccache-experiment-v1-idf554-esp32s3-${{ github.run_id }}
+          restore-keys: esphub-sccache-experiment-v1-idf554-esp32s3-
+      - name: Measure clean builds sharing one compiler cache
+        shell: bash
+        env:
+          RESTORED_CACHE: ${{ steps.cache.outputs.cache-matched-key }}
+        run: |
+          set -eo pipefail
+          source "$IDF_PATH/export.sh"
+          python scripts/benchmark-sccache.py
+          sccache --stop-server
+      - uses: actions/cache/save@v4
+        with:
+          path: /tmp/esphub-sccache
+          key: ${{ steps.cache.outputs.cache-primary-key }}
