@@ -18,6 +18,54 @@
       "description": "Read button transitions and click counts. The serial log identifies the button and gesture; screens also show a colored indicator.",
       "entrypoint": "examples/buttons/main.cpp",
       "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Button/Button.ino"
+    },
+    {
+      "id": "stopwatch",
+      "description": "Start, pause and resume with B. Press A to mark laps while running or reset while paused. Shows elapsed time and the four most recent lap marks.",
+      "entrypoint": "examples/stopwatch/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_stopwatch"
+    },
+    {
+      "id": "fluidbox",
+      "description": "Tilt the round display to move the simulated fluid, tap to push it, or press A to reset. Uses the factory FluidBox particle solver and renderer.",
+      "entrypoint": "examples/fluidbox/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_fluidbox"
+    },
+    {
+      "id": "audio-fft",
+      "description": "Record the onboard microphone and plot frequency bands and the dominant frequency on the round display.",
+      "entrypoint": "examples/audio-fft/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_fft"
+    },
+    {
+      "id": "imu",
+      "description": "Tilt the StopWatch to move a ball within a circular guide using the onboard BMI270 accelerometer.",
+      "entrypoint": "examples/imu/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_imu"
+    },
+    {
+      "id": "watch-face",
+      "description": "Read the onboard RTC as an analog or digital watch face. Press either button to switch faces.",
+      "entrypoint": "examples/watch-face/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_watch_face"
+    },
+    {
+      "id": "alarm-clock",
+      "description": "Set a daily RTC-based alarm with the buttons, save it across reboots and dismiss its sound when it rings.",
+      "entrypoint": "examples/alarm-clock/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_alarm_clock"
+    },
+    {
+      "id": "lucky-wheel",
+      "description": "Choose 2 to 18 numbered sectors, then spin the wheel with the buttons or the touchscreen to pick one.",
+      "entrypoint": "examples/lucky-wheel/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_lucky_wheel"
+    },
+    {
+      "id": "badge",
+      "description": "Browse badge images with A/B and set the image for a slot over EspHub.",
+      "entrypoint": "examples/badge/main.cpp",
+      "upstream": "https://github.com/m5stack/M5StopWatch-UserDemo/tree/81099c784991dc77f522de1a5bf62ec5de9ae0b5/main/apps/app_badge"
     }
   ]
 }
