@@ -8,6 +8,12 @@
   "default_example": "hello-display",
   "examples": [
     {
+      "id": "battery",
+      "description": "Measure the AirQ battery on GPIO14 and refresh its voltage on the e-paper display.",
+      "entrypoint": "examples/battery/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/m5air_quality/battery"
+    },
+    {
       "id": "button",
       "description": "Report clicks on AirQ buttons A and B to the e-paper display and serial console.",
       "entrypoint": "examples/button/main.cpp",
