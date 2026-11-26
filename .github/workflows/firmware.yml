@@ -38,6 +38,11 @@ on:
         type: string
         required: false
 permissions: {contents: read}
+# PR events and SDK-bot dispatches for the same PR share a group with the
+# merged-PR cleanup workflow. Each main push and manual board run stays independent.
+concurrency:
+  group: board-firmware-${{ (github.event.pull_request.number || inputs.pr_number) && format('pr-{0}', github.event.pull_request.number || inputs.pr_number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '') }}
 jobs:
   context:
     uses: ./.github/workflows/pr-ci-context.yml
@@ -75,7 +80,7 @@ jobs:
   check:
     name: Firmware
     needs: [plan, build]
-    if: always()
+    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' && !inputs.pr_number }}
     runs-on: ubuntu-latest
     steps:
       - name: Require every selected firmware build to pass

@@ -18,7 +18,7 @@ const bootloaderInputs = [
 ];
 const appInputs = [
   "firmware/components/**", "firmware/app/**", "scripts/build-example.py",
-  ".github/workflows/build-board.yml", "scripts/firmware-plan.mjs",
+  ".github/workflows/build-board.yml",
 ];
 const kitInputs = [
   "scripts/package-setup.py", "scripts/board-catalog.mjs", "shared/board-examples.js",
