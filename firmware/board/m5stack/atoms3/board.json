@@ -99,6 +99,12 @@
       "description": "Read Atomic GPS Base NMEA over UART and report position, time, movement and receiver diagnostics on the serial console.",
       "entrypoint": "examples/atomic-gps/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicGPS/GPS/GPS.ino"
+    },
+    {
+      "id": "atomic-gps-microsd",
+      "description": "Mount the Atomic GPS Base microSD card, show its space usage and exercise FAT directory and file operations in an isolated test directory.",
+      "entrypoint": "examples/atomic-gps-microsd/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicGPS/MicroSD/MicroSD.ino"
     }
   ]
 }
