@@ -8,6 +8,12 @@
   "default_example": "hello-display",
   "examples": [
     {
+      "id": "button",
+      "description": "Report clicks on AirQ buttons A and B to the e-paper display and serial console.",
+      "entrypoint": "examples/button/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/m5air_quality/button"
+    },
+    {
       "id": "hello-display",
       "description": "Show Hello World on the e-paper display and serial console. Edit the text and font size.",
       "entrypoint": "examples/hello-display/main.cpp",
