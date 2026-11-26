@@ -14,6 +14,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/display"
     },
     {
+      "id": "battery-status",
+      "description": "Show battery and USB input readings and indicate external power with the two onboard LEDs.",
+      "entrypoint": "examples/battery-status/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/battery"
+    },
+    {
       "id": "button",
       "description": "Show a startup prompt and report presses of the three Paper Color buttons over serial.",
       "entrypoint": "examples/button/main.cpp",
