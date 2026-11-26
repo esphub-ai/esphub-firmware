@@ -1,5 +1,5 @@
 diff --git a/main/apps/app_launcher/view/menu/menu.cpp b/main/apps/app_launcher/view/menu/menu.cpp
-index d583d53..31fb413 100644
+index d583d53..16e8930 100644
 --- a/main/apps/app_launcher/view/menu/menu.cpp
 +++ b/main/apps/app_launcher/view/menu/menu.cpp
 @@ -3,6 +3,8 @@
@@ -11,7 +11,7 @@ index d583d53..31fb413 100644
  #include "menu.h"
  #include "../../app_launcher.h"
  #include <apps/utils/audio/audio.h>
-@@ -177,6 +179,14 @@ void Launcher::update_menu(bool pushCanvas)
+@@ -177,6 +179,16 @@ void Launcher::update_menu(bool pushCanvas)
  {
      _launcher_menu->pushCanvas = pushCanvas;
      _launcher_menu->update();
@@ -19,8 +19,10 @@ index d583d53..31fb413 100644
 +    static bool reported = false;
 +    if (pushCanvas && !reported && eh_connected()) {
 +        char message[96];
-+        std::snprintf(message, sizeof(message), "{\"event\":\"launcher.ready\",\"apps\":%u}",
-+                      static_cast<unsigned>(_launcher_menu->getOptionList().size()));
++        const bool sprites = GetHAL().canvas.getBuffer() && GetHAL().canvasKeyboardBar.getBuffer()
++                             && GetHAL().canvasSystemBar.getBuffer();
++        std::snprintf(message, sizeof(message), "{\"event\":\"launcher.ready\",\"apps\":%u,\"sprites\":%s}",
++                      static_cast<unsigned>(_launcher_menu->getOptionList().size()), sprites ? "true" : "false");
 +        reported = eh_message_send(message, nullptr);
 +    }
  }
@@ -239,10 +241,18 @@ index 5e468db..847a711 100644
  }
 
 diff --git a/main/hal/hal.cpp b/main/hal/hal.cpp
-index 9a42654..2a81e8b 100644
+index 9a42654..32eabad 100644
 --- a/main/hal/hal.cpp
 +++ b/main/hal/hal.cpp
-@@ -36,6 +36,7 @@ void Hal::init()
+@@ -28,6 +28,7 @@ void Hal::init()
+     mclog::tagInfo(_tag, "init");
+
+     M5.begin();
++    M5.Display.setRotation(0);
+     M5.Display.setBrightness(0);
+     M5.Speaker.begin();  // Codec takes some time to initialize
+
+@@ -36,6 +37,7 @@ void Hal::init()
      keyboard_init();
      setting_init();
      spi_init();
@@ -250,7 +260,7 @@ index 9a42654..2a81e8b 100644
  }
 
  void Hal::update()
-@@ -111,14 +112,6 @@ void Hal::setting_init()
+@@ -111,14 +113,6 @@ void Hal::setting_init()
  {
      mclog::tagInfo(_tag, "setting init");
 
@@ -265,7 +275,7 @@ index 9a42654..2a81e8b 100644
      _settings = new Settings("cardputer", true);
  }
 
-@@ -153,7 +146,7 @@ void Hal::keyboard_init()
+@@ -153,7 +147,7 @@ void Hal::keyboard_init()
  #include <vector>
  #include <time.h>
  #include <sys/time.h>
@@ -274,7 +284,7 @@ index 9a42654..2a81e8b 100644
 
  #define DEFAULT_SCAN_LIST_SIZE 6
  static wifi_ap_record_t _ap_info[DEFAULT_SCAN_LIST_SIZE];
-@@ -210,170 +203,17 @@ void Hal::wifiScan(std::vector<ScanResult_t>& scanResult)
+@@ -210,170 +204,17 @@ void Hal::wifiScan(std::vector<ScanResult_t>& scanResult)
      mclog::tagInfo(_tag, "wifi scan completed, found {} APs", scanResult.size());
  }
 
@@ -451,7 +461,7 @@ index 9a42654..2a81e8b 100644
  }
 
  void Hal::time_sync_notification_cb(struct timeval* tv)
-@@ -382,18 +222,6 @@ void Hal::time_sync_notification_cb(struct timeval* tv)
+@@ -382,18 +223,6 @@ void Hal::time_sync_notification_cb(struct timeval* tv)
      ESP_LOGI("sntp", "Notification of a time synchronization event");
  }
 
@@ -470,7 +480,7 @@ index 9a42654..2a81e8b 100644
  /* -------------------------------------------------------------------------- */
  /*                                   EspNow                                   */
  /* -------------------------------------------------------------------------- */
-@@ -428,15 +256,6 @@ void Hal::espNowInit()
+@@ -428,15 +257,6 @@ void Hal::espNowInit()
  {
      mclog::tagInfo(_tag, "esp now init");
 
