@@ -19,8 +19,9 @@ python3 scripts/build-example.py m5stack/paper-color --example factory-demo \
   --version 1.0.1-sdk8-lab --out dist
 ```
 
-This port is pending board-level validation. Native ESP32-S3 QEMU enters the
-Wi-Fi PHY calibration loop during startup. The factory storage HAL expects a
-wear-levelled FAT partition for its internal USB mass-storage volume. The
-EspHub 16 MiB layout reserves that space for shared LittleFS. The OTA app
-does not replace the partition table or initialize a FAT volume over it.
+This port is pending board-level validation. The factory keeps its wear-levelled
+FAT and SD backends. On the standard EspHub flash layout, the app stores photos
+in its own directory on the shared LittleFS volume. It initializes that volume
+only if every byte is erased. USB mass storage for the internal LittleFS gallery
+and physical SD switching still require integration and verification. Native
+ESP32-S3 QEMU stops in the Wi-Fi PHY calibration during startup.

@@ -8,3 +8,4 @@ dependencies:
   espressif/tinyusb: "==0.19.0~3"
   espressif/mdns: "==1.11.1"
   espressif/qrcode: "==0.2.0"
+  joltwallet/littlefs: "==1.23.3"

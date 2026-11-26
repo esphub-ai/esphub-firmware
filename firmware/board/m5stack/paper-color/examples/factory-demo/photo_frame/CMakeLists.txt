@@ -17,7 +17,7 @@ endif()
 
 idf_component_register(SRCS ${sources} PRIV_INCLUDE_DIRS ${include_dirs}
     PRIV_REQUIRES eh_agent driver esp_wifi esp_netif esp_http_server esp_http_client esp-tls
-    json esp_event esp_timer mbedtls mqtt fatfs wear_levelling nvs_flash sdmmc)
+    json esp_event esp_timer mbedtls mqtt fatfs wear_levelling nvs_flash sdmmc joltwallet__littlefs)
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     # M5PM1 1.0.6 names its optional component M5Unified. IDF's registry
     # installs the same library under the namespaced name used by EspHub.

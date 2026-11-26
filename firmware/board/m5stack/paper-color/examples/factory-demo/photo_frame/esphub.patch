@@ -253,7 +253,7 @@ index 158f18c..803221c 100644
   * @brief Disconnects the STA interface while keeping the AP enabled.
   *
 diff --git a/main/apps/app_server/app_server.cpp b/main/apps/app_server/app_server.cpp
-index 6809e97..46ab56f 100644
+index 6809e97..69b855a 100644
 --- a/main/apps/app_server/app_server.cpp
 +++ b/main/apps/app_server/app_server.cpp
 @@ -16,6 +16,9 @@
@@ -266,6 +266,15 @@ index 6809e97..46ab56f 100644
  #include "esp_netif.h"
  #include "lwip/inet.h"
  #include "esp_http_server.h"
+@@ -41,7 +44,7 @@ extern PhotoSlideshow photo_slideshow;
+ #define TAG "app_server"
+ 
+ /* ==== Constants ==== */
+-#define BASE_PATH "/data"
++#define BASE_PATH hal_storage_photo_dir()
+ 
+ #ifndef APP_ASSETS_USE_EMBEDDED
+ #define APP_ASSETS_USE_EMBEDDED 0
 @@ -301,27 +304,15 @@ static esp_err_t generate_next_photo_name(const char *ext, const char *algorithm
  /* ==== WiFi (via hal_wifi library) ==== */
  static int perform_wifi_scan(void)
@@ -489,6 +498,19 @@ index 6809e97..46ab56f 100644
      hal_storage_unlock();
  
      cJSON *r = cJSON_CreateObject();
+@@ -1005,10 +972,10 @@ static esp_err_t h_storage(httpd_req_t *req)
+     uint64_t used  = 0;
+ 
+     hal_storage_prepare_photo_fs_access();
+-    if (esp_vfs_fat_info(BASE_PATH, &total, &free) == ESP_OK) {
++    if (hal_storage_space(&total, &free) == ESP_OK) {
+         used = total - free;
+     } else {
+-        ESP_LOGW(TAG, "esp_vfs_fat_info failed");
++        ESP_LOGW(TAG, "Photo storage capacity unavailable");
+     }
+ 
+     cJSON *r = cJSON_CreateObject();
 @@ -1255,11 +1222,10 @@ static esp_err_t h_photos_display(httpd_req_t *req)
  
      strlcpy(g_dev_state.current_image, name, sizeof(g_dev_state.current_image));
@@ -597,6 +619,41 @@ index 6809e97..46ab56f 100644
      strlcpy(s.conn_err, g_dev_state.conn_err, sizeof(s.conn_err));
      return s;
  }
+diff --git a/main/apps/local_photo_slideshow/local_photo_slideshow.cpp b/main/apps/local_photo_slideshow/local_photo_slideshow.cpp
+index adf98d6..b3e8568 100644
+--- a/main/apps/local_photo_slideshow/local_photo_slideshow.cpp
++++ b/main/apps/local_photo_slideshow/local_photo_slideshow.cpp
+@@ -527,10 +527,11 @@ bool PhotoSlideshow::scanPhotos()
+     _photo_list.clear();
+     hal_storage_prepare_photo_fs_access();
+     hal_storage_lock();
+-    DIR *dir = opendir(_dir_path);
++    const char *dir_path = strcmp(_dir_path, "/data") == 0 ? hal_storage_photo_dir() : _dir_path;
++    DIR *dir = opendir(dir_path);
+     if (!dir) {
+         hal_storage_unlock();
+-        ESP_LOGW(TAG, "Cannot open dir: %s", _dir_path);
++        ESP_LOGW(TAG, "Cannot open dir: %s", dir_path);
+         return false;
+     }
+     struct dirent *entry;
+@@ -538,14 +539,14 @@ bool PhotoSlideshow::scanPhotos()
+         if (_photo_list.size() >= MAX_PHOTOS) break;
+         if (entry->d_type == DT_DIR) continue;
+         if (isImageFile(entry->d_name)) {
+-            std::string full = std::string(_dir_path) + "/" + entry->d_name;
++            std::string full = std::string(dir_path) + "/" + entry->d_name;
+             _photo_list.push_back(full);
+         }
+     }
+     closedir(dir);
+     hal_storage_unlock();
+     std::sort(_photo_list.begin(), _photo_list.end());
+-    ESP_LOGD(TAG, "Scanned %d photos in %s", (int)_photo_list.size(), _dir_path);
++    ESP_LOGD(TAG, "Scanned %d photos in %s", (int)_photo_list.size(), dir_path);
+     return !_photo_list.empty();
+ }
+ 
 diff --git a/main/hal/ezdata/hal_ezdata.cpp b/main/hal/ezdata/hal_ezdata.cpp
 index 8b931fa..10c6f89 100644
 --- a/main/hal/ezdata/hal_ezdata.cpp
@@ -697,6 +754,179 @@ index 5fdcd53..afaa2ff 100644
      uint8_t rotation;  // 0=landscape, 1=portrait
      bool auto_slideshow;
      int interval_minutes;
+diff --git a/main/hal/storage/hal_storage.cpp b/main/hal/storage/hal_storage.cpp
+index cc22311..879c588 100644
+--- a/main/hal/storage/hal_storage.cpp
++++ b/main/hal/storage/hal_storage.cpp
+@@ -1,5 +1,11 @@
+ #include "hal_storage.h"
+ #include <errno.h>
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <sys/stat.h>
++#include "esp_littlefs.h"
++#include "esp_vfs_fat.h"
+ #include <dirent.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -18,6 +24,8 @@
+ #include "freertos/semphr.h"
+ 
+ static const char *TAG = "hal_storage";
++static const char *GALLERY_DIR = "/paperfs/papercolor-photos";
++static std::atomic_bool s_gallery_active{false};
+ 
+ typedef struct {
+     bool driver_installed;
+@@ -221,6 +229,74 @@ static esp_err_t _mount(void)
+     return ESP_OK;
+ }
+ 
++/* EspHub's shared data partition is also used by other apps. Initialize a blank
++ * volume only and expose just this application's gallery through the factory API. */
++static const esp_partition_t *shared_gallery_partition()
++{
++    if (esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, NULL)) {
++        return nullptr;
++    }
++    return esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS, "data");
++}
++
++static bool partition_erased(const esp_partition_t *part)
++{
++    std::array<uint8_t, 1024> bytes;
++    for (size_t pos = 0; pos < part->size; pos += bytes.size()) {
++        const size_t n = std::min<size_t>(bytes.size(), part->size - pos);
++        if (esp_partition_read(part, pos, bytes.data(), n) != ESP_OK ||
++            !std::all_of(bytes.begin(), bytes.begin() + n, [](uint8_t byte) { return byte == 0xff; })) {
++            return false;
++        }
++    }
++    return true;
++}
++
++static esp_err_t mount_shared_gallery(const esp_partition_t *part)
++{
++    if (!esp_littlefs_mounted("data")) {
++        esp_vfs_littlefs_conf_t conf = {};
++        conf.base_path = "/paperfs";
++        conf.partition_label = "data";
++        esp_err_t err = esp_vfs_littlefs_register(&conf);
++        if (err == ESP_FAIL && partition_erased(part)) {
++            conf.format_if_mount_failed = true;
++            err = esp_vfs_littlefs_register(&conf);
++        }
++        if (err != ESP_OK) return err;
++    }
++    if (mkdir(GALLERY_DIR, 0775) != 0 && errno != EEXIST) return ESP_FAIL;
++    struct stat entry = {};
++    if (stat(GALLERY_DIR, &entry) != 0 || !S_ISDIR(entry.st_mode)) return ESP_FAIL;
++    s_gallery_active = true;
++    s_ctx.media = APP_STORAGE_MEDIA_SPIFLASH;
++    ESP_LOGI(TAG, "Internal gallery ready at %s", GALLERY_DIR);
++    return ESP_OK;
++}
++
++const char *hal_storage_photo_dir(void)
++{
++    return s_gallery_active ? GALLERY_DIR : BASE_PATH;
++}
++
++esp_err_t hal_storage_space(uint64_t *total, uint64_t *free_bytes)
++{
++    hal_storage_lock();
++    esp_err_t err;
++    if (s_gallery_active) {
++        size_t volume = 0, used = 0;
++        err = esp_littlefs_info("data", &volume, &used);
++        if (err == ESP_OK) {
++            *total = volume;
++            *free_bytes = volume - used;
++        }
++    } else {
++        err = esp_vfs_fat_info(BASE_PATH, total, free_bytes);
++    }
++    hal_storage_unlock();
++    return err;
++}
++
+ static esp_err_t storage_init_spiflash(wl_handle_t *wl_handle)
+ {
+     const esp_partition_t *data_partition =
+@@ -353,6 +429,11 @@ static esp_err_t _bringup(hal_storage_media_t media)
+ {
+     esp_err_t ret = ESP_OK;
+ 
++    if (media == APP_STORAGE_MEDIA_SPIFLASH) {
++        const esp_partition_t *part = shared_gallery_partition();
++        if (part) return mount_shared_gallery(part);
++    }
++
+     tinyusb_msc_storage_config_t storage_cfg = {};
+     storage_cfg.mount_point                  = TINYUSB_MSC_STORAGE_MOUNT_USB;
+     storage_cfg.fat_fs.base_path             = (const char *)BASE_PATH;
+@@ -439,7 +520,9 @@ esp_err_t hal_storage_init(hal_storage_media_t media)
+ {
+     hal_storage_lock();
+     esp_err_t ret;
+-    if (s_ctx.driver_installed || s_ctx.storage_created) {
++    if (s_gallery_active && media == APP_STORAGE_MEDIA_SPIFLASH) {
++        ret = ESP_OK;
++    } else if (s_ctx.driver_installed || s_ctx.storage_created || s_gallery_active) {
+         ESP_LOGW(TAG, "Storage already initialized");
+         ret = ESP_ERR_INVALID_STATE;
+     } else {
+@@ -453,6 +536,17 @@ esp_err_t hal_storage_switch(hal_storage_media_t media)
+ {
+     hal_storage_lock();
+ 
++    if (s_gallery_active) {
++        esp_err_t ret = ESP_OK;
++        if (media == APP_STORAGE_MEDIA_SDMMC) {
++            ret = _bringup(media);
++            if (ret == ESP_OK) s_gallery_active = false;
++            else s_ctx.media = APP_STORAGE_MEDIA_SPIFLASH;
++        }
++        hal_storage_unlock();
++        return ret;
++    }
++
+     if ((s_ctx.storage_created || s_ctx.driver_installed) && s_ctx.media == media) {
+         ESP_LOGW(TAG, "Same media, no need to switch");
+         hal_storage_unlock();
+@@ -497,6 +591,15 @@ esp_err_t hal_storage_switch(hal_storage_media_t media)
+         storage_deinit_sdmmc();
+     }
+ 
++    if (media == APP_STORAGE_MEDIA_SPIFLASH) {
++        const esp_partition_t *part = shared_gallery_partition();
++        if (part) {
++            ret = mount_shared_gallery(part);
++            hal_storage_unlock();
++            return ret;
++        }
++    }
++
+     tinyusb_msc_storage_config_t storage_cfg = {};
+     storage_cfg.mount_point                  = TINYUSB_MSC_STORAGE_MOUNT_USB;
+     storage_cfg.fat_fs.base_path             = BASE_PATH;
+diff --git a/main/hal/storage/hal_storage.h b/main/hal/storage/hal_storage.h
+index bbf50da..a2e5832 100644
+--- a/main/hal/storage/hal_storage.h
++++ b/main/hal/storage/hal_storage.h
+@@ -53,6 +53,11 @@ esp_err_t hal_storage_switch(hal_storage_media_t media);
+  */
+ hal_storage_media_t hal_storage_get_media(void);
+ 
++/** Gallery root for the currently selected medium. */
++const char *hal_storage_photo_dir(void);
++/** Query the active filesystem. */
++esp_err_t hal_storage_space(uint64_t *total, uint64_t *free_bytes);
++
+ /**
+  * @brief Mounts storage for app use.
+  */
 diff --git a/main/hal/utils/dns_server/dns_server.c b/main/hal/utils/dns_server/dns_server.c
 index 065adc2..5155eab 100644
 --- a/main/hal/utils/dns_server/dns_server.c
