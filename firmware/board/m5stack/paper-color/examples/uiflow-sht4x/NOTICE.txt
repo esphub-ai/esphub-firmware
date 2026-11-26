@@ -1,0 +1,8 @@
+M5Stack UiFlow2 SHT4X PaperColor Example.
+Copyright 2026 M5Stack Technology CO LTD. MIT.
+https://github.com/m5stack/uiflow-micropython/tree/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/hardware/sht4x
+
+The upstream .py script and .m5f2 Blockly project represent the same example.
+This port uses the board's SHT4X driver and the EspHub SDK app entry point.
+
+See ../../../LICENSE for the MIT license text.
