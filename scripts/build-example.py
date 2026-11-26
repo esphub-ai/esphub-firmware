@@ -23,11 +23,32 @@ def checkout(parent, source):
     return str(directory)
 
 
+def build_partitions(flash_mb, app_size, work):
+    source = FIRMWARE / "partitions" / f"{flash_mb}mb.csv"
+    if app_size is None:
+        return source
+    with source.open() as table:
+        rows = list(csv.reader((line for line in table if line.strip() and not line.startswith("#")),
+                               skipinitialspace=True))
+    app, data = rows[-2:]
+    if app[0] != "app" or data[0] != "data":
+        raise ValueError("Expected app and data as the last two partitions")
+    data_start = int(app[3], 0) + app_size
+    data_size = int(data[3], 0) + int(data[4], 0) - data_start
+    if app_size <= 0 or app_size % 65536 or data_size < 8192:
+        raise ValueError("App size must be a positive multiple of 65536 and leave space for LittleFS")
+    app[4], data[3], data[4] = hex(app_size), hex(data_start), hex(data_size)
+    output = work / "partitions.csv"
+    with output.open("w", newline="") as table:
+        csv.writer(table, lineterminator="\n").writerows(rows)
+    return output
+
+
 def build(args, board, example, work):
     directory = FIRMWARE / "board" / args.board
     example_id = example["id"]
     entrypoint = directory / example["entrypoint"]
-    partitions = FIRMWARE / "partitions" / f"{board['flash_mb']}mb.csv"
+    partitions = build_partitions(board["flash_mb"], args.app_size_bytes, work)
     env = dict(os.environ, IDF_TARGET=board["chip"])
     config = work / "sdkconfig"
     options = [f"-DSDKCONFIG={config}", f"-DPROJECT_VER={args.version}"]
@@ -94,6 +115,8 @@ if __name__ == "__main__":
     selection.add_argument("--example", help="Example ID (defaults to the board’s factory example)")
     selection.add_argument("--all", action="store_true", help="Build every example for the board")
     parser.add_argument("--version", default="0.0.0-dev")
+    parser.add_argument("--app-size-bytes", type=lambda value: int(value, 0),
+                        help="Target app slot on a resized device, in bytes (64 KiB aligned)")
     parser.add_argument("--out", type=Path, default=Path("dist"))
     args = parser.parse_args()
     board = json.loads((FIRMWARE / "board" / args.board / "board.json").read_text())
