@@ -1,19 +1,19 @@
 diff --git a/main/apps/app_manager/app_manager.cpp b/main/apps/app_manager/app_manager.cpp
-index 3a7aaf5..abffd05 100644
+index 3a7aaf5..eef3727 100644
 --- a/main/apps/app_manager/app_manager.cpp
 +++ b/main/apps/app_manager/app_manager.cpp
-@@ -52,9 +52,7 @@ static uint32_t g_ap_auto_off_timer     = 0;
+@@ -51,10 +51,6 @@ static bool g_btn_long_pressed    = false;
+ static uint32_t g_ap_auto_off_timer     = 0;
  static bool g_ap_auto_off_timer_running = false;
  
- // ---- WiFi auto-reconnect ----
+-// ---- WiFi auto-reconnect ----
 -static uint32_t g_wifi_reconnect_last_try_ms         = 0;
 -static constexpr uint32_t WIFI_RECONNECT_INTERVAL_MS = 10000;
 -static bool g_wifi_reconnect_paused                  = false;
-+
  static uint32_t g_low_power_last_activity_ms         = 0;
  static bool g_refresh_in_progress                    = false;
  static constexpr uint32_t LOW_POWER_IDLE_SHUTDOWN_MS = 60000;
-@@ -79,64 +77,28 @@ static void get_ap_name(char* ap_name, size_t ap_name_size)
+@@ -79,64 +75,29 @@ static void get_ap_name(char* ap_name, size_t ap_name_size)
  
  static esp_err_t ensure_apsta_started()
  {
@@ -83,14 +83,15 @@ index 3a7aaf5..abffd05 100644
 -        ESP_LOGI(g_tag, "STA IP : %s", WiFi.localIP().c_str());
 -    }
 -    return err;
-+    if (err != ESP_OK || !mode_requires_sta(g_current_mode) || !eh_wifi_count()) return err;
++    if (err != ESP_OK) ESP_LOGW(g_tag, "Local setup portal unavailable: %s", esp_err_to_name(err));
++    if (!mode_requires_sta(g_current_mode) || !eh_wifi_count()) return err;
 +    err = eh_wifi_set_station_paused(false);
 +    if (err != ESP_OK || !wait_for_connect) return err;
 +    return wait_for_station(15000);
  }
  
  // ---- Mode management ----
-@@ -210,9 +172,7 @@ static bool should_idle_power_off_in_low_power_mode()
+@@ -210,9 +171,7 @@ static bool should_idle_power_off_in_low_power_mode()
          return false;
      }
  
@@ -101,18 +102,18 @@ index 3a7aaf5..abffd05 100644
      if (has_ap_clients) {
          app_manager_mark_activity();
          return false;
-@@ -274,9 +234,8 @@ static bool run_rtc_wake_one_shot_cycle()
+@@ -274,9 +233,7 @@ static bool run_rtc_wake_one_shot_cycle()
      if (g_current_mode == APP_MODE_EZDATA) {
          ezdata_photo_push.init(0);
  
 -        ESP_ERROR_CHECK(WiFi.begin());
-         ESP_ERROR_CHECK(ensure_apsta_started());
+-        ESP_ERROR_CHECK(ensure_apsta_started());
 -        if (hal.settings.wifi_ssid[0]) {
 +        if (eh_wifi_count()) {
              esp_err_t connect_err = ensure_sta_connected_if_needed(true);
              if (connect_err != ESP_OK) {
                  ESP_LOGW(g_tag, "RTC one-shot STA connect failed: %s", esp_err_to_name(connect_err));
-@@ -343,18 +302,6 @@ static void switch_app_mode(AppMode target_mode)
+@@ -343,18 +300,6 @@ static void switch_app_mode(AppMode target_mode)
      apply_current_mode_setting();
  }
  
@@ -131,7 +132,7 @@ index 3a7aaf5..abffd05 100644
  esp_err_t app_manager_disconnect_sta_keep_ap(void)
  {
      return disconnect_sta_keep_ap_internal();
-@@ -518,8 +465,6 @@ void app_manager_factory_reset_machine()
+@@ -518,8 +463,6 @@ void app_manager_factory_reset_machine()
      cstring_copy(hal.settings.device_name, "papercolor", sizeof(hal.settings.device_name));
      hal.settingsUnlock();
  
@@ -140,7 +141,7 @@ index 3a7aaf5..abffd05 100644
      hal.settingsSave(SETTING_ROTATION);
      hal.settingsSave(SETTING_AUTO_SLIDESHOW);
      hal.settingsSave(SETTING_INTERVAL);
-@@ -623,10 +568,10 @@ static void app_task(void* param)
+@@ -623,10 +566,10 @@ static void app_task(void* param)
          // ==================== WiFi AP auto-off ====================
  #if WIFI_AP_AUTO_OFF_ENABLE
          {
@@ -155,7 +156,7 @@ index 3a7aaf5..abffd05 100644
  
              if (ap_active && !has_ap_clients && sta_connected) {
                  if (!g_ap_auto_off_timer_running) {
-@@ -638,7 +583,7 @@ static void app_task(void* param)
+@@ -638,7 +581,7 @@ static void app_task(void* param)
                  uint32_t elapsed_ms = millis_() - g_ap_auto_off_timer;
                  uint32_t timeout_ms = (uint32_t)WIFI_AP_AUTO_OFF_TIMEOUT_MIN * 60000UL;
                  if (elapsed_ms >= timeout_ms) {
@@ -164,7 +165,13 @@ index 3a7aaf5..abffd05 100644
                      g_ap_auto_off_timer_running = false;
                      ESP_LOGI(g_tag, "AP auto-off: closed after %d min", WIFI_AP_AUTO_OFF_TIMEOUT_MIN);
                  }
-@@ -653,23 +598,12 @@ static void app_task(void* param)
+@@ -648,28 +591,15 @@ static void app_task(void* param)
+         }
+ #endif
+ 
+-        // ==================== WiFi status LED refresh + auto-reconnect ====================
++        // Refresh the connectivity indicator; reconnects are owned by EspHub.
+         {
              static uint32_t s_last_wifi_check = 0;
              if (millis_() - s_last_wifi_check >= 3000) {
                  s_last_wifi_check = millis_();
@@ -173,7 +180,7 @@ index 3a7aaf5..abffd05 100644
                      hal.statusEventSend(OPERATION_EVENT_WAITING_WIFI);
                  }
              }
- 
+-
 -            if (mode_requires_sta(g_current_mode) && hal.settings.wifi_ssid[0] && !WiFi.isConnected() &&
 -                !g_wifi_reconnect_paused) {
 -                uint32_t now = millis_();
@@ -186,22 +193,25 @@ index 3a7aaf5..abffd05 100644
 -            } else {
 -                g_wifi_reconnect_last_try_ms = 0;
 -            }
-+
          }
  
          // ==================== Dual-mode update ====================
-@@ -736,9 +670,8 @@ esp_err_t app_manager_start()
+@@ -736,9 +666,11 @@ esp_err_t app_manager_start()
          photo_slideshow.init("/data", hal.settings.auto_slideshow ? (uint8_t)hal.settings.interval_minutes : 0);
      }
  
 -    ESP_ERROR_CHECK(WiFi.begin());
-     ESP_ERROR_CHECK(ensure_apsta_started());
+-    ESP_ERROR_CHECK(ensure_apsta_started());
 -    if (mode_requires_sta(g_current_mode) && hal.settings.wifi_ssid[0]) {
++    esp_err_t portal_err = ensure_apsta_started();
++    if (portal_err != ESP_OK) {
++        ESP_LOGW(g_tag, "Local setup portal unavailable: %s", esp_err_to_name(portal_err));
++    }
 +    if (mode_requires_sta(g_current_mode) && eh_wifi_count()) {
          esp_err_t connect_err = ensure_sta_connected_if_needed(true);
          if (connect_err != ESP_OK) {
              ESP_LOGW(g_tag, "Initial STA connect failed: %s", esp_err_to_name(connect_err));
-@@ -753,10 +686,10 @@ esp_err_t app_manager_start()
+@@ -753,16 +685,16 @@ esp_err_t app_manager_start()
      } else if (g_current_mode == APP_MODE_NONE) {
          // Factory default: no mode selected, show the QR code to guide setup
          need_qrcode = true;
@@ -214,6 +224,13 @@ index 3a7aaf5..abffd05 100644
          // WiFi is configured but connection failed
          hal.statusEventSend(OPERATION_EVENT_WAITING_WIFI);
          need_qrcode = true;
+     }
+ 
+-    if (need_qrcode) {
++    if (need_qrcode && portal_err == ESP_OK) {
+         char ap_name[32];
+         get_ap_name(ap_name, sizeof(ap_name));
+         show_wifi_config_qrcode(ap_name);
 diff --git a/main/apps/app_manager/app_manager.h b/main/apps/app_manager/app_manager.h
 index 158f18c..803221c 100644
 --- a/main/apps/app_manager/app_manager.h
