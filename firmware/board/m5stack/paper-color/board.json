@@ -6,6 +6,9 @@
   "bootloader": "esp32s3-16mb",
   "m5_board_id": 28,
   "default_example": "color-bands",
+  "shared_example_inputs": {
+    "sht4x.hpp": ["sht40", "uiflow-sht4x"]
+  },
   "examples": [
     {
       "id": "basic-display",
@@ -78,6 +81,12 @@
       "description": "Play alternating 4 kHz and 8 kHz tones on the onboard speaker.",
       "entrypoint": "examples/speaker-tone/main.cpp",
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/speaker"
+    },
+    {
+      "id": "uiflow-sht4x",
+      "description": "Print humidity and temperature from the onboard SHT4X sensor every second, following the UiFlow2 example.",
+      "entrypoint": "examples/uiflow-sht4x/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/hardware/sht4x/sht4x_papercolor_example.py"
     },
     {
       "id": "sht40",
