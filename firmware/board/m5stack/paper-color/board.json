@@ -51,7 +51,7 @@
     },
     {
       "id": "m5pm1-wakeup",
-      "description": "Press Button A to shut down and power on after a ten-second M5PM1 timer.",
+      "description": "Use M5PM1 timers to schedule power-on with Button A or power-off with Button B.",
       "entrypoint": "examples/m5pm1-wakeup/main.cpp",
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/wakeup#m5pm1-timer-wakeup"
     },

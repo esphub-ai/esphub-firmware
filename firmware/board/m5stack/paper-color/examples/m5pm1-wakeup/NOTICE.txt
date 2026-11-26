@@ -1,5 +1,7 @@
 M5Stack PaperColor Arduino M5PM1 Timer Wakeup
 https://docs.m5stack.com/en/arduino/papercolor/wakeup#m5pm1-timer-wakeup
+Scheduled Power On / Off Example (Button B)
+https://docs.m5stack.com/en/arduino/papercolor/m5pm1#scheduled-power-on-off-example
 
 M5Stack attribution and MIT notices are in ../../../LICENSE.
 Timer register sequence follows the MIT-licensed M5PM1 library 1.0.7.
