@@ -34,6 +34,6 @@ bool appendOrCreate()
 extern "C" void app_main()
 {
     if (storage::start()) {
-        storage::pollRead(appendOrCreate());
+        storage::pollRead(storage::prepareDirectory() && appendOrCreate());
     }
 }

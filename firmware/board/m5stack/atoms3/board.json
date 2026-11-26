@@ -7,7 +7,7 @@
   "m5_board_id": 11,
   "default_example": "display-shapes",
   "shared_example_inputs": {
-    "storage_io.hpp": ["storage-notes", "storage-append"]
+    "storage_io.hpp": ["storage-notes", "storage-append", "storage-delete"]
   },
   "examples": [
     {
@@ -57,6 +57,12 @@
       "description": "Append a line to the LittleFS notes file or create an empty note, then press A to read it.",
       "entrypoint": "examples/storage-append/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/Storage/SPIFFS/SPIFFS_Add/SPIFFS_Add.ino"
+    },
+    {
+      "id": "storage-delete",
+      "description": "Remove the example's own LittleFS notes file and show the result.",
+      "entrypoint": "examples/storage-delete/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/Storage/SPIFFS/SPIFFS_Delete/SPIFFS_Delete.ino"
     },
     {
       "id": "eeprom",

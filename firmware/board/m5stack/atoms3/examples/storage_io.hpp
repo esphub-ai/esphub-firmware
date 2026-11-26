@@ -80,7 +80,7 @@ inline bool start()
         return false;
     }
 
-    return prepareDirectory();
+    return true;
 }
 
 inline void pollRead(bool ready)
