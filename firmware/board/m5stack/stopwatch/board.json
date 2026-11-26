@@ -6,6 +6,10 @@
   "bootloader": "esp32s3-16mb",
   "m5_board_id": 30,
   "default_example": "bar-graph",
+  "shared_example_inputs": {
+    "common/round_display.hpp": ["stopwatch", "fluidbox", "audio-fft", "imu", "watch-face", "alarm-clock", "lucky-wheel", "badge"],
+    "common/rtc_clock.hpp": ["watch-face", "alarm-clock"]
+  },
   "examples": [
     {
       "id": "bar-graph",

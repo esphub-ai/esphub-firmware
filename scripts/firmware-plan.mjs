@@ -94,7 +94,7 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
     if (!match) continue;
     const dir = posix.dirname(path);
     const board = boardId(match[1], match[2]);
-    const { examples = [], ...settings } = json(path);
+    const { examples = [], shared_example_inputs = {}, ...settings } = json(path);
     const { chip, flash_mb, bootloader, default_example } = settings;
     const sharedBootloader = variants.get(bootloader);
     if (sharedBootloader?.target !== chip || sharedBootloader.flashMb !== flash_mb)
@@ -108,13 +108,24 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
     const optional = defaultExample ? examples.filter(example => example.id !== default_example) : [];
     const optionalSources = new Map(optional.map(({ id }) => [id, []]));
     const root = `${dir}/examples/`;
+    const exampleIds = new Set(examples.map(({ id }) => id));
+    const sharedOwners = new Map();
+    for (const [relative, owners] of Object.entries(shared_example_inputs)) {
+      const file = root + relative;
+      if (!files.has(file) || exampleIds.has(relative.split("/", 1)[0]) ||
+          !Array.isArray(owners) || !owners.length || owners.some(id => !exampleIds.has(id)))
+        throw Error(`Invalid shared example input for ${board}: ${relative}`);
+      if (defaultExample) sharedOwners.set(file, owners);
+    }
     const appSources = [];
     for (const source of matching([...appInputs, root + "**"])) {
       const [file] = source;
       const id = file.startsWith(root) ? file.slice(root.length).split("/", 1)[0] : null;
-      // Files outside a registered optional example (e.g. examples/common) affect the board build.
-      const inputs = optionalSources.get(id) ?? appSources;
-      inputs.push(source);
+      // Unscoped shared files and inputs to the default app still affect the whole board.
+      for (const owner of sharedOwners.get(file) ?? [id]) {
+        const inputs = optionalSources.get(owner) ?? appSources;
+        inputs.push(source);
+      }
     }
     const runner = "ubuntu-24.04";
     const appContainer = chip === "esp32s31"
