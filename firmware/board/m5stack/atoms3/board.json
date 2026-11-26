@@ -93,6 +93,12 @@
       "description": "Run the Atomic Motion Base demo for two DC motors and four servos over I2C, with command readback on the serial console.",
       "entrypoint": "examples/atomic-motion/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicMotion/AtomicMotion.ino"
+    },
+    {
+      "id": "atomic-gps",
+      "description": "Read Atomic GPS Base NMEA over UART and report position, time, movement and receiver diagnostics on the serial console.",
+      "entrypoint": "examples/atomic-gps/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicGPS/GPS/GPS.ino"
     }
   ]
 }
