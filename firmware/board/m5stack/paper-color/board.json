@@ -44,6 +44,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/rgb_led"
     },
     {
+      "id": "sht40",
+      "description": "Read the onboard SHT40 and show temperature and humidity at startup and every two minutes.",
+      "entrypoint": "examples/sht40/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/sht40"
+    },
+    {
       "id": "color-bands",
       "description": "Draw six colored bands and a multicolored label on the e-paper display using an offscreen canvas.",
       "entrypoint": "examples/color-bands/main.cpp",
