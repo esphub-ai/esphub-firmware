@@ -32,6 +32,12 @@
       "upstream": "https://docs.m5stack.com/en/arduino/papercolor/ir_nec"
     },
     {
+      "id": "microsd-png",
+      "description": "Display two PNG files from the microSD card, switching images once a minute.",
+      "entrypoint": "examples/microsd-png/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/papercolor/microsd"
+    },
+    {
       "id": "rgb-led",
       "description": "Cycle the two onboard RGB LEDs through single-pixel, mixed and matched colors.",
       "entrypoint": "examples/rgb-led/main.cpp",
