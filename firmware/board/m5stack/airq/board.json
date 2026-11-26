@@ -8,6 +8,12 @@
   "default_example": "hello-display",
   "examples": [
     {
+      "id": "display",
+      "description": "Continuously draw random circles and rectangles on the AirQ e-paper screen.",
+      "entrypoint": "examples/display/main.cpp",
+      "upstream": "https://docs.m5stack.com/en/arduino/m5air_quality/display"
+    },
+    {
       "id": "buzzer",
       "description": "Display the song title and play Twinkle Twinkle Little Star on the GPIO9 buzzer.",
       "entrypoint": "examples/buzzer/main.cpp",
