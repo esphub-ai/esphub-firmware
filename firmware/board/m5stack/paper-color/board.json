@@ -105,6 +105,12 @@
       "description": "M5Stack PaperColor factory photo frame with a local gallery and EzData.",
       "entrypoint": "examples/factory-demo/main.cpp",
       "upstream": "https://github.com/m5stack/M5PaperColor-UserDemo/tree/884a7b7ebe1d5f1ca55c0dc4864f7708636677ea"
+    },
+    {
+      "id": "sd-image-viewer",
+      "description": "Browse JPEG, PNG and BMP images on microSD with A/B or a configurable slideshow.",
+      "entrypoint": "examples/sd-image-viewer/main.cpp",
+      "upstream": "https://github.com/3110/m5stack-image-viewer/tree/d5867307e58664dd492bac6ae6ac7b40e5d0c798"
     }
   ],
   "psram": "octal"
