@@ -23,6 +23,26 @@ static wifi_mode_t radio_mode = WIFI_MODE_STA;
 static wifi_config_t portal_config;
 static bool fail_ap_config;
 esp_netif_t *esp_netif_create_default_wifi_ap(void) { return &portal; }
+static const char *advertised_portal;
+esp_err_t esp_netif_get_ip_info(esp_netif_t *netif, esp_netif_ip_info_t *info)
+{
+    assert(netif == &portal);
+    info->ip.addr = 0x0104a8c0;
+    return ESP_OK;
+}
+char *esp_ip4addr_ntoa(const esp_ip4_addr_t *address, char *out, int capacity)
+{
+    assert(address->addr == 0x0104a8c0 && capacity >= (int)sizeof("192.168.4.1"));
+    strcpy(out, "192.168.4.1");
+    return out;
+}
+esp_err_t esp_netif_dhcps_option(esp_netif_t *netif, int mode, int option, void *data, uint32_t length)
+{
+    assert(netif == &portal && mode == ESP_NETIF_OP_SET && option == ESP_NETIF_CAPTIVEPORTAL_URI);
+    assert(radio_mode == WIFI_MODE_STA && strlen(data) == length);
+    advertised_portal = data;
+    return ESP_OK;
+}
 esp_err_t esp_wifi_get_mode(wifi_mode_t *mode) { *mode = radio_mode; return ESP_OK; }
 esp_err_t esp_wifi_set_mode(wifi_mode_t mode) { radio_mode = mode; return ESP_OK; }
 esp_err_t esp_wifi_ap_get_sta_list(wifi_sta_list_t *result)
@@ -598,6 +618,7 @@ static void portal_test(void)
     fail_ap_config = false;
     assert(eh_wifi_set_portal("PaperColor-000001", 6) == ESP_OK);
     assert(radio_mode == WIFI_MODE_APSTA);
+    assert(advertised_portal && !strcmp(advertised_portal, "http://192.168.4.1"));
     assert(portal_config.ap.ssid_len == strlen("PaperColor-000001"));
     assert(!memcmp(portal_config.ap.ssid,"PaperColor-000001",portal_config.ap.ssid_len));
     assert(portal_config.ap.channel == 6 && portal_config.ap.authmode == WIFI_AUTH_OPEN);

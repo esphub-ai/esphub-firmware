@@ -282,8 +282,23 @@ esp_err_t eh_wifi_set_portal(const char *ssid, uint8_t channel)
         if (previous == WIFI_MODE_APSTA) err = esp_wifi_set_mode(WIFI_MODE_STA);
         goto done;
     }
-    if (!s_portal_netif) s_portal_netif = esp_netif_create_default_wifi_ap();
-    if (!s_portal_netif) { err = ESP_ERR_NO_MEM; goto done; }
+    if (!s_portal_netif) {
+        s_portal_netif = esp_netif_create_default_wifi_ap();
+        if (!s_portal_netif) {
+            err = ESP_ERR_NO_MEM;
+            goto done;
+        }
+        /* IDF retains the URI pointer. Set option 114 before AP_START launches DHCP. */
+        static char uri[sizeof("http://255.255.255.255")] = "http://";
+        esp_netif_ip_info_t ip;
+        char *address = uri + sizeof("http://") - 1;
+        if (esp_netif_get_ip_info(s_portal_netif, &ip) == ESP_OK &&
+            esp_ip4addr_ntoa(&ip.ip, address, sizeof(uri) - (sizeof("http://") - 1))) {
+            esp_err_t option = esp_netif_dhcps_option(s_portal_netif, ESP_NETIF_OP_SET,
+                                                      ESP_NETIF_CAPTIVEPORTAL_URI, uri, strlen(uri));
+            if (option != ESP_OK) ESP_LOGW("eh_wifi", "Captive portal DHCP option unavailable (%d)", option);
+        }
+    }
     wifi_config_t wc = {0};
     wc.ap.ssid_len = strlen(ssid);
     memcpy(wc.ap.ssid, ssid, wc.ap.ssid_len);

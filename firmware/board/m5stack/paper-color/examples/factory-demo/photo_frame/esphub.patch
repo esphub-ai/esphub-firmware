@@ -253,7 +253,7 @@ index 158f18c..803221c 100644
   * @brief Disconnects the STA interface while keeping the AP enabled.
   *
 diff --git a/main/apps/app_server/app_server.cpp b/main/apps/app_server/app_server.cpp
-index 6809e97..9e76a81 100644
+index 6809e97..46ab56f 100644
 --- a/main/apps/app_server/app_server.cpp
 +++ b/main/apps/app_server/app_server.cpp
 @@ -16,6 +16,9 @@
@@ -502,7 +502,46 @@ index 6809e97..9e76a81 100644
      send_json_response(req, r);
      cJSON_Delete(r);
      return ESP_OK;
-@@ -1391,22 +1357,11 @@ esp_err_t app_server_init(void)
+@@ -1311,38 +1277,6 @@ static esp_err_t h_system_reset(httpd_req_t *req)
+     return ESP_OK;
+ }
+ 
+-static void dhcp_set_captiveportal_url(void)
+-{
+-    // get the IP of the access point to redirect to
+-    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+-    if (!netif) {
+-        ESP_LOGW(TAG, "AP netif not ready, skip captive portal url");
+-        return;
+-    }
+-
+-    esp_netif_ip_info_t ip_info;
+-    if (esp_netif_get_ip_info(netif, &ip_info) != ESP_OK) {
+-        ESP_LOGW(TAG, "AP netif not ready, skip captive portal url");
+-        return;
+-    }
+-
+-    char ip_addr[16];
+-    inet_ntoa_r(ip_info.ip.addr, ip_addr, 16);
+-    ESP_LOGI(TAG, "Set up softAP with IP: %s", ip_addr);
+-
+-    // turn the IP into a URI
+-    static char captiveportal_uri[32];
+-    assert(captiveportal_uri && "Failed to allocate captiveportal_uri");
+-    strcpy(captiveportal_uri, "http://");
+-    strcat(captiveportal_uri, ip_addr);
+-
+-    // set the DHCP option 114
+-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_stop(netif));
+-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_option(netif, ESP_NETIF_OP_SET, ESP_NETIF_CAPTIVEPORTAL_URI,
+-                                                         captiveportal_uri, strlen(captiveportal_uri)));
+-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_start(netif));
+-}
+-
+ // HTTP Error (404) Handler - Redirects all requests to the root page
+ esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
+ {
+@@ -1391,22 +1325,11 @@ esp_err_t app_server_init(void)
      }
  
      /* WiFi events — additional listener, does not own the WiFi lifecycle. */
@@ -530,7 +569,16 @@ index 6809e97..9e76a81 100644
  
      esp_log_level_set("wifi", ESP_LOG_ERROR);
      esp_log_level_set("httpd", ESP_LOG_ERROR);
-@@ -1500,15 +1455,15 @@ void app_server_sync_mode(const char *mode_id)
+@@ -1415,8 +1338,6 @@ esp_err_t app_server_init(void)
+     esp_log_level_set("httpd_parse", ESP_LOG_ERROR);
+     esp_log_level_set("example_dns_redirect_server", ESP_LOG_ERROR);
+ 
+-    dhcp_set_captiveportal_url();
+-
+     /* HTTP server */
+     httpd_config_t hc   = HTTPD_DEFAULT_CONFIG();
+     hc.max_uri_handlers = 20;
+@@ -1500,15 +1421,15 @@ void app_server_sync_mode(const char *mode_id)
  device_state_t app_server_get_state(void)
  {
      device_state_t s = {};
@@ -649,6 +697,23 @@ index 5fdcd53..afaa2ff 100644
      uint8_t rotation;  // 0=landscape, 1=portrait
      bool auto_slideshow;
      int interval_minutes;
+diff --git a/main/hal/utils/dns_server/dns_server.c b/main/hal/utils/dns_server/dns_server.c
+index 065adc2..5155eab 100644
+--- a/main/hal/utils/dns_server/dns_server.c
++++ b/main/hal/utils/dns_server/dns_server.c
+@@ -153,8 +153,10 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t
+                 if (strcmp(h->entry[i].name, "*") == 0 || strcmp(h->entry[i].name, name) == 0) {
+                     if (h->entry[i].if_key) {
+                         esp_netif_ip_info_t ip_info;
+-                        esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey(h->entry[i].if_key), &ip_info);
+-                        ip.addr = ip_info.ip.addr;
++                        esp_netif_t *netif = esp_netif_get_handle_from_ifkey(h->entry[i].if_key);
++                        if (netif && esp_netif_get_ip_info(netif, &ip_info) == ESP_OK) {
++                            ip.addr = ip_info.ip.addr;
++                        }
+                         break;
+                     } else if (h->entry->ip.addr != IPADDR_ANY) {
+                         ip.addr = h->entry[i].ip.addr;
 diff --git a/main/hal/wifi/hal_wifi.cpp b/main/hal/wifi/hal_wifi.cpp
 index aa1d9b4..99cc445 100644
 --- a/main/hal/wifi/hal_wifi.cpp
