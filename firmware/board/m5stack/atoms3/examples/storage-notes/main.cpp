@@ -35,6 +35,6 @@ bool prepareFile()
 extern "C" void app_main()
 {
     if (storage::start()) {
-        storage::pollRead(prepareFile());
+        storage::pollRead(storage::prepareDirectory() && prepareFile());
     }
 }
