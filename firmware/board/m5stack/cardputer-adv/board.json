@@ -18,6 +18,84 @@
       "description": "Show a button test immediately. Press or hold the G0 button to change the on-screen state and count presses.",
       "entrypoint": "examples/buttons/main.cpp",
       "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/button/button.ino"
+    },
+    {
+      "id": "imu",
+      "description": "Tilt the board to see live BMI270 acceleration (g) and angular velocity (degrees/s) on all three axes.",
+      "entrypoint": "examples/imu/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer-UserDemo/blob/9d7190317d49ff87fa98db345b049ed77c5a1780/main/apps/app_imu/app_imu.cpp"
+    },
+    {
+      "id": "keyboard-single",
+      "description": "Press and release the A key to change the message on the display.",
+      "entrypoint": "examples/keyboard-single/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/keyboard/singlePress/singlePress.ino"
+    },
+    {
+      "id": "keyboard-multi",
+      "description": "Hold multiple keys to see the current key combination on the display.",
+      "entrypoint": "examples/keyboard-multi/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/keyboard/multiPress/multiPress.ino"
+    },
+    {
+      "id": "keyboard-text",
+      "description": "Type on the built-in keyboard, use Backspace to edit and Enter to submit a line on screen.",
+      "entrypoint": "examples/keyboard-text/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/keyboard/inputText/inputText.ino"
+    },
+    {
+      "id": "keyboard-usb",
+      "description": "Connect a USB data cable to type on the host with the physical Cardputer keyboard.",
+      "entrypoint": "examples/keyboard-usb/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/keyboard/usbKeyboard/usbKeyboard.ino"
+    },
+    {
+      "id": "keyboard-ble",
+      "description": "Pair the Cardputer as a Bluetooth LE keyboard to type on a host with its physical keys.",
+      "entrypoint": "examples/keyboard-ble/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer-UserDemo/blob/9d7190317d49ff87fa98db345b049ed77c5a1780/main/apps/app_keyboard/app_keyboard.cpp"
+    },
+    {
+      "id": "microphone",
+      "description": "Press BtnA to record a short sample, see its waveform and hear it through the speaker.",
+      "entrypoint": "examples/microphone/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/mic/mic.ino"
+    },
+    {
+      "id": "record-wav",
+      "description": "Press BtnA to record a 16 kHz mono WAV file to a FAT-formatted microSD card. Each recording gets a new filename.",
+      "entrypoint": "examples/record-wav/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/mic_wav_record/mic_wav_record.ino"
+    },
+    {
+      "id": "speaker-tones",
+      "description": "Play two alternating tones through the built-in speaker.",
+      "entrypoint": "examples/speaker-tones/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/buzzer/buzzer.ino"
+    },
+    {
+      "id": "ir-nec",
+      "description": "Press BtnA to transmit an extended NEC infrared frame; the display shows the address and command.",
+      "entrypoint": "examples/ir-nec/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/ir_nec/ir_nec.ino"
+    },
+    {
+      "id": "sd-card",
+      "description": "Write a greeting to a new text file and read it back on the display using a FAT-formatted microSD card.",
+      "entrypoint": "examples/sd-card/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/sdcard/sdcard.ino"
+    },
+    {
+      "id": "wifi-scan",
+      "description": "Show nearby Wi-Fi network names and signal strength on the display using the EspHub-managed station.",
+      "entrypoint": "examples/wifi-scan/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer-UserDemo/blob/9d7190317d49ff87fa98db345b049ed77c5a1780/main/apps/app_wifi_scan/app_wifi_scan.cpp"
+    },
+    {
+      "id": "clock",
+      "description": "Display the date and UTC time after the device synchronizes over Wi-Fi.",
+      "entrypoint": "examples/clock/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Cardputer-UserDemo/blob/9d7190317d49ff87fa98db345b049ed77c5a1780/main/apps/app_clock/app_clock.cpp"
     }
   ]
 }
