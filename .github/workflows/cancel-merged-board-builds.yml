@@ -1,0 +1,17 @@
+name: Cancel merged PR board builds
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+permissions: {}
+# Acquiring the build workflow's PR group cancels its running and queued work.
+# An unmerged close gets a separate group. No PR code is checked out or run.
+concurrency:
+  group: ${{ github.event.pull_request.merged && format('board-firmware-pr-{0}', github.event.pull_request.number) || format('board-firmware-close-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event.pull_request.merged }}
+jobs:
+  cancel:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Superseded PR board builds cancelled.'

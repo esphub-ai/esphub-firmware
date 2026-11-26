@@ -18,7 +18,7 @@ const bootloaderInputs = [
 ];
 const appInputs = [
   "firmware/components/**", "firmware/app/**", "scripts/build-example.py",
-  ".github/workflows/build-board.yml", "scripts/firmware-plan.mjs",
+  ".github/workflows/build-board.yml",
 ];
 const kitInputs = [
   "scripts/package-setup.py", "scripts/board-catalog.mjs", "shared/board-examples.js",
@@ -184,6 +184,32 @@ export function boardPlans(
   return matrix;
 }
 
+// GitHub schedules one running job per repository-wide concurrency group.
+// Start at a different group on each run to spread small or manual builds.
+export function buildCohorts(plans, variants, version, runNumber) {
+  let index = runNumber;
+  const nextGroup = () => `firmware-build-slot-${index++ % 100}`;
+  const cohorts = new Map();
+  for (const plan of plans) {
+    const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
+    const name = needsBootloader ? plan.bootloader : "app-only";
+    if (!cohorts.has(name)) {
+      cohorts.set(name, {
+        name,
+        bootloader: needsBootloader
+          ? { ...variants.get(name), version, buildGroup: nextGroup() }
+          : null,
+        boards: [],
+      });
+    }
+    const components = plan.components.map(task => ({ ...task, buildGroup: nextGroup() }));
+    // The kit and publication dispatch run after the components, so they can
+    // reuse a component's group without reducing component parallelism.
+    cohorts.get(name).boards.push({ ...plan, components });
+  }
+  return [...cohorts.values()];
+}
+
 export function firmwareEventContext(event, env) {
   const dispatchedPr =
     env.GITHUB_EVENT_NAME === "workflow_dispatch" && !!event.inputs?.pr_number;
@@ -219,24 +245,10 @@ if (
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
   const plans = boardPlans(before.boards, after.boards, options);
-  const cohorts = new Map();
-  for (const plan of plans) {
-    const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
-    const name = needsBootloader ? plan.bootloader : "app-only";
-    if (!cohorts.has(name)) {
-      cohorts.set(name, {
-        name,
-        bootloader: needsBootloader
-          ? { ...after.variants.get(name), version: options.version }
-          : null,
-        boards: [],
-      });
-    }
-    cohorts.get(name).boards.push(plan);
-  }
+  const cohorts = buildCohorts(plans, after.variants, options.version, Number(process.env.GITHUB_RUN_NUMBER));
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    `cohorts=${JSON.stringify([...cohorts.values()])}\n`,
+    `cohorts=${JSON.stringify(cohorts)}\n`,
   );
   console.log(
     plans.length
