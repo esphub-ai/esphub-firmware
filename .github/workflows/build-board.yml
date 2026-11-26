@@ -12,6 +12,9 @@ env:
   CHIP: ${{ fromJSON(inputs.profile).chip }}
 jobs:
   component:
+    concurrency:
+      group: ${{ matrix.task.buildGroup }}
+      queue: max
     if: fromJSON(inputs.profile).components[0] != null
     name: ${{ matrix.task.kind }}
     strategy:
@@ -51,6 +54,9 @@ jobs:
           path: dist/
           if-no-files-found: error
   kit:
+    concurrency:
+      group: ${{ fromJSON(inputs.profile).components[0].buildGroup }}
+      queue: max
     needs: component
     if: ${{ !cancelled() && (needs.component.result == 'success' || needs.component.result == 'skipped') && fromJSON(inputs.profile).kit != null }}
     name: USB kit
@@ -81,6 +87,9 @@ jobs:
           path: dist/
           if-no-files-found: error
   queue-publish:
+    concurrency:
+      group: ${{ fromJSON(inputs.profile).components[0].buildGroup }}
+      queue: max
     needs: [component, kit]
     if: >-
       ${{ !cancelled() && vars.FIRMWARE_PUBLISH_ENABLED == 'true' &&

@@ -2,6 +2,7 @@ name: Build a shared EspHub bootloader
 on:
   workflow_call:
     inputs:
+      build_group: {type: string, required: true}
       container: {type: string, required: true}
       variant: {type: string, required: true}
       fingerprint: {type: string, required: true}
@@ -9,13 +10,16 @@ on:
 permissions: {contents: read}
 concurrency:
   group: bl-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.fingerprint }}
-  cancel-in-progress: false
+  queue: max
 env:
   IDF_IMAGE: ${{ inputs.container }}
   VARIANT: ${{ inputs.variant }}
   VERSION: ${{ inputs.version }}
 jobs:
   build:
+    concurrency:
+      group: ${{ inputs.build_group }}
+      queue: max
     runs-on: ubuntu-24.04
     permissions: {contents: read}
     steps:

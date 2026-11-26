@@ -9,6 +9,7 @@ jobs:
     if: fromJSON(inputs.cohort).bootloader != null
     uses: ./.github/workflows/build-bootloader.yml
     with:
+      build_group: ${{ fromJSON(inputs.cohort).bootloader.buildGroup }}
       container: ${{ fromJSON(inputs.cohort).bootloader.container }}
       variant: ${{ fromJSON(inputs.cohort).bootloader.variant }}
       fingerprint: ${{ fromJSON(inputs.cohort).bootloader.fingerprint }}
@@ -23,7 +24,7 @@ jobs:
         profile: ${{ fromJSON(inputs.cohort).boards }}
     concurrency:
       group: firmware-${{ github.ref }}-${{ matrix.profile.board }}
-      cancel-in-progress: false
+      queue: max
     permissions: {contents: read, actions: write}
     uses: ./.github/workflows/build-board.yml
     with:

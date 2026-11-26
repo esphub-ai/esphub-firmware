@@ -11,6 +11,7 @@ import { join, dirname } from "node:path";
 import test from "node:test";
 import {
   boardPlans,
+  buildCohorts,
   profiles,
   firmwareEventContext,
 } from "../scripts/firmware-plan.mjs";
@@ -140,4 +141,28 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
   assert.throws(() => boardPlans({}, after, { ...options, board: "unknown/board" }), /Unknown board/);
   put("firmware/bootloader/esp32s3-4mb/sdkconfig.defaults", "unsupported");
   assert.throws(snapshot, /at least 8 MiB/);
+});
+
+test("overlapping firmware runs share 100 job groups across all bootloader variants", () => {
+  const plans = Array.from({ length: 64 }, (_, i) => ({
+    board: `test/board-${i}`,
+    bootloader: i % 2 ? "s3" : "c6",
+    components: [{ kind: "bootloader" }, { kind: "app" }],
+  }));
+  plans.push({ board: "test/app-only", components: [{ kind: "app" }] });
+  const variants = new Map([["s3", { variant: "s3" }], ["c6", { variant: "c6" }]]);
+  function groups(runNumber) {
+    const cohorts = buildCohorts(plans, variants, "2.0.25", runNumber);
+    return cohorts.flatMap(({ bootloader, boards }) => [
+      ...(bootloader ? [bootloader.buildGroup] : []),
+      ...boards.flatMap(board => board.components.map(task => task.buildGroup)),
+    ]);
+  }
+  const first = groups(99);
+  const next = groups(100);
+  const expected = new Set(Array.from({ length: 100 }, (_, i) => `firmware-build-slot-${i}`));
+  assert.equal(first.length, 131);
+  assert.deepEqual(new Set(first), expected);
+  assert.deepEqual(new Set(next), expected);
+  assert.notEqual(first[0], next[0]);
 });
