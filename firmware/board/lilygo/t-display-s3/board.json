@@ -1,0 +1,17 @@
+{
+  "name": "T-Display-S3",
+  "model": "LILYGO T-Display-S3",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” using the onboard 8-bit parallel ST7789.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/Xinyuan-LilyGO/T-Display-S3/blob/1cc41eb1c76b2f3215130a3dd64e7138ce00b482/examples/TFT_Rainbow/TFT_Rainbow.ino"
+    }
+  ]
+}

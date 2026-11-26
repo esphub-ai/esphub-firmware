@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-RLCD-4.2B",
+  "model": "Waveshare ESP32-S3-Touch-RLCD-4.2B",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "reflective-display",
+  "examples": [
+    {
+      "id": "reflective-display",
+      "description": "Draw a black border and a filled square on the 400 × 300 reflective ST7305 LCD.",
+      "entrypoint": "examples/reflective-display/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-RLCD-4.2B/blob/c35618f5a45e3c231c2b34935a641eccfad58b76/examples/arduino/examples/01_lvgl/01_lvgl.ino"
+    }
+  ]
+}

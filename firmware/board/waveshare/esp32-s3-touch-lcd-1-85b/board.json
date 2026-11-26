@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-1.85B",
+  "model": "Waveshare ESP32-S3-Touch-LCD-1.85B",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the 360 × 360 ST77916 display over quad SPI.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-1.85B/blob/5a98b8da1948340c07032a408ac0d93c47ca558f/examples/Arduino-V3.2.0/examples/01_lvgl_demo/01_lvgl_demo.ino"
+    }
+  ]
+}

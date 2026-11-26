@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-LCD-1.85",
+  "model": "Waveshare ESP32-S3-LCD-1.85",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the 360 × 360 ST77916 display over quad SPI.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://drive.google.com/file/d/1m4gzP47vtY57U4GV-e-k0dgPO_gMlUxB/view?usp=sharing"
+    }
+  ]
+}

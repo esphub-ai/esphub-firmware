@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-4",
+  "model": "Waveshare ESP32-S3-Touch-LCD-4",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "boot-button",
+  "examples": [
+    {
+      "id": "boot-button",
+      "description": "Log BOOT button press and release events on the ESP32-S3 serial console.",
+      "entrypoint": "examples/boot-button/main.c",
+      "upstream": "https://docs.waveshare.net/ESP32-S3-Touch-LCD-4/"
+    }
+  ]
+}

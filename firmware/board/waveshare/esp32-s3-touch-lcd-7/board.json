@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-7",
+  "model": "Waveshare ESP32-S3-Touch-LCD-7",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb-uart",
+  "psram": "octal",
+  "default_example": "display-color-bars",
+  "examples": [
+    {
+      "id": "display-color-bars",
+      "description": "Show full-screen test bars using the panel timing, power and backlight settings for this board.",
+      "entrypoint": "examples/display-color-bars/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-7/blob/f942d68a8c08f0d6ab322523b63d0ba0c1f3c7a6/examples/Arduino/examples/08_DrawColorBar/08_DrawColorBar.ino"
+    }
+  ]
+}

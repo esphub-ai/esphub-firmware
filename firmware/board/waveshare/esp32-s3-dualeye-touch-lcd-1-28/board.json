@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-DualEye-Touch-LCD-1.28",
+  "model": "Waveshare ESP32-S3-DualEye-Touch-LCD-1.28",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw color bands and “EspHub” on the first round display of the pair.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-DualEye-Touch-LCD-1.28/blob/c0eebfcbf7abebdaecfbed360a7e7c696df49440/examples/arduino/examples/Touch_01_LCD_Driver/01_LCD_Driver.ino"
+    }
+  ]
+}

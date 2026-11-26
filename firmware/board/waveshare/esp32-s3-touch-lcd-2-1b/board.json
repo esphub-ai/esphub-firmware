@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-2.1B",
+  "model": "Waveshare ESP32-S3-Touch-LCD-2.1B",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb-uart",
+  "psram": "octal",
+  "default_example": "backlight",
+  "examples": [
+    {
+      "id": "backlight",
+      "description": "Pulse the LCD backlight on GPIO6. The rhythm identifies the running factory app.",
+      "entrypoint": "examples/backlight/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-LCD-2.1/ESP32-S3-Touch-LCD-2.1-Demo.zip"
+    }
+  ]
+}

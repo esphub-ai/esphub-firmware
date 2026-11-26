@@ -1,0 +1,17 @@
+{
+  "name": "TRMNL 7.5″ (OG) DIY Kit",
+  "model": "Seeed Studio TRMNL 7.5″ (OG) DIY Kit",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the onboard user LED on GPIO21 every half second.",
+      "entrypoint": "examples/blink/main.c",
+      "upstream": "https://wiki.seeedstudio.com/trmnl_7inch5_diy_kit_main_page/"
+    }
+  ]
+}

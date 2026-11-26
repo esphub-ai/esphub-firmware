@@ -1,0 +1,5 @@
+dependencies:
+  espressif/esp32_display_panel:
+    git: https://github.com/esp-arduino-libs/ESP32_Display_Panel.git
+    version: 92b790ed6d24b0678e2f45b1fc85f0abd2d41b33
+    require: public

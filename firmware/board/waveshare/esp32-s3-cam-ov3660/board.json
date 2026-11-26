@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-CAM-OV3660",
+  "model": "Waveshare ESP32-S3-CAM-OV3660",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "chip-info",
+  "examples": [
+    {
+      "id": "chip-info",
+      "description": "Print the ESP32-S3 revision, physical flash size and radio features on the provisioning console.",
+      "entrypoint": "examples/chip-info/main.c",
+      "upstream": "https://github.com/espressif/esp-idf/blob/v5.5.4/examples/get-started/hello_world/main/hello_world_main.c"
+    }
+  ]
+}

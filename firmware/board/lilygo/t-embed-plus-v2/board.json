@@ -1,0 +1,17 @@
+{
+  "name": "T-Embed-Plus V2",
+  "model": "LILYGO T-Embed-Plus V2",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Enable the V2 low-power peripheral rail and blink its eight addressable RGB LEDs.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/Xinyuan-LilyGO/LilyGoLib/blob/9ebd8096a10a149374b90bf933460b3a6a5e940d/src/LilyGo_T_Embed_Plus_V2.cpp"
+    }
+  ]
+}

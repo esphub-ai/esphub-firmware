@@ -1,0 +1,17 @@
+{
+  "name": "reTerminal E1001",
+  "model": "Seeed Studio reTerminal E1001",
+  "chip": "esp32s3",
+  "flash_mb": 32,
+  "bootloader": "esp32s3-32mb-uart",
+  "psram": "octal",
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the onboard user LED on GPIO6 every half second.",
+      "entrypoint": "examples/blink/main.c",
+      "upstream": "https://github.com/Seeed-Projects/OSHW-reTerminal-Series-E-D/blob/8e03627d41f63b4133e606cb25c5c81b9d251494/examples/base/LED_Control/LED_Control.ino"
+    }
+  ]
+}

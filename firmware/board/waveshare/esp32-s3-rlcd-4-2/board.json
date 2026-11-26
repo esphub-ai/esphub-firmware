@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-RLCD-4.2",
+  "model": "Waveshare ESP32-S3-RLCD-4.2",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "reflective-display",
+  "examples": [
+    {
+      "id": "reflective-display",
+      "description": "Draw a black border and a filled square on the 400 × 300 reflective ST7305 LCD.",
+      "entrypoint": "examples/reflective-display/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-RLCD-4.2/blob/9e754fdf431ef4fce21e4e8b19bd4079ba043e86/examples/arduino/examples/10_U8G2_Test/10_U8G2_Test.ino"
+    }
+  ]
+}

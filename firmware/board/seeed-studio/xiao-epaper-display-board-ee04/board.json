@@ -1,0 +1,17 @@
+{
+  "name": "XIAO ePaper Display Board EE04",
+  "model": "Seeed Studio XIAO ePaper Display Board EE04",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the onboard user LED on GPIO21 every half second.",
+      "entrypoint": "examples/blink/main.c",
+      "upstream": "https://github.com/arduino/arduino-examples/blob/50b66a3ce1e4e5e69cd96d3af5ca41a3383b311a/examples/01.Basics/Blink/Blink.ino"
+    }
+  ]
+}

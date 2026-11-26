@@ -1,0 +1,17 @@
+{
+  "name": "T-LoRa-Pager",
+  "model": "LILYGO T-LoRa-Pager",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw three color bands and “EspHub” on the 222 × 480 ST7796 display.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://github.com/Xinyuan-LilyGO/LilyGoLib/blob/9ebd8096a10a149374b90bf933460b3a6a5e940d/examples/helloworld/helloworld.ino"
+    }
+  ]
+}

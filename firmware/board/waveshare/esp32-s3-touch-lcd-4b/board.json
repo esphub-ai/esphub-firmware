@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-4B",
+  "model": "Waveshare ESP32-S3-Touch-LCD-4B",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb-uart",
+  "psram": "octal",
+  "default_example": "backlight",
+  "examples": [
+    {
+      "id": "backlight",
+      "description": "Pulse the LCD backlight on GPIO4. The rhythm identifies the running factory app.",
+      "entrypoint": "examples/backlight/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-4B/blob/673532b0da8484ddf6b9623415d95dec46c6ff4b/examples/arduino/examples/01_HelloWorld/01_HelloWorld.ino"
+    }
+  ]
+}

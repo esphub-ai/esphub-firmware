@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-RGB-Matrix",
+  "model": "Waveshare ESP32-S3-RGB-Matrix",
+  "chip": "esp32s3",
+  "flash_mb": 32,
+  "bootloader": "esp32s3-32mb-opi",
+  "psram": "octal",
+  "default_example": "hub75-bars",
+  "examples": [
+    {
+      "id": "hub75-bars",
+      "description": "Draw red, green and blue bands on an external 64 × 64 HUB75 RGB matrix. Connect the panel and its separate power supply.",
+      "entrypoint": "examples/hub75-bars/main.cpp",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/blob/6e92fbe4f982d078150fa901fcc48e3f19b59313/example/arduino_v3.3.7/01_SimpleTestShapes/01_SimpleTestShapes.ino"
+    }
+  ]
+}

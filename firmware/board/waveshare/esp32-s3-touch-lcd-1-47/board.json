@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-1.47",
+  "model": "Waveshare ESP32-S3-Touch-LCD-1.47",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-display",
+  "examples": [
+    {
+      "id": "hello-display",
+      "description": "Draw three color bands and “EspHub” on the 172 × 320 ST7789 display.",
+      "entrypoint": "examples/hello-display/main.cpp",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-LCD-1.47/ESP32-S3-Touch-LCD-1.47-Demo.zip"
+    }
+  ]
+}

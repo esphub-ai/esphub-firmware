@@ -1,0 +1,17 @@
+{
+  "name": "T-Beam SUPREME V3.0",
+  "model": "LILYGO T-Beam SUPREME V3.0",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "hello-oled",
+  "examples": [
+    {
+      "id": "hello-oled",
+      "description": "Show “EspHub” on the onboard monochrome OLED over I²C.",
+      "entrypoint": "examples/hello-oled/main.cpp",
+      "upstream": "https://github.com/Xinyuan-LilyGO/LilyGo-LoRa-Series/blob/5f537f1783933eae79723478c80b69d8c1530b99/examples/OLED/SH1106PrintUTF8/SH1106PrintUTF8.ino"
+    }
+  ]
+}

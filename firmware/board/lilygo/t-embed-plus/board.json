@@ -1,0 +1,17 @@
+{
+  "name": "T-Embed-Plus",
+  "model": "LILYGO T-Embed-Plus",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LEDs on GPIO14 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/Xinyuan-LilyGO/T-Embed-CC1101/blob/c36826e0f91311cb591c4545fccf91e254fc55dc/examples/ws2812_test/ws2812_test.ino"
+    }
+  ]
+}

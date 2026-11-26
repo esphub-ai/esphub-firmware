@@ -48,6 +48,12 @@ def build(args, board, example, work):
         shutil.copytree(FIRMWARE / "app", project)
         sdkconfig = project / "sdkconfig.defaults"
         with sdkconfig.open("a") as defaults:
+            example_config = entrypoint.parent / "sdkconfig.defaults"
+            if example_config.is_file():
+                defaults.write(example_config.read_text().rstrip() + "\n")
+            # OTA apps must use the flash bus selected for the board's bootloader.
+            if board["bootloader"].endswith("-opi"):
+                defaults.write("CONFIG_ESPTOOLPY_OCT_FLASH=y\n")
             defaults.write(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partitions}"\n')
             defaults.write(f"CONFIG_ESPTOOLPY_FLASHSIZE_{board['flash_mb']}MB=y\n")
             if board.get("psram"):

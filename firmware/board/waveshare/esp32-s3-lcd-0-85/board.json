@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-LCD-0.85",
+  "model": "Waveshare ESP32-S3-LCD-0.85",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LEDs on GPIO48 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-LCD-0.85/blob/6fc190a0d5e89e4f4d5d5069c331311337f40f2e/example/Arduino-3.2.0/examples/03_ws2812b_example/03_ws2812b_example.ino"
+    }
+  ]
+}

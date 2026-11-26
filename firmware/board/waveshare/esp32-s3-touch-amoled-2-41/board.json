@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-AMOLED-2.41",
+  "model": "Waveshare ESP32-S3-Touch-AMOLED-2.41",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rtc-clock",
+  "examples": [
+    {
+      "id": "rtc-clock",
+      "description": "Read the onboard PCF85063 clock on SDA GPIO47 and SCL GPIO48. Log its hours, minutes and seconds without setting the clock.",
+      "entrypoint": "examples/rtc-clock/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.41/ESP32-S3-Touch-AMOLED-2.41-Demo.zip"
+    }
+  ]
+}

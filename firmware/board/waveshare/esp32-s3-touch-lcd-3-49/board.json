@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Touch-LCD-3.49",
+  "model": "Waveshare ESP32-S3-Touch-LCD-3.49",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "rtc-clock",
+  "examples": [
+    {
+      "id": "rtc-clock",
+      "description": "Read the onboard PCF85063 clock on SDA GPIO47 and SCL GPIO48. Log its hours, minutes and seconds without setting the clock.",
+      "entrypoint": "examples/rtc-clock/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.49/blob/def6edd0b6e1925ed09702eed01a2f181afdf8c1/Examples/Arduino/02_I2C_PCF85063/02_I2C_PCF85063.ino"
+    }
+  ]
+}

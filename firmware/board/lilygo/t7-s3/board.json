@@ -1,0 +1,17 @@
+{
+  "name": "T7-S3",
+  "model": "LILYGO T7-S3",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "blink",
+  "examples": [
+    {
+      "id": "blink",
+      "description": "Blink the onboard user LED on GPIO17 every half second.",
+      "entrypoint": "examples/blink/main.c",
+      "upstream": "https://github.com/Xinyuan-LilyGO/T7-S3/blob/fd45c58a0fbd06e5b8c9cd43e6aeb4b8c5a125f8/examples/test/test.ino"
+    }
+  ]
+}

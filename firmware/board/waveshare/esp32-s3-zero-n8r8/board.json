@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-Zero-N8R8",
+  "model": "Waveshare ESP32-S3-Zero-N8R8",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "rgb-blink",
+  "examples": [
+    {
+      "id": "rgb-blink",
+      "description": "Blink the onboard addressable LED on GPIO21 at low brightness.",
+      "entrypoint": "examples/rgb-blink/main.c",
+      "upstream": "https://files.waveshare.com/wiki/ESP32-S3-Zero/Esp32-s3-zero-code.zip"
+    }
+  ]
+}

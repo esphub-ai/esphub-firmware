@@ -1,0 +1,17 @@
+{
+  "name": "reSpeaker XVF3800 + XIAO ESP32-S3",
+  "model": "Seeed Studio reSpeaker XVF3800 + XIAO ESP32-S3",
+  "chip": "esp32s3",
+  "flash_mb": 8,
+  "bootloader": "esp32s3-8mb",
+  "psram": "octal",
+  "default_example": "ring-color",
+  "examples": [
+    {
+      "id": "ring-color",
+      "description": "Set the onboard microphone array’s LED ring to amber through the XMOS I²C control service.",
+      "entrypoint": "examples/ring-color/main.c",
+      "upstream": "https://github.com/Seeed-Studio/wiki-documents/blob/c4843337a1a064ad6580010e21ff864624667889/sites/en/docs/Sensor/reSpeaker_XVF3800_USB_4_Mic_Array/respeaker_xvf_3800_rgb_test.md#L39-L103"
+    }
+  ]
+}

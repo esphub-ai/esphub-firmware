@@ -1,0 +1,17 @@
+{
+  "name": "ESP32-S3-LR1121-OLED-1.54",
+  "model": "Waveshare ESP32-S3-LR1121-OLED-1.54",
+  "chip": "esp32s3",
+  "flash_mb": 16,
+  "bootloader": "esp32s3-16mb",
+  "psram": "octal",
+  "default_example": "hello-oled",
+  "examples": [
+    {
+      "id": "hello-oled",
+      "description": "Show “EspHub” on the onboard monochrome OLED over I²C.",
+      "entrypoint": "examples/hello-oled/main.cpp",
+      "upstream": "https://github.com/waveshareteam/esp32-s3-lr1121-oled-1.54/blob/4bc5007b471ab6ac0b25645e049ddb42b2d5e757/examples/arduino/08_oled_ssd1309/08_oled_ssd1309.ino"
+    }
+  ]
+}

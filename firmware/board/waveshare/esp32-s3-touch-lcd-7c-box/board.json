@@ -1,0 +1,23 @@
+{
+  "name": "ESP32-S3-Touch-LCD-7C-BOX",
+  "model": "Waveshare ESP32-S3-Touch-LCD-7C-BOX",
+  "chip": "esp32s3",
+  "flash_mb": 32,
+  "bootloader": "esp32s3-32mb-opi",
+  "psram": "octal",
+  "default_example": "display-color-bars",
+  "examples": [
+    {
+      "id": "display-color-bars",
+      "description": "Draw full-screen color bars on the 800 × 480 parallel RGB panel.",
+      "entrypoint": "examples/display-color-bars/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-7C/blob/32387f2bc52ecb53e5c5cff644b37607530c76a1/example/arduino/03_LCD/03_LCD.ino"
+    },
+    {
+      "id": "rtc-clock",
+      "description": "Read the onboard PCF85063 clock on SDA GPIO47 and SCL GPIO48. Log its hours, minutes and seconds without setting the clock.",
+      "entrypoint": "examples/rtc-clock/main.c",
+      "upstream": "https://github.com/waveshareteam/ESP32-S3-Touch-LCD-7C/blob/32387f2bc52ecb53e5c5cff644b37607530c76a1/example/arduino/02_RTC/02_RTC.ino"
+    }
+  ]
+}
