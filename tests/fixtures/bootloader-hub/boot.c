@@ -7,6 +7,8 @@
 #include "bootloader.h"
 
 void app_main(void);
+void report_layout(void) {}
+esp_err_t resize_app(const cJSON *a, cJSON *r, char *e, size_t n) { return ESP_OK; }
 static bool hold, bootable;
 static unsigned selections, consoles, scheduled;
 static jmp_buf reboot;

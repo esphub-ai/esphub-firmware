@@ -6,3 +6,6 @@ CONFIG_LOG_DEFAULT_LEVEL_ERROR=y
 # The launcher provisions SSID/password and never enables Enterprise EAP or OWE.
 CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=n
 CONFIG_ESP_WIFI_ENABLE_WPA3_OWE_STA=n
+
+# Spend the diagnostic string budget on OTA repartitioning; BLE provisioning stays enabled.
+CONFIG_ESP_ERR_TO_NAME_LOOKUP=n
