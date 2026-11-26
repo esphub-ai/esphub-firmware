@@ -9,6 +9,7 @@
 #include "esp_idf_version.h"
 #include "esp_image_format.h"
 #include "esp_ota_ops.h"
+#include "esp_rom_crc.h"
 #include "esp_rom_md5.h"
 #if ESP_IDF_VERSION_MAJOR >= 6
 #include "esp_private/esp_flash_internal.h"
@@ -171,8 +172,19 @@ static esp_err_t write_table(const esp_partition_t *table, const void *sector)
     return rc;
 }
 
+static bool valid_root(const uint8_t *root, uint32_t revision, uint32_t size)
+{
+    uint32_t header_revision, block_size, block_count;
+    memcpy(&header_revision, root, sizeof(header_revision));
+    memcpy(&block_size, root + 24, sizeof(block_size));
+    memcpy(&block_count, root + 28, sizeof(block_count));
+    return header_revision == revision && !memcmp(root + 8, "littlefs", 8) &&
+           block_size == SECTOR && block_count == size / SECTOR &&
+           esp_rom_crc32_le(0, root, 64) == UINT32_MAX;
+}
+
 static esp_err_t apply_resize(const esp_partition_t *app, const esp_partition_t *data,
-                              uint32_t size, const uint8_t *seed, const char *pending)
+                              uint32_t size, const uint8_t *seed, const char *pending, bool *reboot)
 {
     const esp_partition_t *table;
     esp_err_t rc = primary_table(&table);
@@ -181,8 +193,9 @@ static esp_err_t apply_resize(const esp_partition_t *app, const esp_partition_t 
     if (!rows) return ESP_ERR_NO_MEM;
     rc = esp_partition_read(table, 0, rows, SECTOR);
     if (rc == ESP_OK) rc = change_entries(rows, app, data, size);
-    if (rc == ESP_OK) rc = eh_nvs_set_u8(EH_KEY_HOLD, 1);
     if (rc == ESP_OK) rc = eh_nvs_set_str(EH_KEY_PENDING, pending);
+    if (rc != ESP_OK) { free(rows); return rc; }
+    rc = eh_nvs_set_u8(EH_KEY_HOLD, 1);
     if (rc == ESP_OK) rc = esp_partition_erase_range(data, 0, data->size);
     if (rc == ESP_OK && size < app->size)
         rc = esp_partition_erase_range(app, size, app->size - size);
@@ -191,7 +204,15 @@ static esp_err_t apply_resize(const esp_partition_t *app, const esp_partition_t 
     volume.size = data->address + data->size - volume.address;
     if (rc == ESP_OK) rc = esp_partition_write(&volume, 0, seed, SEED_RECORD);
     if (rc == ESP_OK) rc = esp_partition_write(&volume, SECTOR, seed + SEED_RECORD, SEED_RECORD);
-    if (rc == ESP_OK) rc = write_table(table, rows);
+    if (rc == ESP_OK) {
+        // After touching the primary table, only a fresh boot can establish
+        // which layout is active. Keep the marker even if read-back failed.
+        *reboot = true;
+        rc = write_table(table, rows);
+    } else {
+        eh_nvs_erase(EH_KEY_PENDING);
+        eh_nvs_erase(EH_KEY_HOLD);
+    }
     free(rows);
     return rc;
 }
@@ -208,9 +229,12 @@ esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error
     uint32_t size = (uint32_t)requested->valuedouble;
     if (size != requested->valuedouble || size % APP_ALIGNMENT) return ESP_ERR_INVALID_SIZE;
     uint32_t data_size = total - size;
-    cJSON_AddNumberToObject(result, "app_size_bytes", size);
-    cJSON_AddNumberToObject(result, "data_size_bytes", data_size);
-    if (size == old_size) return ESP_OK;
+    if (!cJSON_AddNumberToObject(result, "app_size_bytes", size) ||
+        !cJSON_AddNumberToObject(result, "data_size_bytes", data_size)) return ESP_ERR_NO_MEM;
+    if (size == old_size) {
+        cJSON_AddBoolToObject(result, "unchanged", true);
+        return ESP_OK;
+    }
 
     const esp_partition_t *app = app_slot(), *data = filesystem();
     const cJSON *expected = cJSON_GetObjectItemCaseSensitive(args, "data_size_bytes");
@@ -227,7 +251,8 @@ esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error
     size_t decoded;
     if (!encoded || strlen(encoded) != 344 || !id || strlen(id) != 36 ||
         mbedtls_base64_decode(seed, sizeof(seed), &decoded, (const uint8_t *)encoded, 344) ||
-        decoded != sizeof(seed)) return ESP_ERR_INVALID_ARG;
+        decoded != sizeof(seed) || !valid_root(seed, 1, data_size) ||
+        !valid_root(seed + SEED_RECORD, 2, data_size)) return ESP_ERR_INVALID_ARG;
 
     cJSON *marker = cJSON_Duplicate(result, true);
     if (!marker) return ESP_ERR_NO_MEM;
@@ -243,13 +268,9 @@ esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error
         strlcpy(error, "OTA transfer already pending", error_len);
         return ESP_ERR_INVALID_STATE;
     }
-    esp_err_t rc = apply_resize(app, data, size, seed, pending);
+    esp_err_t rc = apply_resize(app, data, size, seed, pending, &reboot_pending);
     free(pending);
-    if (rc != ESP_OK) {
-        eh_nvs_erase(EH_KEY_PENDING);
-        return rc;
-    }
-    reboot_pending = true;
+    if (!reboot_pending) return rc;
     cJSON_AddBoolToObject(result, "rebooting", true);
     eh_schedule_reboot(1000);
     return ESP_OK;
