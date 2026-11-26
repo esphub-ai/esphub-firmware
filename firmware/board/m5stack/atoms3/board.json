@@ -75,6 +75,12 @@
       "description": "Run three FreeRTOS tasks pinned to core 0 that log uptime every 100, 200, and 1000 ms while showing a serial-port notice on the LCD.",
       "entrypoint": "examples/multitask/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/MultiTask/MultiTask.ino"
+    },
+    {
+      "id": "atomic-pwm",
+      "description": "Drive a 10 kHz 10-bit LEDC PWM ramp on GPIO5 for the Atomic PWM Base while displaying PWM in green on the LCD.",
+      "entrypoint": "examples/atomic-pwm/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPWM/AtomicPWM.ino"
     }
   ]
 }
