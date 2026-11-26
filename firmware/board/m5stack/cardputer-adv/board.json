@@ -15,9 +15,9 @@
     },
     {
       "id": "buttons",
-      "description": "Read button transitions and click counts. The serial log identifies the button and gesture; screens also show a colored indicator.",
+      "description": "Show a button test immediately. Press or hold the G0 button to change the on-screen state and count presses.",
       "entrypoint": "examples/buttons/main.cpp",
-      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Button/Button.ino"
+      "upstream": "https://github.com/m5stack/M5Cardputer/blob/bf64d3178ab43928fa02365fbe3937cec99716ad/examples/Basic/button/button.ino"
     }
   ]
 }
