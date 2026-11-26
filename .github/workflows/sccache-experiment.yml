@@ -5,43 +5,99 @@ on:
 permissions:
   contents: read
 jobs:
-  esp32s3:
+  shard:
+    name: Board shard ${{ matrix.shard }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    container: espressif/idf:v5.5.4
-    env:
-      SCCACHE_DIR: /tmp/esphub-sccache
-      SCCACHE_CACHE_SIZE: 1G
-      SCCACHE_IDLE_TIMEOUT: '0'
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Install pinned sccache
-        shell: bash
+      - name: Plan board shard
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
-          set -euo pipefail
-          asset=sccache-v0.20.1-x86_64-unknown-linux-musl
-          curl -fsSL "https://github.com/mozilla/sccache/releases/download/v0.20.1/$asset.tar.gz" -o "/tmp/$asset.tar.gz"
-          echo "c9f6c5a3ae84d9da0956b28c357a365827bda33f3383647fc0b67484c74a5ea9  /tmp/$asset.tar.gz" | sha256sum -c
-          tar xzf "/tmp/$asset.tar.gz" -C /tmp "$asset/sccache"
-          install "/tmp/$asset/sccache" /usr/local/bin/sccache
-      - uses: actions/cache/restore@v4
+          mkdir -p "$RUNNER_TEMP/sccache" "$RUNNER_TEMP/benchmark"
+          python3 scripts/benchmark-sccache.py plan "$SHARD" > "$RUNNER_TEMP/benchmark/plan.json"
+          cat "$RUNNER_TEMP/benchmark/plan.json"
+      - name: Restore this shard's compiler cache
+        uses: actions/cache/restore@v4
         id: cache
         with:
-          path: /tmp/esphub-sccache
-          key: esphub-sccache-experiment-v1-idf554-esp32s3-${{ github.run_id }}
-          restore-keys: esphub-sccache-experiment-v1-idf554-esp32s3-
-      - name: Measure clean builds sharing one compiler cache
-        shell: bash
+          path: ${{ runner.temp }}/sccache
+          key: esphub-sccache-v2-linux-x64-shard-${{ matrix.shard }}-${{ github.run_id }}
+          restore-keys: esphub-sccache-v2-linux-x64-shard-${{ matrix.shard }}-
+      - name: Install pinned sccache
+        run: |
+          asset=sccache-v0.20.1-x86_64-unknown-linux-musl
+          curl -fsSL "https://github.com/mozilla/sccache/releases/download/v0.20.1/$asset.tar.gz" -o "$RUNNER_TEMP/$asset.tar.gz"
+          echo "c9f6c5a3ae84d9da0956b28c357a365827bda33f3383647fc0b67484c74a5ea9  $RUNNER_TEMP/$asset.tar.gz" | sha256sum -c
+          tar xOzf "$RUNNER_TEMP/$asset.tar.gz" "$asset/sccache" > "$RUNNER_TEMP/sccache-bin"
+          chmod +x "$RUNNER_TEMP/sccache-bin"
+      - name: Build every application in this shard
+        env:
+          SCCACHE_DIR: /sccache
+          SCCACHE_CACHE_SIZE: 768M
+          SCCACHE_IDLE_TIMEOUT: '0'
+          VERSION: 2.0.${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r group; do
+            image=$(jq -r '.key' <<< "$group")
+            mapfile -t boards < <(jq -r '.value[]' <<< "$group")
+            docker run --rm --workdir /work \
+              -v "$PWD:/work:ro" \
+              -v "$RUNNER_TEMP/sccache:/sccache" \
+              -v "$RUNNER_TEMP/benchmark:/benchmark" \
+              -v "$RUNNER_TEMP/sccache-bin:/usr/local/bin/sccache:ro" \
+              -e SCCACHE_DIR -e SCCACHE_CACHE_SIZE -e SCCACHE_IDLE_TIMEOUT -e VERSION \
+              "$image" bash -c '
+                set -eo pipefail
+                source "$IDF_PATH/export.sh"
+                python scripts/benchmark-sccache.py build --version "$VERSION" --results /benchmark/results.jsonl "$@"
+              ' build "${boards[@]}"
+            docker image rm "$image"
+          done < <(jq -c 'to_entries[]' "$RUNNER_TEMP/benchmark/plan.json")
+      - name: Summarize and verify all boards built
+        if: ${{ !cancelled() }}
         env:
           RESTORED_CACHE: ${{ steps.cache.outputs.cache-matched-key }}
         run: |
-          set -eo pipefail
-          source "$IDF_PATH/export.sh"
-          python scripts/benchmark-sccache.py
-          sccache --stop-server
-      - uses: actions/cache/save@v4
+          set -euo pipefail
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/sccache" "$RUNNER_TEMP/benchmark"
+          cd "$RUNNER_TEMP/benchmark"
+          cache_bytes=$(du -sb "$RUNNER_TEMP/sccache" | cut -f1)
+          jq -s --arg restored "$RESTORED_CACHE" --argjson cache_bytes "$cache_bytes" '{
+            boards: length,
+            examples: (map(.examples) | add),
+            build_seconds: (map(.seconds) | add),
+            hits: (map(.hits) | add),
+            misses: (map(.misses) | add),
+            failures: [ .[] | select(.failed | length > 0) | {board, failed} ],
+            restored_cache: $restored,
+            cache_bytes: $cache_bytes
+          }' results.jsonl | tee summary.json
+          {
+            echo '### Shard result'
+            echo '```json'
+            cat summary.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          diff <(jq -r 'values[] | .[]' plan.json | sort) <(jq -r '.board' results.jsonl | sort)
+          jq -e '.failures == [] and (.hits + .misses > 0)' summary.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
-          path: /tmp/esphub-sccache
+          name: sccache-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/benchmark
+          retention-days: 7
+      - name: Save the cold snapshot for the next run
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.cache.outcome == 'success' && steps.cache.outputs.cache-matched-key == '' }}
+        with:
+          path: ${{ runner.temp }}/sccache
           key: ${{ steps.cache.outputs.cache-primary-key }}

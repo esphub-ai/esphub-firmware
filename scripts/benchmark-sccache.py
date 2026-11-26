@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Measure ESP32-S3 compiler cache reuse using the normal firmware build function."""
+"""Build every application example assigned to a fixed compiler-cache shard."""
 
-from argparse import Namespace
+import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,64 +12,89 @@ import subprocess
 from tempfile import TemporaryDirectory
 from time import monotonic
 
-build = runpy.run_path("scripts/build-example.py")["build"]
-board_a = "m5stack/atoms3"
-board_b = "m5stack/atoms3u"
-board_c = "waveshare/esp32-s3-zero-n8r8"
-launcher_settings = ("CMAKE_C_COMPILER_LAUNCHER", "CMAKE_CXX_COMPILER_LAUNCHER")
+BOARD_ROOT = Path("firmware/board")
+SHARD_COUNT = 10
+
+
+def build_plan(shard):
+    profiles = json.loads(subprocess.check_output([
+        "node", "--input-type=module", "-e",
+        "import {profiles} from './scripts/firmware-plan.mjs';"
+        "console.log(JSON.stringify(profiles('HEAD')));",
+    ], text=True))
+    groups = {}
+    for board_id, profile in sorted(profiles.items()):
+        board_hash = int(hashlib.sha256(board_id.encode()).hexdigest(), 16)
+        if board_hash % SHARD_COUNT == shard:
+            image = profile["tasks"]["app"]["container"]
+            groups.setdefault(image, []).append(board_id)
+    return groups
 
 
 def sccache(*arguments):
     return subprocess.check_output(["sccache", *arguments], text=True)
 
 
-def measure(label, board_id, version, use_cache, work, out):
-    for key in launcher_settings:
-        if use_cache:
-            os.environ[key] = "sccache"
-        else:
-            os.environ.pop(key, None)
-    sccache("--zero-stats")
-    board = json.loads(
-        Path("firmware/board", board_id, "board.json").read_text()
-    )
-    if board["chip"] != "esp32s3":
-        raise ValueError(f"Unexpected chip for {board_id}")
-    example = next(item for item in board["examples"] if item["id"] == board["default_example"])
-    args = Namespace(board=board_id, version=version, app_size_bytes=None, out=out)
-    work.mkdir()
-    try:
-        start = monotonic()
-        build(args, board, example, work)
-        elapsed = monotonic() - start
-    finally:
-        shutil.rmtree(work)
-    stats = json.loads(sccache("--show-stats", "--stats-format=json"))["stats"]
-    hits = sum(stats["cache_hits"]["counts"].values())
-    misses = sum(stats["cache_misses"]["counts"].values())
-    if use_cache and not hits + misses:
-        raise RuntimeError("ESP-IDF did not issue any cacheable compiler calls")
-    row = f"| {label} | {board_id} | {elapsed:.1f} | {hits} | {misses} |"
-    print(row, flush=True)
-    print(sccache("--show-stats"), flush=True)
-    with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-        summary.write(row + "\n")
+def build_boards(boards, version, results):
+    build = runpy.run_path("scripts/build-example.py")["build"]
+    os.environ["CMAKE_C_COMPILER_LAUNCHER"] = "sccache"
+    os.environ["CMAKE_CXX_COMPILER_LAUNCHER"] = "sccache"
+
+    with TemporaryDirectory(prefix="esphub-benchmark-") as directory:
+        root = Path(directory)
+        work = root / "work"
+        out = root / "out"
+        os.environ["SCCACHE_BASEDIRS"] = str(root)
+        sccache("--start-server")
+        try:
+            for board_id in boards:
+                print(f"::group::{board_id}", flush=True)
+                board = json.loads((BOARD_ROOT / board_id / "board.json").read_text())
+                args = argparse.Namespace(board=board_id, version=version, app_size_bytes=None, out=out)
+                sccache("--zero-stats")
+                failed = []
+                start = monotonic()
+                for example in board["examples"]:
+                    work.mkdir()
+                    try:
+                        build(args, board, example, work)
+                    except (subprocess.CalledProcessError, OSError, ValueError, SystemExit) as error:
+                        failed.append(example["id"])
+                        print(f"{board_id}/{example['id']}: {error}", flush=True)
+                    finally:
+                        shutil.rmtree(work)
+                elapsed = monotonic() - start
+                stats = json.loads(sccache("--show-stats", "--stats-format=json"))["stats"]
+                hits = sum(stats["cache_hits"]["counts"].values())
+                misses = sum(stats["cache_misses"]["counts"].values())
+                row = {
+                    "board": board_id,
+                    "examples": len(board["examples"]),
+                    "failed": failed,
+                    "seconds": round(elapsed, 2),
+                    "hits": hits,
+                    "misses": misses,
+                }
+                print("::endgroup::", flush=True)
+                print(json.dumps(row), flush=True)
+                with results.open("a") as output:
+                    output.write(json.dumps(row) + "\n")
+                shutil.rmtree(out, ignore_errors=True)
+        finally:
+            sccache("--stop-server")
 
 
-with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-    summary.write(
-        f"Restored cache: {os.getenv('RESTORED_CACHE') or 'none'}\n\n"
-        "| Configuration | Board | Seconds | Hits | Misses |\n"
-        "| --- | --- | ---: | ---: | ---: |\n"
-    )
-
-with TemporaryDirectory(prefix="esphub-benchmark-") as temp:
-    root = Path(temp)
-    work = root / "work"
-    os.environ["SCCACHE_BASEDIRS"] = str(root)
-    sccache("--start-server")
-    measure("No compiler cache", board_a, "2.0.100", False, work, root / "baseline")
-    measure("First cached build", board_a, "2.0.100", True, work, root / "first")
-    measure("Same board, new version", board_a, "2.0.101", True, work, root / "warm")
-    measure("Second board, same chip", board_b, "2.0.101", True, work, root / "second")
-    measure("Third board, same chip", board_c, "2.0.101", True, work, root / "third")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    plan = commands.add_parser("plan")
+    plan.add_argument("shard", type=int, choices=range(SHARD_COUNT))
+    build = commands.add_parser("build")
+    build.add_argument("--version", required=True)
+    build.add_argument("--results", type=Path, required=True)
+    build.add_argument("boards", nargs="+")
+    args = parser.parse_args()
+    if args.command == "plan":
+        print(json.dumps(build_plan(args.shard)))
+    else:
+        build_boards(args.boards, args.version, args.results)
