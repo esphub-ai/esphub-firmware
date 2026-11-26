@@ -8,6 +8,12 @@
   "default_example": "tones",
   "examples": [
     {
+      "id": "microphone",
+      "description": "Record continuously and click button A to play recent microphone audio.",
+      "entrypoint": "examples/microphone/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Microphone/Microphone.ino"
+    },
+    {
       "id": "tones",
       "description": "Play alternating high and low tones on the speaker. Change their frequencies and durations.",
       "entrypoint": "examples/tones/main.cpp",
