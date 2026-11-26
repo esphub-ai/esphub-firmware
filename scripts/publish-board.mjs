@@ -5,6 +5,7 @@ import postgres from "postgres";
 import { AwsClient } from "aws4fetch";
 import { assetNames, releaseTag } from "../shared/firmware-releases.js";
 import { boardFileStem } from "../shared/board-id.js";
+import { advanceLatest, assetRows, recordAssets } from "./release-records.mjs";
 
 const profile = JSON.parse(process.env.BOARD_PROFILE);
 const { board, chip, jobs } = profile;
@@ -185,11 +186,9 @@ if (!process.argv.includes("--check")) {
       );
     }
     await sql.begin(async (tx) => {
-      for (const { kind, version } of releases) {
-        await tx`INSERT INTO esphub.firmware_releases AS current (board, kind, version)
-          VALUES (${board}, ${kind}, ${version})
-          ON CONFLICT (board, kind) DO UPDATE SET version = excluded.version
-          WHERE string_to_array(excluded.version, '.')::numeric[] > string_to_array(current.version, '.')::numeric[]`;
+      for (const release of releases) {
+        await recordAssets(tx, assetRows(release));
+        await advanceLatest(tx, release);
       }
     });
   } finally {
