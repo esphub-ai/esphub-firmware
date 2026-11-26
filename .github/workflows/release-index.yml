@@ -1,0 +1,28 @@
+name: Index published releases
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/index-releases.mjs'
+      - '.github/workflows/release-index.yml'
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency: { group: release-index-production, cancel-in-progress: false }
+jobs:
+  index:
+    if: github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Records releases published before the publisher indexed their files. Safe to rerun.
+      - uses: actions/checkout@v4
+        with: { ref: main, persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci --ignore-scripts
+      - run: node scripts/index-releases.mjs
+        env:
+          FIRMWARE_R2_ENDPOINT: ${{ vars.FIRMWARE_R2_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FIRMWARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FIRMWARE_R2_SECRET_ACCESS_KEY }}
+          FIRMWARE_DATABASE_URL: ${{ secrets.FIRMWARE_DATABASE_URL }}
