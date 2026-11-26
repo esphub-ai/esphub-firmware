@@ -5,6 +5,7 @@ import { matchesGlob, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { boardId, boardFileStem } from "../shared/board-id.js";
 import { releaseTag } from "../shared/firmware-releases.js";
+import { coverageCommit, isAncestor } from "./firmware-coverage.mjs";
 
 const bootloaderInputs = [
   "firmware/bootloader/common/**",
@@ -210,13 +211,51 @@ export function buildCohorts(plans, variants, version, runNumber) {
   return [...cohorts.values()];
 }
 
+// Keep only boards whose current inputs already have coverage throughout
+// the interval. Looking at intermediate main snapshots also catches a change
+// that was built (or partly published) and then reverted during a backlog.
+export function unchangedMainBoards(covered, head, current, cwd = process.cwd()) {
+  if (!covered) return {};
+  if (covered === head) return current;
+  if (!isAncestor(covered, head, cwd)) {
+    // An older queued run may start after a newer one recorded coverage.
+    // A real main rewind, however, needs a build at the new head.
+    if (isAncestor(head, covered, cwd) && isAncestor(covered, "refs/remotes/origin/main", cwd)) return null;
+    return {};
+  }
+  const revisions = execFileSync("git", ["rev-list", "--first-parent", covered + ".." + head],
+    { cwd, encoding: "utf8" }).trim().split("\n");
+  const unchanged = { ...current };
+  for (const ref of [covered, ...revisions.slice(1)]) {
+    let previous;
+    try {
+      previous = profiles(ref, cwd);
+    } catch (error) {
+      // An invalid older manifest must not prevent the corrected head from building.
+      console.warn("Cannot compare historical board inputs at " + ref + ": " + error.message);
+      return {};
+    }
+    for (const [board, profile] of Object.entries(unchanged)) {
+      if (previous[board]?.tasks.setup.fingerprint !== profile.tasks.setup.fingerprint) delete unchanged[board];
+    }
+    if (!Object.keys(unchanged).length) break;
+  }
+  return unchanged;
+}
+
+export function isMainBuildBatch(event, env) {
+  if (env.GITHUB_REPOSITORY !== "okou-ai/esphub-firmware" || env.GITHUB_REF !== "refs/heads/main") return false;
+  return env.GITHUB_EVENT_NAME === "push" ||
+    (env.GITHUB_EVENT_NAME === "workflow_dispatch" && !event.inputs?.board && !event.inputs?.pr_number);
+}
+
 export function firmwareEventContext(event, env) {
   const dispatchedPr =
     env.GITHUB_EVENT_NAME === "workflow_dispatch" && !!event.inputs?.pr_number;
   if (dispatchedPr && !/^[a-f0-9]{40}$/.test(env.PR_CI_BASE_SHA ?? ""))
     throw Error("PR CI dispatch requires a validated base SHA");
   return {
-    manual: env.GITHUB_EVENT_NAME === "workflow_dispatch" && !dispatchedPr,
+    manual: env.GITHUB_EVENT_NAME === "workflow_dispatch" && !dispatchedPr && !isMainBuildBatch(event, env),
     beforeRef:
       event.pull_request?.base.sha ||
       (dispatchedPr ? env.PR_CI_BASE_SHA : event.before),
@@ -234,22 +273,27 @@ if (
     process.env,
   );
   const after = firmwareProfiles(afterRef);
-  const before =
-    process.env.GITHUB_EVENT_NAME === "push" && /^0+$/.test(beforeRef ?? "")
-      ? after
-      : firmwareProfiles(beforeRef);
+  const mainBatch = isMainBuildBatch(event, process.env);
+  const covered = mainBatch ? coverageCommit() : "";
+  let before;
+  if (mainBatch) before = unchangedMainBoards(covered, afterRef, after.boards);
+  else if (process.env.GITHUB_EVENT_NAME === "push" && /^0+$/.test(beforeRef ?? "")) before = after.boards;
+  else before = profiles(beforeRef);
   const options = {
     manual,
     board: event.inputs?.board ?? "",
     version: "2.0." + process.env.GITHUB_RUN_NUMBER,
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
-  const plans = boardPlans(before.boards, after.boards, options);
+  const plans = before === null ? [] : boardPlans(before, after.boards, options);
   const cohorts = buildCohorts(plans, after.variants, options.version, Number(process.env.GITHUB_RUN_NUMBER));
-  appendFileSync(
-    process.env.GITHUB_OUTPUT,
-    `cohorts=${JSON.stringify(cohorts)}\n`,
-  );
+  appendFileSync(process.env.GITHUB_OUTPUT, `cohorts=${JSON.stringify(cohorts)}\n`);
+  if (mainBatch && before !== null) {
+    const expected = Object.fromEntries(cohorts.map(({ name, boards }) => [
+      name, boards.map(({ board, jobs }) => [board, jobs.map(task => task.kind)]),
+    ]));
+    appendFileSync(process.env.GITHUB_OUTPUT, `coverage_base=${covered}\nexpected_builds=${JSON.stringify(expected)}\n`);
+  }
   console.log(
     plans.length
       ? plans

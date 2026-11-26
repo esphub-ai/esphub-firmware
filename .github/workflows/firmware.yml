@@ -9,6 +9,9 @@ on:
       - 'tools/ble-wifi/provision_usb.py'
       - 'scripts/build-example.py'
       - 'scripts/firmware-plan.mjs'
+      - 'scripts/firmware-coverage.mjs'
+      - 'scripts/board-catalog.mjs'
+      - '.github/workflows/firmware.yml'
       - '.github/actions/build-kit/**'
       - '.github/workflows/build-board.yml'
       - '.github/workflows/build-variant.yml'
@@ -22,6 +25,9 @@ on:
       - 'tools/ble-wifi/provision_usb.py'
       - 'scripts/build-example.py'
       - 'scripts/firmware-plan.mjs'
+      - 'scripts/firmware-coverage.mjs'
+      - 'scripts/board-catalog.mjs'
+      - '.github/workflows/firmware.yml'
       - '.github/actions/build-kit/**'
       - '.github/workflows/build-board.yml'
       - '.github/workflows/build-variant.yml'
@@ -30,13 +36,14 @@ on:
   workflow_dispatch:
     inputs:
       board:
-        description: Group/project board ID, e.g. m5stack/stopwatch.
+        description: Board ID for a forced rebuild. Leave blank on main to catch up outstanding board builds.
         type: string
         required: false
       pr_number:
         description: Trusted SDK bot PR CI request.
         type: string
         required: false
+run-name: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'Catch up main board builds' || '' }}
 permissions: {contents: read}
 # PR events and SDK-bot dispatches for the same PR share a group with the
 # merged-PR cleanup workflow. Each main push and manual board run stays independent.
@@ -52,6 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cohorts: ${{ steps.plan.outputs.cohorts }}
+      coverage_base: ${{ steps.plan.outputs.coverage_base }}
+      expected_builds: ${{ steps.plan.outputs.expected_builds }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,3 +99,26 @@ jobs:
         run: |
           test "$PLAN" = success
           test "$BUILD" = success || test "$BUILD" = skipped
+
+  coverage:
+    name: Record main board build coverage
+    needs: [plan, build]
+    if: >-
+      ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.expected_builds != '' &&
+          github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.board && !inputs.pr_number)) }}
+    runs-on: ubuntu-latest
+    permissions: {contents: write, actions: read}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - name: Record the revision after checking the selected jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COVERAGE_BASE: ${{ needs.plan.outputs.coverage_base }}
+          EXPECTED_BUILDS: ${{ needs.plan.outputs.expected_builds }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          PUBLISH_ENABLED: ${{ vars.FIRMWARE_PUBLISH_ENABLED }}
+        run: node scripts/firmware-coverage.mjs
