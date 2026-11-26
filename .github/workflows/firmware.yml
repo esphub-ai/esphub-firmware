@@ -111,7 +111,7 @@ jobs:
     needs: [plan, build]
     if: >-
       ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.expected_builds != '' &&
-          github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main' &&
+          github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.board && !inputs.pr_number)) }}
     runs-on: ubuntu-latest
     permissions: {contents: write, actions: read}

@@ -3,7 +3,7 @@ import { appendFileSync } from "node:fs";
 import { boardFileStem } from "../shared/board-id.js";
 import { profiles } from "./firmware-plan.mjs";
 
-const repo = "okou-ai/esphub-firmware";
+const repo = "esphub-ai/esphub-firmware";
 const id = process.env.SOURCE_RUN ?? "";
 const board = process.env.BOARD;
 if (!/^\d+$/.test(id)) throw Error("Invalid source run ID");

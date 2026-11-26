@@ -284,7 +284,7 @@ export function unchangedMainBoards(covered, head, current, cwd = process.cwd())
 }
 
 export function isMainBuildBatch(event, env) {
-  if (env.GITHUB_REPOSITORY !== "okou-ai/esphub-firmware" || env.GITHUB_REF !== "refs/heads/main") return false;
+  if (env.GITHUB_REPOSITORY !== "esphub-ai/esphub-firmware" || env.GITHUB_REF !== "refs/heads/main") return false;
   return env.GITHUB_EVENT_NAME === "push" ||
     (env.GITHUB_EVENT_NAME === "workflow_dispatch" && !event.inputs?.board && !event.inputs?.pr_number);
 }

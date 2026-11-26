@@ -16,7 +16,7 @@ permissions: { contents: read }
 concurrency: { group: board-catalog-production, cancel-in-progress: false }
 jobs:
   publish:
-    if: github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true'
+    if: github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:

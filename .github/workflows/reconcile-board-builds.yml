@@ -6,7 +6,7 @@ on:
 permissions: {contents: read, actions: write}
 jobs:
   reconcile:
-    if: github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main'
+    if: github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch a catch-up build when main still has uncovered changes

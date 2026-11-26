@@ -93,7 +93,7 @@ jobs:
     needs: [component, kit]
     if: >-
       ${{ !cancelled() && vars.FIRMWARE_PUBLISH_ENABLED == 'true' &&
-          github.repository == 'okou-ai/esphub-firmware' &&
+          github.repository == 'esphub-ai/esphub-firmware' &&
           github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
           (needs.component.result == 'success' || needs.component.result == 'skipped') &&
