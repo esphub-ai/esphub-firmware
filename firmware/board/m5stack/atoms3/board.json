@@ -42,6 +42,12 @@
       "description": "Increment a persistent NVS counter on each boot and restart after 10 seconds.",
       "entrypoint": "examples/counter/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/Storage/Counter/Counter.ino"
+    },
+    {
+      "id": "eeprom",
+      "description": "Press A to write and read back 16 persistent EEPROM-style bytes.",
+      "entrypoint": "examples/eeprom/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Advanced/Storage/EEPROM/EEPROM.ino"
     }
   ]
 }
