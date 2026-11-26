@@ -14,6 +14,8 @@ import {
   buildCohorts,
   profiles,
   firmwareEventContext,
+  isMainBuildBatch,
+  unchangedMainBoards,
 } from "../scripts/firmware-plan.mjs";
 
 test("firmware planning uses the dispatched PR snapshots without a manual rebuild", () => {
@@ -58,6 +60,18 @@ test("firmware planning uses the dispatched PR snapshots without a manual rebuil
       },
     );
   }
+});
+
+test("only production pushes and unscoped main dispatches can record coverage", () => {
+  const env = { GITHUB_REPOSITORY: "okou-ai/esphub-firmware", GITHUB_REF: "refs/heads/main", GITHUB_EVENT_NAME: "workflow_dispatch" };
+  assert.equal(isMainBuildBatch({}, env), true);
+  assert.equal(firmwareEventContext({ inputs: {} }, env).manual, false);
+  assert.equal(isMainBuildBatch({}, { ...env, GITHUB_EVENT_NAME: "push" }), true);
+  assert.equal(isMainBuildBatch({ inputs: { board: "m5stack/stopwatch" } }, env), false);
+  assert.equal(isMainBuildBatch({ inputs: { pr_number: "12" } }, env), false);
+  assert.equal(isMainBuildBatch({}, { ...env, GITHUB_EVENT_NAME: "pull_request" }), false);
+  assert.equal(isMainBuildBatch({}, { ...env, GITHUB_REF: "refs/heads/topic" }), false);
+  assert.equal(isMainBuildBatch({}, { ...env, GITHUB_REPOSITORY: "fork/firmware" }), false);
 });
 
 test("board CI discovers a new directory and selects only affected tasks", (t) => {
@@ -119,7 +133,20 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
     before = after;
     return selected;
   };
+  const covered = git("rev-parse", "HEAD");
+  const since = (ref) => select(unchangedMainBoards(ref, git("rev-parse", "HEAD"), before, cwd), before);
+  assert.deepEqual(since(covered), {});
+  assert.deepEqual(since(""), { [paper]: jobs, [watch]: jobs });
   assert.deepEqual(change("firmware/board/" + watch + "/examples/hello/main.c", "new app"), { [watch]: jobs });
+  assert.deepEqual(change("firmware/board/" + watch + "/examples/hello/main.c", "hello"), { [watch]: jobs });
+  assert.deepEqual(since(covered), { [watch]: jobs }); // A later push reverted a possibly published change.
+  assert.deepEqual(change("firmware/board/" + paper + "/examples/hello/main.c", "paper change"), { [paper]: jobs });
+  assert.deepEqual(since(covered), { [paper]: jobs, [watch]: jobs });
+  const newer = git("rev-parse", "HEAD");
+  git("update-ref", "refs/remotes/origin/main", newer);
+  assert.equal(unchangedMainBoards(newer, covered, profiles(covered, cwd), cwd), null);
+  git("update-ref", "refs/remotes/origin/main", covered);
+  assert.deepEqual(unchangedMainBoards(newer, covered, profiles(covered, cwd), cwd), {});
   assert.deepEqual(change("firmware/board/" + watch + "/examples/hello/sdkconfig.defaults", "CONFIG_X=y"), { [watch]: jobs });
   assert.deepEqual(change("scripts/firmware-plan.mjs", "scheduler only"), {});
   for (const file of ["scripts/build-example.py", "firmware/components/eh_agent/src/sdk.c", "firmware/ble.defaults",

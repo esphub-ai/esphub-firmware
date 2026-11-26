@@ -1,0 +1,31 @@
+name: Check for outstanding main board builds
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions: {contents: read, actions: write}
+jobs:
+  reconcile:
+    if: github.repository == 'okou-ai/esphub-firmware' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch a catch-up build when main still has uncovered changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          head=$(gh api "$repo/git/ref/heads/main" --jq .object.sha)
+          covered=$(gh api "$repo/git/matching-refs/heads/ci/firmware-coverage" \
+            --jq 'map(select(.ref == "refs/heads/ci/firmware-coverage"))[0].object.sha // ""')
+          if [[ "$head" == "$covered" ]]; then
+            echo "Main board builds are accounted for at $head."
+            exit 0
+          fi
+          active=$(gh api --paginate "$repo/actions/workflows/firmware.yml/runs?branch=main&head_sha=$head&per_page=100" | \
+            jq -s 'any(.[].workflow_runs[]; .status != "completed" and (.event == "push" or (.event == "workflow_dispatch" and .display_title == "Catch up main board builds")))')
+          if [[ "$active" == true ]]; then
+            echo "A main build is already handling $head."
+            exit 0
+          fi
+          gh workflow run firmware.yml --repo "$GITHUB_REPOSITORY" --ref main
