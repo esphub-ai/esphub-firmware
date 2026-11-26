@@ -218,8 +218,27 @@ test("example-only PRs compile the affected optional examples, with full builds 
   const edited = commit();
   assert.deepEqual(plan(added, edited)[0].boards[0].examples, ["imu", "clock"]);
 
-  let previous = edited;
-  for (const file of ["examples/common/keyboard.hpp", "examples/hello/main.c"]) {
+  manifest.shared_example_inputs = {
+    "common/display.hpp": ["imu", "clock"],
+    "common/rtc.hpp": ["clock"],
+  };
+  put(dir + "/board.json", JSON.stringify(manifest));
+  put(dir + "/examples/common/display.hpp", "display");
+  put(dir + "/examples/common/rtc.hpp", "rtc");
+  const scoped = commit();
+  assert.deepEqual(plan(base, scoped).map(c => [c.name, c.boards[0].examples]),
+    [["examples", ["imu", "clock"]]]);
+
+  put(dir + "/examples/common/rtc.hpp", "updated RTC");
+  const rtc = commit();
+  assert.deepEqual(plan(scoped, rtc)[0].boards[0].examples, ["clock"]);
+  assert.deepEqual(boardPlans(profiles(scoped, cwd), profiles(rtc, cwd), { version: "2.0.17" })
+    .map(b => [b.board, b.jobs.map(j => j.kind)]), [[card, ["bootloader", "app", "setup"]]]);
+
+  manifest.shared_example_inputs["common/display.hpp"].push("hello");
+  put(dir + "/board.json", JSON.stringify(manifest));
+  let previous = commit();
+  for (const file of ["examples/common/display.hpp", "examples/common/keyboard.hpp", "examples/hello/main.c"]) {
     put(dir + "/" + file, "changed");
     const next = commit();
     assert.deepEqual(plan(previous, next).flatMap(c => c.boards.map(b => [b.board, b.jobs.map(j => j.kind)])),
