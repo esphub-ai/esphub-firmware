@@ -42,7 +42,7 @@ Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scope
 
 Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time.
 
-Board builds on a pull request report compilation errors for review. Merging cancels that PR's remaining board builds.
+Pull requests that add or edit optional examples compile just those examples on their respective boards. Changes to the default app, board configuration or shared firmware inputs run the full build for each affected board. Merging cancels that PR's remaining board builds.
 
 On `main`, the planner checks all changes since `ci/firmware-coverage`, including changes that were later reverted. A board example selects its own board. Shared SDK or build-recipe changes can select multiple boards. Missing or cancelled work keeps the revision pending. A completed compilation that reports an error counts as an attempt and stays visible in CI.
 

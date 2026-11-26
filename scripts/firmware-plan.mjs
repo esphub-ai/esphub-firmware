@@ -29,10 +29,10 @@ const digest = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 export function profiles(ref, cwd = process.cwd()) {
-  return firmwareProfiles(ref, cwd).boards;
+  return firmwareProfiles(ref, { cwd }).boards;
 }
 
-function firmwareProfiles(ref, cwd = process.cwd()) {
+function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}) {
   if (!ref || /^0+$/.test(ref)) return { boards: {}, variants: new Map() };
   const git = (...args) =>
     execFileSync("git", args, {
@@ -94,11 +94,28 @@ function firmwareProfiles(ref, cwd = process.cwd()) {
     if (!match) continue;
     const dir = posix.dirname(path);
     const board = boardId(match[1], match[2]);
-    const { chip, flash_mb, bootloader } = json(dir + "/board.json");
+    const { examples = [], ...settings } = json(path);
+    const { chip, flash_mb, bootloader, default_example } = settings;
     const sharedBootloader = variants.get(bootloader);
     if (sharedBootloader?.target !== chip || sharedBootloader.flashMb !== flash_mb)
       throw Error("Invalid bootloader for " + board);
-    const boardInputs = matching([path, `firmware/partitions/${flash_mb}mb.csv`]);
+    // On PRs, track optional examples separately from the default app shipped in the kit.
+    const defaultExample = pullRequest && examples.find(example => example.id === default_example);
+    const partition = `firmware/partitions/${flash_mb}mb.csv`;
+    const boardInputs = defaultExample
+      ? [settings, defaultExample, matching([partition])]
+      : matching([path, partition]);
+    const optional = defaultExample ? examples.filter(example => example.id !== default_example) : [];
+    const optionalSources = new Map(optional.map(({ id }) => [id, []]));
+    const root = `${dir}/examples/`;
+    const appSources = [];
+    for (const source of matching([...appInputs, root + "**"])) {
+      const [file] = source;
+      const id = file.startsWith(root) ? file.slice(root.length).split("/", 1)[0] : null;
+      // Files outside a registered optional example (e.g. examples/common) affect the board build.
+      const inputs = optionalSources.get(id) ?? appSources;
+      inputs.push(source);
+    }
     const runner = "ubuntu-24.04";
     const appContainer = chip === "esp32s31"
       ? "espressif/idf:release-v6.2@sha256:0e714292d8b4e6e75cb42e25461716221448858e125d96dbfea09732964c412d"
@@ -111,8 +128,7 @@ function firmwareProfiles(ref, cwd = process.cwd()) {
       },
       app: {
         kind: "app", runner, container: appContainer,
-        fingerprint: digest([board, namingInputs, boardInputs, appContainer,
-          matching([...appInputs, `${dir}/examples/**`])]),
+        fingerprint: digest([board, namingInputs, boardInputs, appContainer, appSources]),
       },
     };
     tasks.setup = {
@@ -125,6 +141,11 @@ function firmwareProfiles(ref, cwd = process.cwd()) {
       bootloader,
       blFingerprint: sharedBootloader?.fingerprint,
     };
+    if (optional.length) {
+      boards[board].exampleFingerprints = Object.fromEntries(optional.map(example => [
+        example.id, digest([example, optionalSources.get(example.id)]),
+      ]));
+    }
   }
   return { boards, variants };
 }
@@ -139,7 +160,7 @@ export function boardPlans(
   const matrix = [];
   for (const [
     board,
-    { chip, tasks, bootloader, blFingerprint },
+    { chip, tasks, bootloader, blFingerprint, exampleFingerprints },
   ] of Object.entries(after)) {
     if (selected && selected !== board) continue;
     const changed = {};
@@ -148,7 +169,14 @@ export function boardPlans(
         manual || before[board]?.tasks[kind]?.fingerprint !== task.fingerprint;
       changed[kind] = touched;
     }
-    if (!Object.values(changed).some(Boolean)) continue;
+    let selectedExamples;
+    if (!Object.values(changed).some(Boolean)) {
+      selectedExamples = Object.keys(exampleFingerprints ?? {}).filter(
+        id => exampleFingerprints[id] !== before[board]?.exampleFingerprints?.[id],
+      );
+      if (!selectedExamples.length) continue;
+      changed.app = true;
+    }
     if (changed.setup) {
       for (const kind of ["bootloader", "app"]) {
         changed[kind] = true;
@@ -172,6 +200,7 @@ export function boardPlans(
       jobs,
       bootloader,
       blFingerprint,
+      ...(selectedExamples && { examples: selectedExamples }),
       components,
       kit: kit
         ? {
@@ -193,7 +222,7 @@ export function buildCohorts(plans, variants, version, runNumber) {
   const cohorts = new Map();
   for (const plan of plans) {
     const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
-    const name = needsBootloader ? plan.bootloader : "app-only";
+    const name = needsBootloader ? plan.bootloader : (plan.examples ? "examples" : "app-only");
     if (!cohorts.has(name)) {
       cohorts.set(name, {
         name,
@@ -255,6 +284,7 @@ export function firmwareEventContext(event, env) {
   if (dispatchedPr && !/^[a-f0-9]{40}$/.test(env.PR_CI_BASE_SHA ?? ""))
     throw Error("PR CI dispatch requires a validated base SHA");
   return {
+    pullRequest: env.GITHUB_EVENT_NAME === "pull_request" || dispatchedPr,
     manual: env.GITHUB_EVENT_NAME === "workflow_dispatch" && !dispatchedPr && !isMainBuildBatch(event, env),
     beforeRef:
       event.pull_request?.base.sha ||
@@ -268,17 +298,17 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH));
-  const { manual, beforeRef, afterRef } = firmwareEventContext(
+  const { manual, pullRequest, beforeRef, afterRef } = firmwareEventContext(
     event,
     process.env,
   );
-  const after = firmwareProfiles(afterRef);
+  const after = firmwareProfiles(afterRef, { pullRequest });
   const mainBatch = isMainBuildBatch(event, process.env);
   const covered = mainBatch ? coverageCommit() : "";
   let before;
   if (mainBatch) before = unchangedMainBoards(covered, afterRef, after.boards);
   else if (process.env.GITHUB_EVENT_NAME === "push" && /^0+$/.test(beforeRef ?? "")) before = after.boards;
-  else before = profiles(beforeRef);
+  else before = firmwareProfiles(beforeRef, { pullRequest }).boards;
   const options = {
     manual,
     board: event.inputs?.board ?? "",
@@ -297,7 +327,7 @@ if (
   console.log(
     plans.length
       ? plans
-          .map((p) => p.board + ": " + p.jobs.map((j) => j.kind).join(", "))
+          .map(p => p.board + ": " + (p.examples ?? p.jobs.map(j => j.kind)).join(", "))
           .join("\n")
       : "No firmware inputs changed.",
   );

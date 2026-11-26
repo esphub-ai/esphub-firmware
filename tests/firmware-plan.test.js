@@ -3,11 +3,13 @@ import { execFileSync } from "node:child_process";
 import {
   mkdtempSync,
   mkdirSync,
+  readFileSync,
   writeFileSync,
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   boardPlans,
@@ -30,7 +32,7 @@ test("firmware planning uses the dispatched PR snapshots without a manual rebuil
         GITHUB_SHA: head,
       },
     ),
-    { manual: false, beforeRef: base, afterRef: head },
+    { manual: false, pullRequest: true, beforeRef: base, afterRef: head },
   );
   assert.throws(
     () =>
@@ -55,6 +57,7 @@ test("firmware planning uses the dispatched PR snapshots without a manual rebuil
       }),
       {
         manual,
+        pullRequest: name === "pull_request",
         beforeRef: before,
         afterRef: head,
       },
@@ -74,7 +77,7 @@ test("only production pushes and unscoped main dispatches can record coverage", 
   assert.equal(isMainBuildBatch({}, { ...env, GITHUB_REPOSITORY: "fork/firmware" }), false);
 });
 
-test("board CI discovers a new directory and selects only affected tasks", (t) => {
+function boardFixture(t) {
   const cwd = mkdtempSync(join(tmpdir(), "esphub-board-plan-"));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
   const git = (...args) =>
@@ -91,7 +94,7 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
     }));
     put(dir + "/examples/hello/main.c", "hello");
   };
-  const snapshot = () => {
+  const commit = () => {
     git("add", ".");
     git(
       "-c",
@@ -102,14 +105,7 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
       "-qm",
       "fixture",
     );
-    return profiles(git("rev-parse", "HEAD"), cwd);
-  };
-  const options = { version: "1.1.9" };
-  const select = (before, after) => {
-    const plans = boardPlans(before, after, options);
-    return Object.fromEntries(
-      plans.map((p) => [p.board, p.jobs.map((j) => j.kind)]),
-    );
+    return git("rev-parse", "HEAD");
   };
   git("init", "-q");
   for (const flash of [8, 16]) {
@@ -119,6 +115,16 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
     );
     put(`firmware/partitions/${flash}mb.csv`, "table");
   }
+  return { cwd, git, put, addBoard, commit };
+}
+
+test("board CI discovers a new directory and selects only affected tasks", (t) => {
+  const { cwd, git, put, addBoard, commit } = boardFixture(t);
+  const snapshot = () => profiles(commit(), cwd);
+  const options = { version: "1.1.9" };
+  const select = (before, after) => Object.fromEntries(
+    boardPlans(before, after, options).map(p => [p.board, p.jobs.map(j => j.kind)]),
+  );
   const paper = "m5stack/paper-color", watch = "m5stack/stopwatch", other = "waveshare/stopwatch";
   const jobs = ["bootloader", "app", "setup"];
   addBoard(paper);
@@ -170,6 +176,59 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
   assert.throws(() => boardPlans({}, after, { ...options, board: "unknown/board" }), /Unknown board/);
   put("firmware/bootloader/esp32s3-4mb/sdkconfig.defaults", "unsupported");
   assert.throws(snapshot, /at least 8 MiB/);
+});
+
+test("example-only PRs compile the affected optional examples, with full builds for shared inputs", t => {
+  const { cwd, put, addBoard, commit } = boardFixture(t);
+  const card = "m5stack/cardputer-adv", watch = "m5stack/stopwatch";
+  addBoard(card, 8);
+  addBoard(watch);
+  const base = commit();
+  const dir = "firmware/board/" + card;
+  const manifest = JSON.parse(readFileSync(join(cwd, dir, "board.json"), "utf8"));
+  const addExample = id => {
+    const entrypoint = `examples/${id}/main.c`;
+    manifest.examples.push({ id, entrypoint });
+    put(dir + "/board.json", JSON.stringify(manifest));
+    put(dir + "/" + entrypoint, id);
+  };
+  function plan(baseSha, headSha) {
+    const output = join(cwd, ".git/outputs"), event = join(cwd, ".git/event.json");
+    writeFileSync(output, "");
+    writeFileSync(event, JSON.stringify({ pull_request: { base: { sha: baseSha } } }));
+    const script = fileURLToPath(new URL("../scripts/firmware-plan.mjs", import.meta.url));
+    execFileSync(process.execPath, [script], { cwd, env: { ...process.env,
+      GITHUB_EVENT_PATH: event, GITHUB_EVENT_NAME: "pull_request", GITHUB_OUTPUT: output,
+      FW_HEAD_SHA: headSha, GITHUB_RUN_NUMBER: "17",
+    } });
+    return JSON.parse(readFileSync(output, "utf8").trim().slice("cohorts=".length));
+  }
+  addExample("imu");
+  const added = commit();
+  const cohorts = plan(base, added);
+  assert.equal(cohorts.length, 1);
+  const [cohort] = cohorts;
+  assert.equal(cohort.name, "examples");
+  assert.equal(cohort.bootloader, null);
+  assert.deepEqual(cohort.boards.map(b => [b.board, b.examples, b.kit, b.jobs.map(j => j.kind)]),
+    [[card, ["imu"], null, ["app"]]]);
+
+  addExample("clock");
+  put(dir + "/examples/imu/sdkconfig.defaults", "CONFIG_IMU=y");
+  const edited = commit();
+  assert.deepEqual(plan(added, edited)[0].boards[0].examples, ["imu", "clock"]);
+
+  let previous = edited;
+  for (const file of ["examples/common/keyboard.hpp", "examples/hello/main.c"]) {
+    put(dir + "/" + file, "changed");
+    const next = commit();
+    assert.deepEqual(plan(previous, next).flatMap(c => c.boards.map(b => [b.board, b.jobs.map(j => j.kind)])),
+      [[card, ["bootloader", "app", "setup"]]]);
+    previous = next;
+  }
+  put("scripts/build-example.py", "shared builder changed");
+  const shared = commit();
+  assert.deepEqual(plan(added, shared).flatMap(c => c.boards.map(b => b.board)).sort(), [card, watch]);
 });
 
 test("overlapping firmware runs share 100 job groups across all bootloader variants", () => {
