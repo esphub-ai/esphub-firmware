@@ -12,7 +12,7 @@ const example = {
 };
 
 test("records the source links the Hub previously derived", () => {
-  const tree = "https://github.com/okou-ai/esphub-firmware/tree/" + revision;
+  const tree = "https://github.com/esphub-ai/esphub-firmware/tree/" + revision;
   assert.equal(sdkSourceUrl(revision), tree + "/firmware/components/eh_agent");
   assert.deepEqual(
     boardLinks("m5stack/stopwatch", { bootloader: "esp32s3-8mb", examples: [example] }, revision),
@@ -25,7 +25,7 @@ test("records the source links the Hub previously derived", () => {
         source_url: tree + "/firmware/board/m5stack/stopwatch/examples/hello",
         entrypoint: "main/main.c",
         build_guide_url:
-          "https://github.com/okou-ai/esphub-firmware/blob/" + revision + "/docs/build-examples.md",
+          "https://github.com/esphub-ai/esphub-firmware/blob/" + revision + "/docs/build-examples.md",
         build_command: "python3 scripts/build-example.py m5stack/stopwatch --example hello",
       }],
     },

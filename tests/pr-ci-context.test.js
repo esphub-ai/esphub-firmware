@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { validatePrCiContext } from "../scripts/pr-ci-context.mjs";
 
-const repository = "okou-ai/esphub";
+const repository = "esphub-ai/esphub";
 const repositoryId = 100;
 const baseSha = "a".repeat(40);
 const headSha = "b".repeat(40);
@@ -56,7 +56,7 @@ test("validates a live same-repository branch and SHA with one read and no write
 
 test("accepts numeric IDs/PR numbers and case-insensitive repository names", async () => {
   const pr = pullRequest();
-  pr.base.repo.full_name = pr.head.repo.full_name = "Okou-AI/EspHub";
+  pr.base.repo.full_name = pr.head.repo.full_name = "EspHub-AI/EspHub";
   const { request } = fixture(pr);
   assert.deepEqual(
     await validatePrCiContext({
@@ -99,7 +99,7 @@ for (const [name, changes] of [
   ["repository object", { repository: { toString: () => repository } }],
   ["repository trailing newline", { repository: repository + "\n" }],
   ["repository trailing CRLF", { repository: repository + "\r\n" }],
-  ["repository path traversal", { repository: "okou-ai/.." }],
+  ["repository path traversal", { repository: "esphub-ai/.." }],
   ["repository extra path", { repository: repository + "/pulls" }],
   ["repository ID unsafe", { repositoryId: "9007199254740992" }],
   ["repository ID malformed", { repositoryId: "100\n" }],
