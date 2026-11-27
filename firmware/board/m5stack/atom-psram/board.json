@@ -78,6 +78,12 @@
       "description": "Exchange 500 kbit/s CAN frames and show replies on the RGB pixel. Requires Atomic CAN Base A103 in place of Atom Display.",
       "entrypoint": "examples/atomic-can/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_CAN/ATOM_CAN.ino"
+    },
+    {
+      "id": "atomic-motion",
+      "description": "Cycle four servo angles and switch two motor commands with the button. Requires the Atom Motion base in place of Atom Display.",
+      "entrypoint": "examples/atomic-motion/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_Motion/ATOM_Motion.ino"
     }
   ]
 }
