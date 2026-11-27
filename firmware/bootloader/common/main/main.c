@@ -35,5 +35,5 @@ void app_main(void)
     ESP_ERROR_CHECK(eh_op_register("resize_app", resize_app));
     ESP_ERROR_CHECK(eh_agent_start());
     report_layout();
-    prov_serial_start();
+    usb_console_start();
 }

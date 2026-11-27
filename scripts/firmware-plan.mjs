@@ -21,7 +21,7 @@ const appInputs = [
 ];
 const kitInputs = [
   "scripts/package-setup.py", "scripts/board-catalog.mjs", "shared/board-examples.js",
-  "tools/ble-wifi/provision_usb.py", ".github/actions/build-kit/**",
+  ".github/actions/build-kit/**",
 ];
 const digest = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");

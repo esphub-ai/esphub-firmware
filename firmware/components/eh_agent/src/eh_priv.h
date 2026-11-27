@@ -22,8 +22,6 @@ esp_err_t eh_wifi_init(void);
 void eh_wifi_on_started(void);
 void eh_wifi_on_got_ip(void);
 void eh_wifi_on_disconnected(int reason);
-void eh_wifi_reload(void);
-void eh_net_reconfigure(void);
 void eh_net_info(cJSON *obj); /* adds ip, rssi */
 int eh_net_describe(char *buf, size_t len);
 

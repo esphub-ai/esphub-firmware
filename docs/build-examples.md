@@ -20,7 +20,7 @@ M5Stack examples are adapted from the manufacturer’s board guides and M5GFX/M5
 
 ## App and filesystem capacity
 
-USB kits select the partition table by flash capacity. Both Launcher slots are 1.25 MiB each. The default app / LittleFS capacities are 4 / 1.375 MiB on 8 MiB boards, 8 / 5.375 MiB on 16 MiB boards, and 5.5 / 23.875 MiB on 32 MiB boards. NVS, otadata and PHY remain at their existing addresses. Reflashing a USB kit installs its default layout. Back up files and provisioning before a USB reinstall.
+USB kits select the partition table by flash capacity. Both Launcher slots are 1.25 MiB each. The default app / LittleFS capacities are 4 / 1.375 MiB on 8 MiB boards, 8 / 5.375 MiB on 16 MiB boards, and 5.5 / 23.875 MiB on 32 MiB boards. NVS, otadata and PHY remain at their existing addresses. Reflashing a USB kit installs its default layout and erases files and device credentials. Back up files first, and flash a reissued NVS image from EspHub with the kit.
 
 Launcher OTA retains the device's installed table, including older devices with larger Launcher slots. In Launcher mode, `ota_resize_app` can move the boundary between the last two contiguous partitions, `app` and `data`, in 64 KiB increments. Both growing and shrinking erase all LittleFS files and create a writable empty filesystem. The installed app must fit before shrinking. The same target size is a no-op. If power fails during the primary table rewrite, recover over USB.
 

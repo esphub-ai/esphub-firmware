@@ -76,13 +76,6 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data)
 }
 #endif
 
-void eh_net_reconfigure(void)
-{
-#if !CONFIG_EH_NET_OPENETH
-    eh_wifi_reload();
-#endif
-}
-
 static esp_err_t observe_uplink(const char *key, int got, int lost, _Atomic uint32_t *address)
 {
     ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, got, on_ip, address), EH_TAG, "watch IP");

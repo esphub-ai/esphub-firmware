@@ -4,12 +4,12 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test("native USB registration and one-shot bootloader selection", () => {
+test("native hub hostname validation and one-shot bootloader selection", () => {
   const dir = mkdtempSync(join(tmpdir(), "esphub-usb-"));
   const component = "firmware/components/eh_agent";
   try {
-    // The production USB parser and SDK hostname validator run natively.
-    // Substitute only ESP-IDF types, flash writes and the BLE installation.
+    // The SDK hostname validator and the Launcher entrypoint run natively.
+    // Substitute only ESP-IDF types and flash access.
     for (const [file, contents] of Object.entries({
       "esp_err.h":
         "#include <stdint.h>\ntypedef int esp_err_t;\n#define ESP_OK 0\n#include <assert.h>\n#define ESP_ERROR_CHECK(e) assert((e) == ESP_OK)\nconst char *esp_err_to_name(esp_err_t);\n",
@@ -39,8 +39,7 @@ test("native USB registration and one-shot bootloader selection", () => {
     execFileSync("cc", [
       ...flags,
       component + "/src/eh_hub.c",
-      "firmware/bootloader/common/main/prov_common.c",
-      "tests/fixtures/bootloader-hub/usb.c",
+      "tests/fixtures/bootloader-hub/hub-host.c",
       ...cjson,
       "-o",
       exe,

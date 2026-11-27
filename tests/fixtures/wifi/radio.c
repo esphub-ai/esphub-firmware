@@ -632,13 +632,12 @@ static void handoff_test(void)
     assert(eh_wifi_set_managed(false) == ESP_OK && !driver_initialized && !netif_created);
     const unsigned stops = driver_stops;
 
-    /* The app can now own the entire driver. Even stale events, explicit joins
-     * and credential changes may not end its AP session. */
+    /* The app can now own the entire driver. Even stale events and explicit
+     * joins may not end its AP session. */
     driver_initialized = true;
     radio_mode = WIFI_MODE_AP;
     eh_wifi_on_disconnected(201);
     eh_wifi_on_started();
-    eh_wifi_reload();
     assert(eh_wifi_set_managed(false) == ESP_OK && stops == driver_stops);
     assert(eh_wifi_set_managed(true) == ESP_ERR_INVALID_STATE);
     eh_ap_t aps[2];

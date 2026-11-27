@@ -63,10 +63,7 @@ void eh_http_apply_auth(esp_http_client_handle_t client);
 /* Graceful reboot from the agent task after `delay_ms` (drains queued events). */
 void eh_schedule_reboot(uint32_t delay_ms);
 
-/* Re-read the USB registration and reconnect (used by USB provisioning). */
-void eh_agent_reload_config(void);
 bool eh_net_has_ip(void);
-void eh_net_reconfigure(void); /* re-read saved Wi-Fi networks and reconnect */
 
 /* ---- Wi-Fi networks (SDK-managed networking only) ---- */
 #define EH_WIFI_MAX 5

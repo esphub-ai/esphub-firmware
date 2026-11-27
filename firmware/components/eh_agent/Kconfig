@@ -4,8 +4,8 @@ menu "EspHub agent (esp-bootloader SDK)"
         bool "Build the EspHub Launcher"
         default n
         help
-            Set only by the EspHub Launcher project. Enables its OTA, provisioning and BLE
-            paths in the SDK. Applications leave it off.
+            Set only by the EspHub Launcher project. Enables its OTA and BLE Wi-Fi paths
+            in the SDK. Applications leave it off.
 
     config EH_BL_PROFILE
         string "Compatible EspHub bootloader variant"

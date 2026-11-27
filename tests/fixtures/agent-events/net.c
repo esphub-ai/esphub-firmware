@@ -46,7 +46,6 @@ void eh_agent_notify(void) { ++wakes; }
 void eh_wifi_on_started(void) { }
 void eh_wifi_on_disconnected(int reason) { assert(reason == 7); ++disconnects; }
 void eh_wifi_on_got_ip(void) { ++got_ips; }
-void eh_wifi_reload(void) { }
 esp_err_t eh_wifi_init(void) { return ESP_OK; }
 esp_err_t eh_wifi_set_managed(bool enabled) { return ESP_OK; }
 int eh_wifi_count(void) { return 0; }
