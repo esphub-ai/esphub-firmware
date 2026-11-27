@@ -36,6 +36,12 @@
       "description": "Create an empty LittleFS note or append one line to the existing note at startup.",
       "entrypoint": "examples/storage-append/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS_Add/SPIFFS_Add.ino"
+    },
+    {
+      "id": "storage-delete",
+      "description": "Delete the regular LittleFS sample note on Atom-PSRAM and report the result over serial.",
+      "entrypoint": "examples/storage-delete/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS_Delete/SPIFFS_Delete.ino"
     }
   ]
 }
