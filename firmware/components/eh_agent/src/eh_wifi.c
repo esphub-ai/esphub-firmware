@@ -296,12 +296,6 @@ void eh_wifi_on_disconnected(int reason)
         xEventGroupSetBits(s_ev, EV_DISC);
     }
 }
-void eh_wifi_reload(void)
-{
-    if (!s_list_mu || !s_ev) return;
-    load();
-    xEventGroupSetBits(s_ev, EV_RECONF);
-}
 
 static TickType_t attempt_remaining(TickType_t started)
 {

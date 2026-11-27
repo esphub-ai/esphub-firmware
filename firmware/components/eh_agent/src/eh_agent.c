@@ -87,7 +87,7 @@ void eh_resume_mqtt(void)
     eh_agent_notify();
 }
 #endif
-static volatile bool s_mqtt_up, s_hello_acked, s_mqtt_broken, s_reload;
+static volatile bool s_mqtt_up, s_hello_acked, s_mqtt_broken;
 static int64_t s_conn_start_us, s_up_since_us, s_next_connect_us;
 static uint32_t s_backoff_ms = 1000;
 static volatile int64_t s_reboot_at_us;
@@ -174,12 +174,6 @@ void eh_set_install_state(const char *state)
 bool eh_connected(void) { return s_mqtt_up && s_hello_acked; }
 
 bool eh_mqtt_connected(void) { return s_mqtt_up; }
-
-void eh_agent_reload_config(void)
-{
-    s_reload = true;
-    eh_agent_notify();
-}
 
 void eh_schedule_reboot(uint32_t delay_ms)
 {
@@ -728,16 +722,6 @@ static void agent_wait(bool transport_paused)
 static void agent_task(void *arg)
 {
     for (;;) {
-        if (s_reload) {
-            s_reload = false;
-            eh_console_set(false);
-            s_cfg_ok = load_config();
-            if (s_iot_started) {
-                mqtt_teardown("config reload");
-            }
-            s_backoff_ms = 1000;
-            s_next_connect_us = now_us();
-        }
 #if CONFIG_EH_LAUNCHER
         if (xEventGroupGetBits(ota_transport) & OTA_PAUSE) {
             if (s_iot_started) mqtt_teardown("OTA download");

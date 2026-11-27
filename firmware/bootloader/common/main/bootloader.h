@@ -12,8 +12,5 @@ void report_layout(void);
 esp_err_t launcher_install(const cJSON *args, cJSON *result, char *err, size_t errlen);
 void reconcile_resize(void);
 
-/* Store a provisioning JSON object (BLE bootstrap key/hub/token/name) in NVS namespace eh. */
-bool prov_apply(const char *line, char *err, size_t n);
-
-/* USB-serial provisioning: a console line "EH-PROVISION <json>" applies the same payload. */
-void prov_serial_start(void);
+/* Local USB console for Launcher commands and EH-WIFI Wi-Fi setup. */
+void usb_console_start(void);

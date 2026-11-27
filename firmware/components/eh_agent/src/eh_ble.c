@@ -12,7 +12,6 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "freertos/stream_buffer.h"
 #include "host/ble_hs.h"
 #include "host/util/util.h"
@@ -34,7 +33,6 @@ static const ble_uuid128_t channel = BLE_UUID128_INIT(0x02, 0x21, 0x91, 0xfa, 0x
                                                       0x48, 0x36, 0x6c, 0x31, 0xfb, 0xee, 0xa2);
 static StreamBufferHandle_t rx, tx;
 static TaskHandle_t worker;
-static SemaphoreHandle_t key_lock;
 static uint8_t root_key[32], tls_psk[32];
 static atomic_uint connection = NO_CONN;
 static atomic_bool synced;
@@ -64,15 +62,6 @@ static bool read_key(uint8_t *out)
     bool valid = eh_nvs_get_str("ble_key", record, sizeof(record)) == ESP_OK && decode(record, out);
     mbedtls_platform_zeroize(record, sizeof(record));
     return valid;
-}
-
-esp_err_t eh_ble_install(const char *hex)
-{
-    if (!key_lock) return ESP_ERR_INVALID_STATE;
-    xSemaphoreTake(key_lock, portMAX_DELAY);
-    esp_err_t rc = eh_nvs_set_str("ble_key", hex);
-    xSemaphoreGive(key_lock);
-    return rc;
 }
 
 static int gap_event(struct ble_gap_event *e, void *unused)
@@ -170,14 +159,12 @@ static void tls_session(void)
             cJSON_Delete(reply);
             goto end;
         }
-        xSemaphoreTake(key_lock, portMAX_DELAY);
         uint8_t live_key[32];
         if (read_key(live_key) && !memcmp(live_key, root_key, 32) && connection != NO_CONN)
             eh_wifi_setup_command(request, reply);
         else
             cJSON_AddStringToObject(reply, "error", "credential revoked");
         mbedtls_platform_zeroize(live_key, sizeof(live_key));
-        xSemaphoreGive(key_lock);
         cJSON_Delete(request);
         char *result = cJSON_PrintUnformatted(reply);
         cJSON_Delete(reply);
@@ -280,8 +267,7 @@ fail:
 
 void eh_ble_init(void)
 {
-    key_lock = xSemaphoreCreateMutex();
-    if (!key_lock || xTaskCreate(launch_nimble, "ble_init", 4096, NULL, 3, NULL) != pdPASS) {
+    if (xTaskCreate(launch_nimble, "ble_init", 4096, NULL, 3, NULL) != pdPASS) {
         ESP_LOGE("ble_wifi", "cannot start BLE initialization");
     }
 }

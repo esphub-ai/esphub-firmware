@@ -170,7 +170,7 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
   assert.deepEqual(change("firmware/board/" + watch + "/examples/hello/sdkconfig.defaults", "CONFIG_X=y"), { [watch]: jobs });
   assert.deepEqual(change("scripts/firmware-plan.mjs", "scheduler only"), {});
   for (const file of ["scripts/build-example.py", "firmware/components/eh_agent/src/sdk.c", "firmware/bootloader/common/sdkconfig.defaults",
-      "firmware/app/sdkconfig.defaults", "shared/board-examples.js", "tools/ble-wifi/provision_usb.py"]) {
+      "firmware/app/sdkconfig.defaults", "shared/board-examples.js", "scripts/package-setup.py"]) {
     assert.deepEqual(change(file, "shared input"), { [paper]: jobs, [watch]: jobs });
   }
   assert.deepEqual(change("firmware/board/" + watch + "/README.md", "guide"), {});
