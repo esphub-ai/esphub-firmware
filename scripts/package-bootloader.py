@@ -1,6 +1,5 @@
 """Validate one ESPHub bootloader build and collect the reusable binaries."""
 import json
-import os
 import shutil
 import sys
 from hashlib import sha256
@@ -39,7 +38,6 @@ assert files["partition_table/partition-table.bin"] == "0x8000"
 shutil.copyfile(build / "bootloader/bootloader.bin", out / "bootloader.bin")
 shutil.copyfile(build / "esp-bootloader.bin", out / "esp-bootloader.bin")
 (out / "build.json").write_text(json.dumps({
-    "source_commit": os.environ["GITHUB_SHA"],
     "variant": variant,
     "version": version,
     "bootloader_offset": files["bootloader/bootloader.bin"],

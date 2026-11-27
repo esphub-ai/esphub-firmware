@@ -19,17 +19,12 @@ bool prov_apply(const char *line, char *err, size_t n)
         return false;
     }
     const cJSON *hub_field = cJSON_GetObjectItemCaseSensitive(j, "hub");
-    const cJSON *name_field = cJSON_GetObjectItemCaseSensitive(j, "name");
     const cJSON *tok = cJSON_GetObjectItemCaseSensitive(j, "token");
     const char *hub = cJSON_GetStringValue(hub_field);
-    const char *name = cJSON_GetStringValue(name_field);
     const char *dtok = cJSON_GetStringValue(tok);
     bool ok = true;
     if (hub_field && !eh_hub_host_valid(hub)) {
         snprintf(err, n, "hub must be a hostname such as api.esphub.ai");
-        ok = false;
-    } else if (name_field && (!name || strlen(name) > 32)) {
-        snprintf(err, n, "name must be a string of at most 32 chars");
         ok = false;
     } else if (tok && (!dtok || strncmp(dtok, "eh_dev_", sizeof("eh_dev_") - 1) || strlen(dtok) > 95)) {
         snprintf(err, n, "token must be a hub device token (eh_dev_...)");
@@ -52,9 +47,9 @@ bool prov_apply(const char *line, char *err, size_t n)
 #endif
     if (ok && dtok && !hub) hub = "api.esphub.ai";
     if (ok) {
-        const char *keys[] = {"hub", "name", EH_KEY_TOKEN};
-        const char *vals[] = {hub, name, dtok};
-        for (int i = 0; i < 3 && ok; i++) {
+        const char *keys[] = {"hub", EH_KEY_TOKEN};
+        const char *vals[] = {hub, dtok};
+        for (int i = 0; i < 2 && ok; i++) {
             if (vals[i] && eh_nvs_set_str(keys[i], vals[i]) != ESP_OK) {
                 snprintf(err, n, "NVS write failed (%s)", keys[i]);
                 ok = false;

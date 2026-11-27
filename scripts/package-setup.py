@@ -65,8 +65,5 @@ esptool.py --chip {chip} --port PORT write_flash --erase-all @flash_args
 """)
 
 manifest = dict(board=args.board, chip=chip, version=version, **recipe, file=kit.name,
-                download_url=f"https://api.esphub.ai/releases/{args.board}/setup?tag={recipe['tag']}",
-                sha256=hashlib.sha256(kit.read_bytes()).hexdigest(),
-                usb_wifi_setup=b"esphub-usb-wifi-v2\0" in bootloader,
-                example=example, app_sha256=hashlib.sha256(image).hexdigest(), app_size=len(image))
+                sha256=hashlib.sha256(kit.read_bytes()).hexdigest(), example=example, app_sha256=hashlib.sha256(image).hexdigest(), app_size=len(image))
 kit.with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n")

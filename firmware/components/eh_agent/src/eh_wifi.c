@@ -584,9 +584,6 @@ static esp_err_t start_station(void)
     esp_err_t err = esp_wifi_init(&cfg);
     if (err != ESP_OK) return err;
     s_sta_netif = esp_netif_create_default_wifi_sta();
-    char name[33] = {0};
-    eh_nvs_get_str("name", name, sizeof(name));
-    if (name[0]) esp_netif_set_hostname(s_sta_netif, name);
     err = esp_wifi_set_storage(WIFI_STORAGE_RAM);
     if (err == ESP_OK) err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err == ESP_OK) err = esp_wifi_start();

@@ -2,10 +2,10 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { describeExamples } from "../shared/board-examples.js";
+import { repository } from "../shared/repository.js";
 import { readBoardCatalog } from "./board-catalog.mjs";
 
-const tree = (revision) =>
-  "https://github.com/okou-ai/esphub-firmware/tree/" + revision;
+const tree = (revision) => repository + "/tree/" + revision;
 
 // The Hub returns these links as stored, so it needs no knowledge of this repository's layout.
 export const sdkSourceUrl = (revision) =>

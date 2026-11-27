@@ -115,8 +115,6 @@ esp_err_t eh_net_start(bool manage)
 
 #if CONFIG_EH_NET_OPENETH
     if (!manage) return ESP_OK;
-    char name[33] = {0};
-    eh_nvs_get_str("name", name, sizeof(name));
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
     phy_config.autonego_timeout_ms = 100;
@@ -127,9 +125,6 @@ esp_err_t eh_net_start(bool manage)
     ESP_RETURN_ON_ERROR(esp_eth_driver_install(&config, &eth), EH_TAG, "eth install");
     esp_netif_config_t ncfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_t *netif = esp_netif_new(&ncfg);
-    if (name[0]) {
-        esp_netif_set_hostname(netif, name);
-    }
     esp_netif_attach(netif, esp_eth_new_netif_glue(eth));
     ESP_LOGI(EH_TAG, "network: OpenCores Ethernet (QEMU)");
     return esp_eth_start(eth);
