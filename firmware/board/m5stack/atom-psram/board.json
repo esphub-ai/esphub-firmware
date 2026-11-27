@@ -30,6 +30,12 @@
       "description": "Create a LittleFS note on the Atom-PSRAM and read it over serial with the board button.",
       "entrypoint": "examples/storage-notes/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS/SPIFFS.ino"
+    },
+    {
+      "id": "storage-append",
+      "description": "Create an empty LittleFS note or append one line to the existing note at startup.",
+      "entrypoint": "examples/storage-append/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS_Add/SPIFFS_Add.ino"
     }
   ]
 }
