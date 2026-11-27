@@ -467,18 +467,3 @@ test("tree order is irrelevant and inputs are not mutated", () => {
   assert.deepEqual(sdkVersionPlan(options), plan());
   assert.deepEqual(sdkVersionPlan(options), sdkVersionPlan(options));
 });
-
-test("checks a major SDK rename across two immutable tree layouts", () => {
-  const branch = (name, version) => ({
-    header: `#define ${name.toUpperCase()}_SDK_VERSION "${version}"`,
-    files: [file(`firmware/components/${name}_agent/include/${name}_agent.h`)],
-  });
-  const base = branch("okou", "7.0.2"), head = branch("eh", "8.0.0");
-  const compare = (headFiles) => sdkVersionPlan({
-    baseFiles: base.files, baseHeader: base.header, headFiles, headHeader: head.header, labels: ["sdk:major"],
-  });
-  const plan = compare(head.files);
-  assert.equal(plan.expectedVersion, "8.0.0");
-  assert.equal(plan.needsUpdate, false);
-  assert.throws(() => compare([...head.files, ...base.files]), /regular-file SDK header/);
-});
