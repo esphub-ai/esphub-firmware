@@ -23,7 +23,7 @@
 
 static const char *TAG = "usb_console";
 #define WIFI_PREFIX "EH-WIFI "
-#define LINE_MAX 640
+#define CONSOLE_LINE_MAX 640
 
 /* Handle commands typed on the local USB console. */
 static void console_line(char *line)
@@ -73,7 +73,7 @@ static void wifi_line(const char *payload, bool overflow)
 
 static void console_task(void *arg)
 {
-    static char line[LINE_MAX];
+    static char line[CONSOLE_LINE_MAX];
     size_t len = 0;
     bool overflow = false;
     for (;;) {
@@ -87,7 +87,7 @@ static void console_task(void *arg)
             continue;
         }
         if (c != '\n') {
-            if (len < LINE_MAX - 1) {
+            if (len < CONSOLE_LINE_MAX - 1) {
                 line[len++] = (char)c;
             } else {
                 overflow = true;
