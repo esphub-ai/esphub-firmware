@@ -8,15 +8,20 @@
  project(voice_tts)
 --- a/examples/voice_tts/main/CMakeLists.txt
 +++ b/examples/voice_tts/main/CMakeLists.txt
-@@ -1,6 +1,7 @@
+@@ -1,11 +1,8 @@
  idf_component_register(
      SRCS "main.c"
      INCLUDE_DIRS "."
 +    PRIV_REQUIRES eh_agent
  )
+-
+-# Keep ESP-DL compatible with GCC 16's stricter C++ linkage diagnostic.
+-idf_component_get_property(esp_dl_lib espressif__esp-dl COMPONENT_LIB)
+-target_compile_options(${esp_dl_lib} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=non-c-typedef-for-linkage>)
  
- # Keep ESP-DL compatible with GCC 16's stricter C++ linkage diagnostic.
-@@ -18,17 +19,4 @@
+ idf_build_get_property(build_components BUILD_COMPONENTS)
+ if(esp-sr IN_LIST build_components)
+@@ -18,17 +15,4 @@
  set(voice_data_image
      "${esp_sr_path}/esp-tts/esp_tts_chinese/esp_tts_voice_data_xiaole.dat")
  
