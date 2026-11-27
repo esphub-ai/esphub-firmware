@@ -14,8 +14,8 @@
     "nbiot_mqtt.hpp": ["uiflow-nbiot-mqtt", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-mqtt"],
     "nbiot2v11_startup.hpp": ["uiflow-nbiot2v11-http", "uiflow-nbiot2v11-mqtt"],
     "sim7028_http.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2v11-http"],
-    "qrcode_base.hpp": ["uiflow-qrcode-auto", "uiflow-qrcode-host", "uiflow-qrcode-key", "uiflow-qrcode-motion", "uiflow-qrcode-pulse", "uiflow-qrcode2-auto", "uiflow-qrcode2-continuous"],
-    "qrcode2_base.hpp": ["uiflow-qrcode2-auto", "uiflow-qrcode2-continuous"]
+    "qrcode_base.hpp": ["uiflow-qrcode-auto", "uiflow-qrcode-host", "uiflow-qrcode-key", "uiflow-qrcode-motion", "uiflow-qrcode-pulse", "uiflow-qrcode2-auto", "uiflow-qrcode2-continuous", "uiflow-qrcode2-key"],
+    "qrcode2_base.hpp": ["uiflow-qrcode2-auto", "uiflow-qrcode2-continuous", "uiflow-qrcode2-key"]
   },
   "examples": [
     {
@@ -263,6 +263,12 @@
       "description": "Click BtnA to start or stop continuous M14 scanning and show the latest decoded result.",
       "entrypoint": "examples/uiflow-qrcode2-continuous/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/qrcode2/atoms3_qrcode2_continuous_mode_example.py"
+    },
+    {
+      "id": "uiflow-qrcode2-key",
+      "description": "Hold BtnA to drive the M14 Atomic QRCode2 Base trigger and display the decoded result.",
+      "entrypoint": "examples/uiflow-qrcode2-key/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/qrcode2/atoms3_qrcode2_key_mode_example.py"
     }
   ]
 }
