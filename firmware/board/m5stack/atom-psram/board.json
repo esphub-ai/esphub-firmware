@@ -84,6 +84,12 @@
       "description": "Cycle four servo angles and switch two motor commands with the button. Requires the Atom Motion base in place of Atom Display.",
       "entrypoint": "examples/atomic-motion/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_Motion/ATOM_Motion.ino"
+    },
+    {
+      "id": "atomic-qrcode-button",
+      "description": "Hold the Atom button to trigger the QR reader and forward decoded bytes to the serial console.",
+      "entrypoint": "examples/atomic-qrcode-button/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_QRCode/BTN_CONTROL/BTN_CONTROL.ino"
     }
   ]
 }
