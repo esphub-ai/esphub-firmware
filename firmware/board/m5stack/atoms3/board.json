@@ -9,9 +9,10 @@
   "shared_example_inputs": {
     "storage_io.hpp": ["storage-notes", "storage-append", "storage-delete"],
     "atomic_poe.hpp": ["atomic-poe-http", "atomic-poe-mqtt", "atomic-poe-webserver"],
-    "sim7020.hpp": ["uiflow-nbiot-http", "uiflow-nbiot-mqtt", "uiflow-nbiot2-http", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-http"],
-    "sim7028.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-http"],
-    "nbiot_mqtt.hpp": ["uiflow-nbiot-mqtt", "uiflow-nbiot2-mqtt"],
+    "sim7020.hpp": ["uiflow-nbiot-http", "uiflow-nbiot-mqtt", "uiflow-nbiot2-http", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-http", "uiflow-nbiot2v11-mqtt"],
+    "sim7028.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-http", "uiflow-nbiot2v11-mqtt"],
+    "nbiot_mqtt.hpp": ["uiflow-nbiot-mqtt", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-mqtt"],
+    "nbiot2v11_startup.hpp": ["uiflow-nbiot2v11-http", "uiflow-nbiot2v11-mqtt"],
     "sim7028_http.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2v11-http"]
   },
   "examples": [
@@ -194,6 +195,12 @@
       "description": "Power and reset the v1.1 Atom DTU through M5IOE1 and send the UiFlow2 HTTP POST through SIM7028.",
       "entrypoint": "examples/uiflow-nbiot2v11-http/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/dtu_nbiot2v11/atoms3_base_nbiot2v11_http_example.py"
+    },
+    {
+      "id": "uiflow-nbiot2v11-mqtt",
+      "description": "Power and reset the Atom DTU v1.1 and display messages from the SIM7028 MQTT subscription.",
+      "entrypoint": "examples/uiflow-nbiot2v11-mqtt/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/dtu_nbiot2v11/atoms3_base_nbiot2v11_mqtt_example.py"
     }
   ]
 }

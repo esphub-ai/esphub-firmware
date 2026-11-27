@@ -73,21 +73,45 @@ inline bool incoming(unsigned char type, std::string_view data, int x, int y)
     return true;
 }
 
+struct SessionOptions {
+    bool cleanSession = false;
+    uint16_t keepaliveSeconds = 0;
+};
+
 inline void session(bool (*send)(std::string_view),
                     bool (*pendingBytes)(unsigned&, bool&),
                     bool (*readBytes)(unsigned, std::string&, bool&, size_t),
-                    int labelX, int labelY)
+                    int labelX, int labelY, SessionOptions options = {})
 {
-    // MQTT 3.1.1, persistent session, zero keepalive, empty username and password.
-    constexpr char connect[] = "\x10\x1e\0\x04" "MQTT\x04\xc0\0\0\0\x0e" "uiflow2-client\0\0\0\0";
+    // MQTT 3.1.1, empty username and password. Session flags and keepalive are set below.
+    char connect[] = "\x10\x1e\0\x04" "MQTT\x04\xc0\0\0\0\x0e" "uiflow2-client\0\0\0\0";
     constexpr char subscribe[] = "\x82\x10\0\x01\0\x0b" "testtopic/a\0";
+    connect[9] = char(0xc0 | (options.cleanSession ? 2 : 0));
+    connect[10] = char(options.keepaliveSeconds >> 8);
+    connect[11] = char(options.keepaliveSeconds & 255);
     if (!send({connect, sizeof(connect) - 1})) return;
     std::string buffer;
     enum { connack, suback, subscribed } phase = connack;
     auto deadline = esp_timer_get_time() + 10000000;
     bool closed = false;
+    const int64_t pingInterval = int64_t(options.keepaliveSeconds) * 750000;
+    int64_t lastSent = esp_timer_get_time();
+    int64_t pongDeadline = 0;
     while (phase == subscribed || esp_timer_get_time() < deadline) {
         M5.update();
+        if (phase == subscribed && pingInterval) {
+            const auto now = esp_timer_get_time();
+            if (pongDeadline && now >= pongDeadline) {
+                std::puts("MQTT PINGRESP timeout");
+                return;
+            }
+            if (!pongDeadline && now - lastSent >= pingInterval) {
+                if (!send(std::string_view("\xc0\0", 2))) return;
+                lastSent = esp_timer_get_time();
+                pongDeadline = lastSent + 10000000;
+                std::puts("MQTT PINGREQ");
+            }
+        }
         unsigned available;
         if (!pendingBytes(available, closed)) return;
         if (available && !readBytes(std::min(available, sim7020::chunkSize), buffer, closed,
@@ -100,15 +124,19 @@ inline void session(bool (*send)(std::string_view),
             const auto type = static_cast<unsigned char>(buffer[0]);
             const std::string_view data(buffer.data() + start, length);
             if (phase == connack) {
-                if (type != 0x20 || length != 2 || (data[0] != 0 && data[0] != 1) || data[1] != 0) return;
+                if (type != 0x20 || length != 2 || (data[0] != 0 && (options.cleanSession || data[0] != 1)) || data[1] != 0) return;
                 std::puts("MQTT CONNACK");
                 if (!send({subscribe, sizeof(subscribe) - 1})) return;
+                lastSent = esp_timer_get_time();
                 phase = suback;
                 deadline = esp_timer_get_time() + 10000000;
             } else if (phase == suback && type == 0x90) {
                 if (data != std::string_view("\0\x01\0", 3)) return;
                 std::puts("MQTT SUBACK testtopic/a QoS 0");
                 phase = subscribed;
+            } else if (phase == subscribed && type == 0xd0 && length == 0 && pongDeadline) {
+                pongDeadline = 0;
+                std::puts("MQTT PINGRESP");
             } else if (!incoming(type, data, labelX, labelY)) return;
             buffer.erase(0, start + length);
         }
