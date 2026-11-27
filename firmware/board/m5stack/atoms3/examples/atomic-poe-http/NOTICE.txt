@@ -34,9 +34,9 @@ M5-Ethernet 4.0.0 (3354be7d4804cfc60431834e015b93caaf21a9f3) is the reviewed beh
 https://github.com/m5stack/M5-Ethernet/tree/3354be7d4804cfc60431834e015b93caaf21a9f3
 
 M5-Ethernet repository-level MIT and w5100.cpp GPL-2.0/LGPL-2.1 notices differ.
-ArduinoHttpClient was not pinned by the sketch. Reviewed ArduinoHttpClient 0.6.0
-(6f2659de4c0523f0a5fa4bc1154d1e5dc1b01546), Apache-2.0, MCQN Ltd and Arduino contributors.
-https://github.com/arduino-libraries/ArduinoHttpClient/tree/6f2659de4c0523f0a5fa4bc1154d1e5dc1b01546
+ArduinoHttpClient was not pinned by the sketch. Reviewed ArduinoHttpClient 0.5.0
+(0a1a8ab51a1ef60d5cfbea05cbc5a9020521d6d5), Apache-2.0, MCQN Ltd and Arduino contributors.
+https://github.com/arduino-libraries/ArduinoHttpClient/tree/0a1a8ab51a1ef60d5cfbea05cbc5a9020521d6d5
 
 No source or assets from those libraries are distributed by this port. It uses
 ESP-IDF Ethernet (W5500 MACRAW), esp_netif/lwIP and esp_http_client plus the

@@ -70,15 +70,14 @@ void onLink(void* context, esp_event_base_t, int32_t event, void* data)
 void onAddress(void* context, esp_event_base_t, int32_t event, void* data)
 {
     auto& network = *static_cast<Network*>(context);
+    const auto& address = *static_cast<ip_event_got_ip_t*>(data);
+    if (address.esp_netif != network.netif) return;
     if (event == IP_EVENT_ETH_LOST_IP) {
         xEventGroupClearBits(network.events, hasAddress);
         return;
     }
-    const auto& address = *static_cast<ip_event_got_ip_t*>(data);
-    if (address.esp_netif == network.netif) {
-        std::printf("W5500 DHCP " IPSTR "\n", IP2STR(&address.ip_info.ip));
-        xEventGroupSetBits(network.events, hasAddress);
-    }
+    std::printf("W5500 DHCP " IPSTR "\n", IP2STR(&address.ip_info.ip));
+    xEventGroupSetBits(network.events, hasAddress);
 }
 
 void startEthernet(Network& network)
@@ -121,6 +120,8 @@ void startEthernet(Network& network)
     ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_ETH));
     ESP_ERROR_CHECK(esp_eth_ioctl(network.driver, ETH_CMD_S_MAC_ADDR, mac));
     esp_netif_inherent_config_t base = ESP_NETIF_INHERENT_DEFAULT_ETH();
+    // The SDK may already have an Ethernet uplink (for example, in QEMU).
+    if (esp_netif_get_handle_from_ifkey(base.if_key)) base.if_key = "ATOMIC_POE";
     base.route_prio = 110;
     esp_netif_config_t config = ESP_NETIF_DEFAULT_ETH();
     config.base = &base;
@@ -222,6 +223,7 @@ extern "C" void app_main()
     M5.begin(M5.config());
     show("Init...");
     std::puts("AtomicPoE HTTP Init");
+    vTaskDelay(pdMS_TO_TICKS(300));
     Network network;
     network.events = xEventGroupCreate();
     ESP_ERROR_CHECK(network.events ? ESP_OK : ESP_ERR_NO_MEM);
