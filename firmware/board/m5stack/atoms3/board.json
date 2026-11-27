@@ -305,6 +305,12 @@
       "description": "Route colored logs to the LCD, UART and a callback with independent verbosity. Click BtnA to log a warning.",
       "entrypoint": "examples/m5unified-log-output/main.cpp",
       "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/LogOutput/LogOutput.ino"
+    },
+    {
+      "id": "m5unified-imu",
+      "description": "Plot the AtomS3 IMU and calibrate its offsets with BtnA. Saved offsets load at the next boot.",
+      "entrypoint": "examples/m5unified-imu/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Imu/Imu.ino"
     }
   ]
 }
