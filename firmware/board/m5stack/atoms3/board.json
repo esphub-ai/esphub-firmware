@@ -148,6 +148,12 @@
       "description": "Alternate the Mini CAN Unit on and off commands on the 25 kbit/s CAN bus.",
       "entrypoint": "examples/mini-can-master/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Unit/MiniCAN_TJA1051T/Master/Master.ino"
+    },
+    {
+      "id": "mini-can-slave",
+      "description": "Receive and print Mini CAN Unit frames on a 25 kbit/s CAN bus.",
+      "entrypoint": "examples/mini-can-slave/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Unit/MiniCAN_TJA1051T/Slave/Slave.ino"
     }
   ]
 }
