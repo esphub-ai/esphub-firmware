@@ -8,6 +8,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+import tarfile
+from urllib.request import urlopen
 from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,11 +55,30 @@ def build(args, board, example, work):
     env = dict(os.environ, IDF_TARGET=board["chip"])
     config = work / "sdkconfig"
     options = [f"-DSDKCONFIG={config}", f"-DPROJECT_VER={args.version}"]
-    if args.board == "espressif/esp-mosaico" and entrypoint.suffix == ".patch":
-        upstream = json.loads((entrypoint.parent / "upstream.json").read_text())
-        source = Path(checkout(work, upstream))
-        subprocess.run(["git", "-C", source, "apply", entrypoint], check=True)
-        project = source / upstream["project"]
+    raylib_example = args.board == "espressif/esp-mosaico" and entrypoint.suffix == ".json"
+    if args.board == "espressif/esp-mosaico" and (raylib_example or entrypoint.suffix == ".patch"):
+        manifest = entrypoint if raylib_example else entrypoint.parent / "upstream.json"
+        upstream = json.loads(manifest.read_text())
+        if raylib_example:
+            archive = work / "example.tgz"
+            with urlopen(upstream["archive"], timeout=60) as download, archive.open("wb") as target:
+                shutil.copyfileobj(download, target)
+            if hashlib.sha256(archive.read_bytes()).hexdigest() != upstream["sha256"]:
+                raise SystemExit("Raylib example archive checksum mismatch")
+            project = work / "project"
+            project.mkdir()
+            with tarfile.open(archive, "r:gz") as bundle:
+                bundle.extractall(project, filter="data")
+            patch = entrypoint.parents[1] / "raylib-esphub.patch"
+            subprocess.run(["git", "apply", patch], cwd=project, check=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "esp-bmgr-assist==0.8.4",
+                            "Pillow==12.0.0", "numpy==2.3.5"], check=True)
+            subprocess.run(["idf.py", "bmgr", "-c", "shared/boards/esp-mosaico/bmgr",
+                            "-b", "esp_mosaico"], cwd=project, env=env, check=True)
+        else:
+            source = Path(checkout(work, upstream))
+            subprocess.run(["git", "-C", source, "apply", entrypoint], check=True)
+            project = source / upstream["project"]
         with (project / "sdkconfig.defaults").open("a") as defaults:
             defaults.write("\nCONFIG_PARTITION_TABLE_CUSTOM=y\n")
             defaults.write(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partitions}"\n')

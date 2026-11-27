@@ -36,6 +36,42 @@
       "description": "Serve camera snapshots and an MJPEG stream over the camera hotspot.",
       "entrypoint": "examples/wifi-http-cam/esphub.patch",
       "upstream": "https://github.com/esp-mosaico/esp-mosaico-bsp/tree/dbb7509e1be19c35fd091e6a81ac52826a8c58d6/examples/wifi_http_cam"
+    },
+    {
+      "id": "sky-hop",
+      "description": "Run the official Raylib Lite sky hop example.",
+      "entrypoint": "examples/sky-hop/registry.json",
+      "upstream": "https://components.espressif.com/components/espressif2022/raylib-lite-engine/versions/0.1.1/examples/sky_hop"
+    },
+    {
+      "id": "raylib-shooter",
+      "description": "Run the official Raylib Lite raylib shooter example.",
+      "entrypoint": "examples/raylib-shooter/registry.json",
+      "upstream": "https://components.espressif.com/components/espressif2022/raylib-lite-engine/versions/0.1.1/examples/raylib_shooter"
+    },
+    {
+      "id": "tower-defense",
+      "description": "Run the official Raylib Lite tower defense example.",
+      "entrypoint": "examples/tower-defense/registry.json",
+      "upstream": "https://components.espressif.com/components/espressif2022/raylib-lite-engine/versions/0.1.1/examples/tower_defense"
+    },
+    {
+      "id": "last-zone-extraction",
+      "description": "Run the official Raylib Lite last zone extraction example.",
+      "entrypoint": "examples/last-zone-extraction/registry.json",
+      "upstream": "https://components.espressif.com/components/espressif2022/raylib-lite-engine/versions/0.1.1/examples/last_zone_extraction"
+    },
+    {
+      "id": "living-worlds",
+      "description": "Run the official Raylib Lite living worlds example.",
+      "entrypoint": "examples/living-worlds/registry.json",
+      "upstream": "https://components.espressif.com/components/espressif2022/raylib-lite-engine/versions/0.1.1/examples/living_worlds"
+    },
+    {
+      "id": "neon-rift-rally",
+      "description": "Run the official Raylib Lite neon rift rally example.",
+      "entrypoint": "examples/neon-rift-rally/registry.json",
+      "upstream": "https://components.espressif.com/components/espressif2022/raylib-lite-engine/versions/0.1.1/examples/neon_rift_rally"
     }
   ]
 }
