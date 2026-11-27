@@ -99,7 +99,7 @@ public:
         size = 0;
     }
 
-    void poll()
+    bool poll()
     {
         uint8_t bytes[128];
         const int count = uart_read_bytes(port, bytes, sizeof(bytes), 0);
@@ -109,16 +109,17 @@ public:
                 if (!discard) {
                     if (lastByte - firstByte + quietUs <= frameWindowUs) {
                         showResult(frame, size);
-                    } else {
-                        std::puts("QRCode2 frame timeout");
+                        reset();
+                        return true;
                     }
+                    std::puts("QRCode2 frame timeout");
                 }
                 reset();
             } else if (active && !discard && now - firstByte >= frameWindowUs) {
                 std::puts("QRCode2 frame timeout");
                 discard = true;
             }
-            return;
+            return false;
         }
 
         if (!active) {
@@ -127,16 +128,17 @@ public:
         }
         lastByte = now;
         if (discard) {
-            return;
+            return false;
         }
         if (now - firstByte >= frameWindowUs || size + count > sizeof(frame)) {
             std::puts(now - firstByte >= frameWindowUs ? "QRCode2 frame timeout" : "QRCode2 frame too long");
             // Drain this incomplete burst until silence before admitting a new result.
             discard = true;
-            return;
+            return false;
         }
         std::memcpy(frame + size, bytes, count);
         size += count;
+        return false;
     }
 
 private:
