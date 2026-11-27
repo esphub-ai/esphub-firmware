@@ -1,0 +1,143 @@
+--- a/examples/voice_wake_cmd/CMakeLists.txt
++++ b/examples/voice_wake_cmd/CMakeLists.txt
+@@ -1,5 +1,6 @@
+ cmake_minimum_required(VERSION 3.16)
+ 
++list(APPEND EXTRA_COMPONENT_DIRS "$ENV{EH_AGENT_DIR}")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ project(voice_wake_cmd)
+ 
+--- a/examples/voice_wake_cmd/main/CMakeLists.txt
++++ b/examples/voice_wake_cmd/main/CMakeLists.txt
+@@ -1,6 +1,7 @@
+ idf_component_register(
+     SRCS "main.c"
+     INCLUDE_DIRS "."
++    PRIV_REQUIRES eh_agent
+ )
+ 
+ idf_build_get_property(build_components BUILD_COMPONENTS)
+@@ -14,17 +15,15 @@
+ set(voice_data_image
+     "${esp_sr_path}/esp-tts/esp_tts_chinese/esp_tts_voice_data_xiaole.dat")
+ 
+-add_custom_target(voice_data ALL DEPENDS "${voice_data_image}")
+-add_dependencies(flash voice_data)
++target_add_binary_data(${COMPONENT_LIB} "${voice_data_image}" BINARY)
+ 
+-partition_table_get_partition_info(voice_data_size
+-    "--partition-name voice_data" "size")
+-partition_table_get_partition_info(voice_data_offset
+-    "--partition-name voice_data" "offset")
+-
+-if("${voice_data_size}" AND "${voice_data_offset}")
+-    esptool_py_flash_to_partition(flash "voice_data" "${voice_data_image}")
+-else()
+-    message(FATAL_ERROR
+-        "Partition table must contain a voice_data data partition")
+-endif()
++idf_build_get_property(build_dir BUILD_DIR)
++set(sr_model "${build_dir}/srmodels/srmodels.bin")
++add_custom_command(
++    OUTPUT "${sr_model}"
++    COMMAND python "${esp_sr_path}/model/movemodel.py"
++            -d1 "${SDKCONFIG}" -d2 "${esp_sr_path}" -d3 "${build_dir}"
++    DEPENDS "${SDKCONFIG}"
++    VERBATIM
++)
++target_add_binary_data(${COMPONENT_LIB} "${sr_model}" BINARY DEPENDS "${sr_model}")
+--- a/examples/voice_wake_cmd/main/idf_component.yml
++++ b/examples/voice_wake_cmd/main/idf_component.yml
+@@ -5,4 +5,4 @@
+   esp-mosaico-bsp:
+     path: ../../../components/esp-mosaico-bsp
+ 
+-  espressif/esp-sr: "^2.4.7"
++  espressif/esp-sr: "==2.4.7"
+--- a/examples/voice_wake_cmd/main/main.c
++++ b/examples/voice_wake_cmd/main/main.c
+@@ -9,6 +9,7 @@
+  * @brief WakeNet9 + MultiNet7 + Xiaole TTS on ESP-Mosaico (esp-sr).
+  */
+ 
++#include "eh_agent.h"
+ #include <string.h>
+ 
+ #include "bsp/esp_mosaico.h"
+@@ -21,7 +22,6 @@
+ #include "esp_mn_iface.h"
+ #include "esp_mn_models.h"
+ #include "esp_mn_speech_commands.h"
+-#include "esp_partition.h"
+ #include "esp_tts.h"
+ #include "esp_tts_voice_template.h"
+ #include "esp_wn_iface.h"
+@@ -38,29 +38,18 @@
+ static volatile bool s_running = true;
+ static esp_tts_handle_t s_tts;
+ static esp_tts_voice_t *s_tts_voice;
+-static esp_partition_mmap_handle_t s_voice_mmap;
++extern const uint8_t voice_start[] asm("_binary_esp_tts_voice_data_xiaole_dat_start");
++extern const uint8_t voice_end[] asm("_binary_esp_tts_voice_data_xiaole_dat_end");
+ static esp_codec_dev_handle_t s_spk;
+ static SemaphoreHandle_t s_speak_lock;
++extern const uint8_t sr_model_start[] asm("_binary_srmodels_bin_start");
+ static srmodel_list_t *s_models;
+ 
+ static esp_err_t tts_init(void)
+ {
+-    const esp_partition_t *partition = esp_partition_find_first(
+-        ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "voice_data");
+-    ESP_RETURN_ON_FALSE(partition, ESP_ERR_NOT_FOUND, TAG,
+-                        "voice_data partition not found");
+-
+-    const void *voice_data = NULL;
+-    ESP_RETURN_ON_ERROR(
+-        esp_partition_mmap(partition, 0, partition->size, ESP_PARTITION_MMAP_DATA,
+-                           &voice_data, &s_voice_mmap),
+-        TAG, "map voice_data");
+-
+-    s_tts_voice = esp_tts_voice_set_init(&esp_tts_voice_template, (void *)voice_data);
++    s_tts_voice = esp_tts_voice_set_init(&esp_tts_voice_template, (void *)voice_start);
+     if (!s_tts_voice) {
+-        esp_partition_munmap(s_voice_mmap);
+-        s_voice_mmap = 0;
+-        ESP_LOGE(TAG, "initialize Xiaole voice from voice_data failed");
++        ESP_LOGE(TAG, "initialize Xiaole voice from embedded voice data failed");
+         return ESP_FAIL;
+     }
+ 
+@@ -68,14 +57,12 @@
+     if (!s_tts) {
+         esp_tts_voice_set_free(s_tts_voice);
+         s_tts_voice = NULL;
+-        esp_partition_munmap(s_voice_mmap);
+-        s_voice_mmap = 0;
+         ESP_LOGE(TAG, "esp_tts_create failed");
+         return ESP_FAIL;
+     }
+ 
+-    ESP_LOGI(TAG, "TTS voice initialized from voice_data (%lu bytes)",
+-             (unsigned long)partition->size);
++    ESP_LOGI(TAG, "TTS voice initialized from embedded voice data (%lu bytes)",
++             (unsigned long)(voice_end - voice_start));
+     return ESP_OK;
+ }
+ 
+@@ -212,6 +199,7 @@
+ 
+ void app_main(void)
+ {
++    ESP_ERROR_CHECK(eh_agent_start());
+     s_speak_lock = xSemaphoreCreateMutex();
+     ESP_ERROR_CHECK(s_speak_lock ? ESP_OK : ESP_ERR_NO_MEM);
+     s_spk = bsp_audio_codec_speaker_init();
+@@ -232,7 +220,7 @@
+     (void)esp_codec_dev_set_out_vol(s_spk, 60);
+     ESP_ERROR_CHECK(tts_init());
+ 
+-    s_models = esp_srmodel_init("model");
++    s_models = srmodel_load(sr_model_start);
+     ESP_ERROR_CHECK(s_models ? ESP_OK : ESP_ERR_NOT_FOUND);
+     char *wn_name = esp_srmodel_filter(s_models, ESP_WN_PREFIX, "hilexin");
+     if (!wn_name) {

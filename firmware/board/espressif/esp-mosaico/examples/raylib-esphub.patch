@@ -1,0 +1,54 @@
+--- a/shared/common_components/examples_common/project.cmake
++++ b/shared/common_components/examples_common/project.cmake
+@@ -39,6 +39,7 @@
+ message(STATUS "Raylib Lite Board adapter: ${RAYLIB_LITE_BOARD}")
+ 
+ list(APPEND EXTRA_COMPONENT_DIRS
++    "$ENV{EH_AGENT_DIR}"
+     "${CMAKE_CURRENT_LIST_DIR}"
+     "${CMAKE_CURRENT_LIST_DIR}/../examples_audio"
+     "${RAYLIB_LITE_BOARD_DIR}")
+@@ -60,3 +61,5 @@
+ if(EXISTS "${_raylib_lite_board_project}")
+     include("${_raylib_lite_board_project}")
+ endif()
++
++list(APPEND SDKCONFIG_DEFAULTS "${CMAKE_SOURCE_DIR}/sdkconfig.defaults")
+--- a/shared/common_components/examples_common/CMakeLists.txt
++++ b/shared/common_components/examples_common/CMakeLists.txt
+@@ -15,7 +15,7 @@
+         esp_timer
+         heap
+         log
+-    PRIV_REQUIRES freertos ${_native_services})
++    PRIV_REQUIRES eh_agent freertos ${_native_services})
+ 
+ if(DEFINED RAYLIB_LITE_EXAMPLE_TARGET_FPS)
+     target_compile_definitions(${COMPONENT_LIB} PRIVATE
+--- a/shared/common_components/examples_common/native_module_main.c
++++ b/shared/common_components/examples_common/native_module_main.c
+@@ -6,6 +6,7 @@
+  */
+ #include <stdlib.h>
+ 
++#include "eh_agent.h"
+ #include "esp_err.h"
+ #include "esp_heap_caps.h"
+ #include "esp_log.h"
+@@ -214,6 +215,7 @@
+ 
+ void app_main(void)
+ {
++    ESP_ERROR_CHECK(eh_agent_start());
+ #if RAYLIB_LITE_NATIVE_SERVICES_ENABLED
+     s_services = raylib_lite_native_services_get();
+     if (!s_services || !s_services->boot || !s_services->attach ||
+--- a/main/idf_component.yml
++++ b/main/idf_component.yml
+@@ -1,5 +1,5 @@
+ dependencies:
+   espressif/esp_board_manager: ^0.7.1
+   espressif2022/raylib-lite-engine:
+-    version: ^0.1.1
++    version: "==0.1.1"
+   idf: '>=6.1'

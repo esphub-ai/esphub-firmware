@@ -1,0 +1,61 @@
+--- a/examples/camera_photo_app/CMakeLists.txt
++++ b/examples/camera_photo_app/CMakeLists.txt
+@@ -1,4 +1,5 @@
+ cmake_minimum_required(VERSION 3.16)
+ 
++list(APPEND EXTRA_COMPONENT_DIRS "$ENV{EH_AGENT_DIR}")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ project(camera_photo_app)
+--- a/examples/camera_photo_app/main/CMakeLists.txt
++++ b/examples/camera_photo_app/main/CMakeLists.txt
+@@ -21,5 +21,5 @@
+ idf_component_register(
+     SRCS ${srcs}
+     INCLUDE_DIRS "."
+-    PRIV_REQUIRES ${priv_requires}
++    PRIV_REQUIRES eh_agent ${priv_requires}
+ )
+--- a/examples/camera_photo_app/main/main.c
++++ b/examples/camera_photo_app/main/main.c
+@@ -3,6 +3,7 @@
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
++#include "eh_agent.h"
+ #include <inttypes.h>
+ #include <stddef.h>
+ #include <stdint.h>
+@@ -1075,6 +1076,7 @@
+ 
+ void app_main(void)
+ {
++    ESP_ERROR_CHECK(eh_agent_start());
+     ESP_LOGI(TAG, "Camera photo app: Camera sub-board in LEFT slot");
+     ESP_ERROR_CHECK(app_init());
+     ESP_ERROR_CHECK(camera_settings_init());
+--- a/examples/camera_photo_app/main/camera_settings.c
++++ b/examples/camera_photo_app/main/camera_settings.c
+@@ -18,11 +18,7 @@
+ esp_err_t camera_settings_init(void)
+ {
+     esp_err_t ret = nvs_flash_init();
+-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+-        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+-        ESP_RETURN_ON_ERROR(nvs_flash_erase(), TAG, "erase NVS failed");
+-        ret = nvs_flash_init();
+-    } else if (ret == ESP_ERR_INVALID_STATE) {
++    if (ret == ESP_ERR_INVALID_STATE) {
+         ret = ESP_OK;
+     }
+     ESP_RETURN_ON_ERROR(ret, TAG, "initialize NVS failed");
+--- a/examples/camera_photo_app/sdkconfig.defaults
++++ b/examples/camera_photo_app/sdkconfig.defaults
+@@ -6,7 +6,7 @@
+ # GPIO33 is camera D2 and shares the USB Serial/JTAG D- pad.
+ CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+ # CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+-# CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
++CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+ # CONFIG_USJ_ENABLE_USB_SERIAL_JTAG is not set
+ 
+ CONFIG_SPIRAM=y

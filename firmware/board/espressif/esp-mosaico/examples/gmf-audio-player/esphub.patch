@@ -1,0 +1,35 @@
+--- a/examples/gmf_audio_player/CMakeLists.txt
++++ b/examples/gmf_audio_player/CMakeLists.txt
+@@ -1,4 +1,5 @@
+ cmake_minimum_required(VERSION 3.16)
+ 
++list(APPEND EXTRA_COMPONENT_DIRS "$ENV{EH_AGENT_DIR}")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ project(gmf_audio_player)
+--- a/examples/gmf_audio_player/main/CMakeLists.txt
++++ b/examples/gmf_audio_player/main/CMakeLists.txt
+@@ -1,5 +1,6 @@
+ idf_component_register(
+     SRCS "main.c"
+     INCLUDE_DIRS "."
++    PRIV_REQUIRES eh_agent
+     EMBED_FILES "alarm.mp3"
+ )
+--- a/examples/gmf_audio_player/main/main.c
++++ b/examples/gmf_audio_player/main/main.c
+@@ -12,6 +12,7 @@
+  * (Espressif Apache-2.0 sample tone).
+  */
+ 
++#include "eh_agent.h"
+ #include <string.h>
+ 
+ #include "bsp/esp_mosaico.h"
+@@ -104,6 +105,7 @@
+ 
+ void app_main(void)
+ {
++    ESP_ERROR_CHECK(eh_agent_start());
+     ESP_LOGI(TAG, "GMF simple player → ES8311");
+ 
+     s_speaker = bsp_audio_codec_speaker_init();
