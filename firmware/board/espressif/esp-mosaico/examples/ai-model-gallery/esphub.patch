@@ -33,3 +33,14 @@
      ESP_LOGI(TAG, "AI model gallery — press AI to cycle face/coco/idle");
      const esp_err_t led_ret = bsp_led_init();
      if (led_ret == ESP_ERR_NOT_SUPPORTED) {
+--- a/examples/ai_model_gallery/sdkconfig.defaults
++++ b/examples/ai_model_gallery/sdkconfig.defaults
+@@ -10,7 +10,7 @@
+ # GPIO33 is camera D2 and shares the USB Serial/JTAG D- pad.
+ CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+ # CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+-# CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
++CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+ # CONFIG_USJ_ENABLE_USB_SERIAL_JTAG is not set
+ 
+ CONFIG_SPIRAM=y
