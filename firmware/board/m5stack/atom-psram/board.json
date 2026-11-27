@@ -54,6 +54,12 @@
       "description": "Run three pinned FreeRTOS tasks at different priorities and periods while the Atom-PSRAM RGB pixel is orange.",
       "entrypoint": "examples/multitask/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/MultiTask/MultiTask.ino"
+    },
+    {
+      "id": "led-set",
+      "description": "Cycle the Atom-PSRAM RGB pixel through four colors with the board button.",
+      "entrypoint": "examples/led-set/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Basics/LEDSet/LEDSet.ino"
     }
   ]
 }
