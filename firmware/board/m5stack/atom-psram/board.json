@@ -30,6 +30,96 @@
       "description": "Create a LittleFS note on the Atom-PSRAM and read it over serial with the board button.",
       "entrypoint": "examples/storage-notes/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS/SPIFFS.ino"
+    },
+    {
+      "id": "storage-append",
+      "description": "Create an empty LittleFS note or append one line to the existing note at startup.",
+      "entrypoint": "examples/storage-append/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS_Add/SPIFFS_Add.ino"
+    },
+    {
+      "id": "storage-delete",
+      "description": "Delete the regular LittleFS sample note on Atom-PSRAM and report the result over serial.",
+      "entrypoint": "examples/storage-delete/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS_Delete/SPIFFS_Delete.ino"
+    },
+    {
+      "id": "eeprom",
+      "description": "Write and read a persistent 32-byte EEPROM sample using the Atom-PSRAM button.",
+      "entrypoint": "examples/eeprom/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/EEPROM/EEPROM.ino"
+    },
+    {
+      "id": "multitask",
+      "description": "Run three pinned FreeRTOS tasks at different priorities and periods while the Atom-PSRAM RGB pixel is orange.",
+      "entrypoint": "examples/multitask/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/MultiTask/MultiTask.ino"
+    },
+    {
+      "id": "led-set",
+      "description": "Cycle the Atom-PSRAM RGB pixel through four colors with the board button.",
+      "entrypoint": "examples/led-set/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Basics/LEDSet/LEDSet.ino"
+    },
+    {
+      "id": "mult-serial",
+      "description": "Forward raw bytes bidirectionally between UART0 and the Grove UART on Atom-PSRAM.",
+      "entrypoint": "examples/mult-serial/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/MultSerial/MultSerial.ino"
+    },
+    {
+      "id": "atomic-rs485",
+      "description": "Send a byte on button press and indicate RS485 send and receive events on the RGB pixel. Requires the A131 base in place of Atom Display.",
+      "entrypoint": "examples/atomic-rs485/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_RS485/ATOM_RS485.ino"
+    },
+    {
+      "id": "atomic-can",
+      "description": "Exchange 500 kbit/s CAN frames and show replies on the RGB pixel. Requires Atomic CAN Base A103 in place of Atom Display.",
+      "entrypoint": "examples/atomic-can/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_CAN/ATOM_CAN.ino"
+    },
+    {
+      "id": "atomic-motion",
+      "description": "Cycle four servo angles and switch two motor commands with the button. Requires the Atom Motion base in place of Atom Display.",
+      "entrypoint": "examples/atomic-motion/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_Motion/ATOM_Motion.ino"
+    },
+    {
+      "id": "atomic-qrcode-button",
+      "description": "Hold the Atom button to trigger the QR reader and forward decoded bytes to the serial console.",
+      "entrypoint": "examples/atomic-qrcode-button/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_QRCode/BTN_CONTROL/BTN_CONTROL.ino"
+    },
+    {
+      "id": "atomic-qrcode-uart",
+      "description": "Send scanner commands over UART and forward scanner responses to the serial console.",
+      "entrypoint": "examples/atomic-qrcode-uart/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_QRCode/UART_CMD_CONTROL/UART_CMD_CONTROL.ino"
+    },
+    {
+      "id": "atomic-switch",
+      "description": "Use the button and breathing pixel to select and toggle either output on the K042 Switch base.",
+      "entrypoint": "examples/atomic-switch/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_Switch/ATOM_Switch.ino"
+    },
+    {
+      "id": "atomic-stepmotor",
+      "description": "Move a DRV8825 stepper forward and back on a button press.",
+      "entrypoint": "examples/atomic-stepmotor/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_StepMotor/ATOM_StepMotor.ino"
+    },
+    {
+      "id": "scales-kit",
+      "description": "Read an HX711 Weight Unit on Grove and tare it with the board button.",
+      "entrypoint": "examples/scales-kit/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/KIT/SCALES_KIT/SCALES_KIT.ino"
+    },
+    {
+      "id": "button-colors",
+      "description": "Show initial red and cycle dim red, green, blue and white on GPIO39 presses.",
+      "entrypoint": "examples/button-colors/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Basics/Button/Button.ino"
     }
   ]
 }
