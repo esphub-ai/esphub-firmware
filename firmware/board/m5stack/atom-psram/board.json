@@ -24,6 +24,12 @@
       "description": "Increment a persistent boot counter and restart the Atom-PSRAM after ten seconds.",
       "entrypoint": "examples/counter/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/Counter/Counter.ino"
+    },
+    {
+      "id": "storage-notes",
+      "description": "Create a LittleFS note on the Atom-PSRAM and read it over serial with the board button.",
+      "entrypoint": "examples/storage-notes/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS/SPIFFS.ino"
     }
   ]
 }
