@@ -47,10 +47,10 @@ on:
 run-name: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'Catch up main board builds' || '' }}
 permissions: {contents: read}
 # PR events and SDK-bot dispatches for the same PR share a group with the
-# merged-PR cleanup workflow. Automatic main batches run one at a time.
+# merged-PR cleanup workflow. Automatic main batches run one at a time, and a newer
+# batch replaces a waiting one: each batch covers every change since the last coverage record.
 concurrency:
   group: board-firmware-${{ (github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'main') || (github.event.pull_request.number || inputs.pr_number) && format('pr-{0}', github.event.pull_request.number || inputs.pr_number) || format('run-{0}', github.run_id) }}
-  queue: ${{ github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'max' || 'single' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '') }}
 jobs:
   context:
