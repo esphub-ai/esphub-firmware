@@ -154,6 +154,12 @@
       "description": "Receive and print Mini CAN Unit frames on a 25 kbit/s CAN bus.",
       "entrypoint": "examples/mini-can-slave/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Unit/MiniCAN_TJA1051T/Slave/Slave.ino"
+    },
+    {
+      "id": "uiflow-can-base",
+      "description": "Send and receive frames with the AtomS3 Atomic CAN Base at 1 Mbit/s.",
+      "entrypoint": "examples/uiflow-can-base/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/can/atoms3_can_example.py"
     }
   ]
 }
