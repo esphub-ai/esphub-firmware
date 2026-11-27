@@ -66,6 +66,12 @@
       "description": "Forward raw bytes bidirectionally between UART0 and the Grove UART on Atom-PSRAM.",
       "entrypoint": "examples/mult-serial/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/MultSerial/MultSerial.ino"
+    },
+    {
+      "id": "atomic-rs485",
+      "description": "Send a byte on button press and indicate RS485 send and receive events on the RGB pixel. Requires the A131 base in place of Atom Display.",
+      "entrypoint": "examples/atomic-rs485/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_RS485/ATOM_RS485.ino"
     }
   ]
 }
