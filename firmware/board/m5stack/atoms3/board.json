@@ -7,7 +7,8 @@
   "m5_board_id": 11,
   "default_example": "display-shapes",
   "shared_example_inputs": {
-    "storage_io.hpp": ["storage-notes", "storage-append", "storage-delete"]
+    "storage_io.hpp": ["storage-notes", "storage-append", "storage-delete"],
+    "atomic_poe.hpp": ["atomic-poe-http", "atomic-poe-mqtt"]
   },
   "examples": [
     {
@@ -117,6 +118,12 @@
       "description": "Use Atomic PoE Base Ethernet and DHCP to make HTTP GET and POST requests. Read the responses on the LCD and serial console.",
       "entrypoint": "examples/atomic-poe-http/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/HTTP/HTTP.ino"
+    },
+    {
+      "id": "atomic-poe-mqtt",
+      "description": "Publish and subscribe over wired Ethernet using an Atomic PoE Base. Show MQTT activity on the LCD and serial console.",
+      "entrypoint": "examples/atomic-poe-mqtt/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/MQTT/MQTT.ino"
     }
   ]
 }
