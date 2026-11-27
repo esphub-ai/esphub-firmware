@@ -136,6 +136,12 @@
       "description": "Play /11-fanfare.mp3 from the Atomic SPK Base microSD card over I2S and report playback status.",
       "entrypoint": "examples/atomic-spk-mp3/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicSPK/PlayMP3FromSD/PlayMP3FromSD.ino"
+    },
+    {
+      "id": "atomic-spk-raw-pcm",
+      "description": "Play a raw PCM click through the Atomic SPK Base when BtnA is clicked.",
+      "entrypoint": "examples/atomic-spk-raw-pcm/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicSPK/PlayRawPCM/PlayRawPCM.ino"
     }
   ]
 }
