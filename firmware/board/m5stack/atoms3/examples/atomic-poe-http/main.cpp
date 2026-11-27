@@ -95,11 +95,11 @@ void startEthernet(Network& network)
     spi.clock_speed_hz = 4 * 1000 * 1000;
     spi.spics_io_num = GPIO_NUM_6;
     spi.queue_size = 1;
-    auto w5500 = ETH_W5500_DEFAULT_CONFIG(SPI2_HOST, &spi);
+    eth_w5500_config_t w5500 = ETH_W5500_DEFAULT_CONFIG(SPI2_HOST, &spi);
     w5500.int_gpio_num = -1;
     w5500.poll_period_ms = 30;
-    auto macConfig = ETH_MAC_DEFAULT_CONFIG();
-    auto phyConfig = ETH_PHY_DEFAULT_CONFIG();
+    eth_mac_config_t macConfig = ETH_MAC_DEFAULT_CONFIG();
+    eth_phy_config_t phyConfig = ETH_PHY_DEFAULT_CONFIG();
     phyConfig.reset_gpio_num = -1;
     phyConfig.phy_addr = 0;
 
@@ -107,7 +107,7 @@ void startEthernet(Network& network)
         auto* mac = esp_eth_mac_new_w5500(&w5500, &macConfig);
         auto* phy = esp_eth_phy_new_w5500(&phyConfig);
         ESP_ERROR_CHECK(mac && phy ? ESP_OK : ESP_ERR_NO_MEM);
-        auto config = ETH_DEFAULT_CONFIG(mac, phy);
+        esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
         if (esp_eth_driver_install(&config, &network.driver) == ESP_OK) break;
         phy->del(phy);
         mac->del(mac);
