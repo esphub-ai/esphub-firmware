@@ -32,9 +32,9 @@ test("builds the example and source links the Hub serves", () => {
   );
 });
 
-// Requires an EspHub database migrated through esphub migration 024. Changes are rolled back.
+// Requires an EspHub database migrated through esphub migration 026. Changes are rolled back.
 test(
-  "publishes current boards and keeps retired boards on their pinned sources",
+  "publishes current board examples and keeps retired boards on their pinned sources",
   { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const sql = postgres(process.env.TEST_DATABASE_URL, { max: 1, prepare: false });
@@ -55,14 +55,13 @@ test(
         await tx`UPDATE esphub.board_sources SET is_current = false WHERE is_current`;
         await tx`INSERT INTO esphub.board_sources (revision, sdk_version, is_current, sdk_source_url)
           VALUES (${old}, '7.0.0', true, ${sdkSourceUrl(old)})`;
-        await tx`INSERT INTO esphub.boards
-          (id, source_revision, name, model, chip, flash_mb, default_example, preview,
-           published_examples, bootloader_source_url)
-          VALUES ('test/retired', ${old}, 'Retired', 'Retired', 'esp32s3', 16, 'hello', false,
+        await tx`INSERT INTO esphub.board_examples
+          (board, source_revision, default_example, published_examples, bootloader_source_url)
+          VALUES ('test/retired', ${old}, 'hello',
             ${tx.json(retired.published_examples)}, ${retired.bootloader_source_url})`;
         const links = async (id) => {
-          const [row] = await tx`SELECT b.source_revision, b.bootloader, b.published_examples, b.bootloader_source_url, s.sdk_source_url
-            FROM esphub.boards b JOIN esphub.board_sources s ON s.revision = b.source_revision WHERE b.id = ${id}`;
+          const [row] = await tx`SELECT b.source_revision, b.default_example, b.published_examples, b.bootloader_source_url, s.sdk_source_url
+            FROM esphub.board_examples b JOIN esphub.board_sources s ON s.revision = b.source_revision WHERE b.board = ${id}`;
           return row;
         };
         const catalog = { boards: { "test/current": profile("test/current") }, revision, sdk_version: "8.0.0" };
@@ -71,13 +70,13 @@ test(
         assert.equal(await publishCatalog(tx, catalog), 1);
         assert.deepEqual(await links("test/current"), {
           source_revision: revision,
-          bootloader: "esp32s3-16mb",
+          default_example: "hello",
           sdk_source_url: sdkSourceUrl(revision),
           ...boardLinks("test/current", profile(), revision),
         });
         assert.deepEqual(await links("test/retired"), {
           source_revision: old,
-          bootloader: null,
+          default_example: "hello",
           sdk_source_url: sdkSourceUrl(old),
           ...retired,
         });

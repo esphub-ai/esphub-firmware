@@ -18,37 +18,35 @@ export function boardLinks(id, { bootloader, examples }, revision) {
   };
 }
 
-// Publish the board directory at this revision. Retired boards keep their pinned sources
-// for existing devices and versioned downloads.
+// Publish the example catalog at this revision. Hardware board specs are owned by
+// esphub-boards (esphub.boards); this script writes only esphub.board_examples and
+// esphub.board_sources. Retired boards keep their pinned sources for existing devices.
 export async function publishCatalog(tx, { boards, revision, sdk_version }) {
   await tx`SELECT pg_advisory_xact_lock(hashtext('esphub.board_catalog'))`;
   const [current] =
     await tx`SELECT revision FROM esphub.board_sources WHERE is_current`;
   if (current?.revision === revision) return 0;
-  const rows = Object.entries(boards).map(([id, profile]) => ({
-    id,
-    ...profile,
-    ...boardLinks(id, profile, revision),
+  const rows = Object.entries(boards).map(([board, profile]) => ({
+    board,
+    default_example: profile.default_example,
+    ...boardLinks(board, profile, revision),
   }));
   await tx`UPDATE esphub.board_sources SET is_current = false WHERE is_current`;
   await tx`INSERT INTO esphub.board_sources (revision, sdk_version, is_current, sdk_source_url)
     VALUES (${revision}, ${sdk_version}, true, ${sdkSourceUrl(revision)})
     ON CONFLICT (revision) DO UPDATE SET is_current = true, sdk_source_url = excluded.sdk_source_url`;
-  await tx`INSERT INTO esphub.boards
-      (id, source_revision, name, model, chip, flash_mb, bootloader, default_example, preview,
-       published_examples, bootloader_source_url)
-    SELECT id, ${revision}, name, model, chip, flash_mb, bootloader, default_example, coalesce(preview, false),
-      published_examples, bootloader_source_url
-    FROM jsonb_to_recordset(${tx.json(rows)}::jsonb) AS b(id text, name text, model text, chip text,
-      flash_mb int, bootloader text, default_example text, preview boolean,
+  await tx`INSERT INTO esphub.board_examples
+      (board, source_revision, default_example, published_examples, bootloader_source_url)
+    SELECT board, ${revision}, default_example, published_examples, bootloader_source_url
+    FROM jsonb_to_recordset(${tx.json(rows)}::jsonb) AS b(board text, default_example text,
       published_examples jsonb, bootloader_source_url text)
-    ON CONFLICT (id) DO UPDATE SET
-      source_revision = excluded.source_revision, name = excluded.name, model = excluded.model, chip = excluded.chip,
-      flash_mb = excluded.flash_mb, bootloader = excluded.bootloader, default_example = excluded.default_example,
-      preview = excluded.preview, published_examples = excluded.published_examples,
+    ON CONFLICT (board) DO UPDATE SET
+      source_revision = excluded.source_revision,
+      default_example = excluded.default_example,
+      published_examples = excluded.published_examples,
       bootloader_source_url = excluded.bootloader_source_url`;
   await tx`DELETE FROM esphub.board_sources s WHERE NOT s.is_current
-    AND NOT EXISTS (SELECT 1 FROM esphub.boards b WHERE b.source_revision = s.revision)`;
+    AND NOT EXISTS (SELECT 1 FROM esphub.board_examples b WHERE b.source_revision = s.revision)`;
   return rows.length;
 }
 
@@ -63,7 +61,7 @@ if (
   try {
     const published = await sql.begin((tx) => publishCatalog(tx, catalog));
     if (published)
-      console.log(`Published ${published} board profiles at ${catalog.revision}`);
+      console.log(`Published ${published} board example catalogs at ${catalog.revision}`);
   } finally {
     await sql.end();
   }
