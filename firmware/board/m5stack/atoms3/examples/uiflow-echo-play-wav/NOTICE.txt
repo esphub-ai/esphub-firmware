@@ -1,0 +1,13 @@
+UiFlow2 Atomic Echo Base continuous Flash WAV playback, v2.5.5 (a61a294).
+Copyright 2025 M5Stack Technology CO LTD. MIT.
+https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/echo/atoms3_play_wav_example.py
+https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/m5stack/libs/base/echo.py
+https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/LICENSE
+
+Retains the MIT Echo Base hardware setup from the record/playback port.
+The original 66.wav has no verified redistribution provenance. The app
+substitutes an original build-generated 16 kHz mono PCM WAV with dual-mono I2S output, under this
+repository's MIT license. It resides in app Flash and needs no filesystem
+or asset download. The example plays through once, then idles in M5.update(). No upstream recording is distributed.
+
+M5Unified and M5GFX are MIT. ESP-IDF I2S and the driver APIs are Apache-2.0.
