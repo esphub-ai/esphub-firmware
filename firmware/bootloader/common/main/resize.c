@@ -9,19 +9,18 @@
 #include "esp_idf_version.h"
 #include "esp_image_format.h"
 #include "esp_ota_ops.h"
-#include "esp_rom_crc.h"
+#include "littlefs_root.h"
 #include "esp_rom_md5.h"
 #if ESP_IDF_VERSION_MAJOR >= 6
 #include "esp_private/esp_flash_internal.h"
 #else
 #include "esp_flash_internal.h"
 #endif
-#include "mbedtls/base64.h"
 #include "nvs.h"
 
 #define SECTOR 4096U
 #define APP_ALIGNMENT 65536U
-#define SEED_RECORD 128U
+#define SEED_RECORD LITTLEFS_ROOT_RECORD
 
 static const esp_partition_t *app_slot(void)
 {
@@ -172,17 +171,6 @@ static esp_err_t write_table(const esp_partition_t *table, const void *sector)
     return rc;
 }
 
-static bool valid_root(const uint8_t *root, uint32_t revision, uint32_t size)
-{
-    uint32_t header_revision, block_size, block_count;
-    memcpy(&header_revision, root, sizeof(header_revision));
-    memcpy(&block_size, root + 24, sizeof(block_size));
-    memcpy(&block_count, root + 28, sizeof(block_count));
-    return header_revision == revision && !memcmp(root + 8, "littlefs", 8) &&
-           block_size == SECTOR && block_count == size / SECTOR &&
-           esp_rom_crc32_le(0, root, 64) == UINT32_MAX;
-}
-
 static esp_err_t apply_resize(const esp_partition_t *app, const esp_partition_t *data,
                               uint32_t size, const uint8_t *seed, const char *pending, bool *reboot)
 {
@@ -245,14 +233,12 @@ esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error
         strlcpy(error, "Installed app exceeds target or is invalid", error_len);
         return ESP_ERR_INVALID_SIZE;
     }
-    const char *encoded = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(args, "empty_fs"));
     const char *id = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(args, "transfer_id"));
+    if (!id || strlen(id) != 36) return ESP_ERR_INVALID_ARG;
+    // Format the new volume as lfs_format would. Earlier Hubs also send empty_fs; it is ignored.
     uint8_t seed[2 * SEED_RECORD];
-    size_t decoded;
-    if (!encoded || strlen(encoded) != 344 || !id || strlen(id) != 36 ||
-        mbedtls_base64_decode(seed, sizeof(seed), &decoded, (const uint8_t *)encoded, 344) ||
-        decoded != sizeof(seed) || !valid_root(seed, 1, data_size) ||
-        !valid_root(seed + SEED_RECORD, 2, data_size)) return ESP_ERR_INVALID_ARG;
+    littlefs_empty_root(seed, 1, data_size / SECTOR);
+    littlefs_empty_root(seed + SEED_RECORD, 2, data_size / SECTOR);
 
     cJSON *marker = cJSON_Duplicate(result, true);
     if (!marker) return ESP_ERR_NO_MEM;

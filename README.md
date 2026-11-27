@@ -6,7 +6,7 @@ See the [Waveshare, Seeed Studio and LILYGO board index](docs/esp32s3-boards/REA
 
 ## Build
 
-Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one.
+Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one. The [firmware glossary](docs/firmware-terminology.md) describes the EspHub Bootloader, SDK, applications and flash layout.
 
 Start the SDK from the application entrypoint:
 
