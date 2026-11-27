@@ -154,7 +154,7 @@ void displayResponse(const char* method, int status, const Response& response)
     std::snprintf(heading, sizeof(heading), "%s %d", method, status);
     const auto pages = std::max<size_t>(1, (response.length + columns * rows - 1) / (columns * rows));
     for (size_t page = 0; page < pages; ++page) {
-        char detail[24];
+        char detail[40];
         std::snprintf(detail, sizeof(detail), "Response %u/%u%s",
                       unsigned(page + 1), unsigned(pages), response.truncated ? " +" : "");
         show(heading, detail);
