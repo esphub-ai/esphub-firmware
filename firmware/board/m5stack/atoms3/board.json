@@ -281,6 +281,12 @@
       "description": "Click BtnA for an M14 trigger pulse and show the latest decoded result.",
       "entrypoint": "examples/uiflow-qrcode2-pulse/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/qrcode2/atoms3_qrcode2_pulse_mode_example.py"
+    },
+    {
+      "id": "uiflow-spk-wav",
+      "description": "Play a built-in WAV followed by /66.wav on the Atomic SPK Base microSD card.",
+      "entrypoint": "examples/uiflow-spk-wav/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/speaker/atoms3_speaker_example.py"
     }
   ]
 }
