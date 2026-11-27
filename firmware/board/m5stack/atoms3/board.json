@@ -160,6 +160,12 @@
       "description": "Send and receive frames with the AtomS3 Atomic CAN Base at 1 Mbit/s.",
       "entrypoint": "examples/uiflow-can-base/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/can/atoms3_can_example.py"
+    },
+    {
+      "id": "uiflow-nbiot-http",
+      "description": "Send the UiFlow2 HTTP POST through the Atom DTU SIM7020 NB-IoT modem.",
+      "entrypoint": "examples/uiflow-nbiot-http/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/dtu_nbiot/atoms3_base_nbiot_http_example.py"
     }
   ]
 }
