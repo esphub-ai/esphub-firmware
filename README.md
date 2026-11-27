@@ -44,7 +44,7 @@ Pull requests that add or edit optional examples compile just those examples on 
 
 On `main`, the planner checks all changes since `ci/firmware-coverage`, including changes that were later reverted. A board example selects its own board. Shared SDK or build-recipe changes can select multiple boards. Missing or cancelled work keeps the revision pending. Applications compile in shared shards first. A compile error fails its shard, which skips the board jobs and the coverage record, so the revision stays pending and the next run retries it. A board job that fails after its shard succeeded counts as an attempt and stays visible in CI.
 
-An hourly check dispatches outstanding builds. To catch up immediately, dispatch **Board firmware** on `main` with the board field empty.
+A newer push replaces a batch that is still waiting, since the next batch covers its changes. An hourly check dispatches outstanding builds. To catch up immediately, dispatch **Board firmware** on `main` with the board field empty.
 
 ## Application messages
 
