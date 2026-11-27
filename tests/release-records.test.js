@@ -18,8 +18,6 @@ test("builds one immutable file row per asset", () => {
       tag,
       asset: "app",
       board: "m5stack/stopwatch",
-      kind: "app",
-      version: "2.0.41",
       object_key: `releases/${tag}/esphub-m5stack_stopwatch-app-2.0.41.bin`,
       size: null,
     }],

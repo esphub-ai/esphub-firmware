@@ -35,16 +35,16 @@ export async function publishCatalog(tx, { boards, revision, sdk_version }) {
     VALUES (${revision}, ${sdk_version}, true, ${sdkSourceUrl(revision)})
     ON CONFLICT (revision) DO UPDATE SET is_current = true, sdk_source_url = excluded.sdk_source_url`;
   await tx`INSERT INTO esphub.boards
-      (id, source_revision, name, model, chip, flash_mb, bootloader, default_example, preview,
+      (id, source_revision, name, model, chip, flash_mb, default_example, preview,
        published_examples, bootloader_source_url)
-    SELECT id, ${revision}, name, model, chip, flash_mb, bootloader, default_example, coalesce(preview, false),
+    SELECT id, ${revision}, name, model, chip, flash_mb, default_example, coalesce(preview, false),
       published_examples, bootloader_source_url
     FROM jsonb_to_recordset(${tx.json(rows)}::jsonb) AS b(id text, name text, model text, chip text,
-      flash_mb int, bootloader text, default_example text, preview boolean,
+      flash_mb int, default_example text, preview boolean,
       published_examples jsonb, bootloader_source_url text)
     ON CONFLICT (id) DO UPDATE SET
       source_revision = excluded.source_revision, name = excluded.name, model = excluded.model, chip = excluded.chip,
-      flash_mb = excluded.flash_mb, bootloader = excluded.bootloader, default_example = excluded.default_example,
+      flash_mb = excluded.flash_mb, default_example = excluded.default_example,
       preview = excluded.preview, published_examples = excluded.published_examples,
       bootloader_source_url = excluded.bootloader_source_url`;
   await tx`DELETE FROM esphub.board_sources s WHERE NOT s.is_current

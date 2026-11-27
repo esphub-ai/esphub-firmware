@@ -1,13 +1,11 @@
 // Neon records of published releases. The Hub serves downloads from these rows,
 // so it needs neither this repository's release naming nor the R2 object layout.
 
-export function assetRows({ board, kind, version, tag, files }) {
+export function assetRows({ board, tag, files }) {
   return Object.entries(files).map(([asset, { name, size }]) => ({
     tag,
     asset,
     board,
-    kind,
-    version,
     object_key: `releases/${tag}/${name}`,
     size: size ?? null,
   }));
@@ -18,7 +16,7 @@ export async function recordAssets(tx, rows) {
   for (let i = 0; i < rows.length; i += 1000) {
     const batch = rows.slice(i, i + 1000);
     await tx`INSERT INTO esphub.release_assets
-      ${tx(batch, "tag", "asset", "board", "kind", "version", "object_key", "size")}
+      ${tx(batch, "tag", "asset", "board", "object_key", "size")}
       ON CONFLICT (tag, asset) DO NOTHING`;
   }
 }

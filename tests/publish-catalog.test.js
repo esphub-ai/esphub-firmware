@@ -56,9 +56,9 @@ test(
         await tx`INSERT INTO esphub.board_sources (revision, sdk_version, is_current, sdk_source_url)
           VALUES (${old}, '7.0.0', true, ${sdkSourceUrl(old)})`;
         await tx`INSERT INTO esphub.boards
-          (id, source_revision, name, model, chip, flash_mb, bootloader, default_example, preview,
+          (id, source_revision, name, model, chip, flash_mb, default_example, preview,
            published_examples, bootloader_source_url)
-          VALUES ('test/retired', ${old}, 'Retired', 'Retired', 'esp32s3', 16, 'esp32s3-16mb', 'hello', false,
+          VALUES ('test/retired', ${old}, 'Retired', 'Retired', 'esp32s3', 16, 'hello', false,
             ${tx.json(retired.published_examples)}, ${retired.bootloader_source_url})`;
         const links = async (id) => {
           const [row] = await tx`SELECT b.source_revision, b.published_examples, b.bootloader_source_url, s.sdk_source_url
