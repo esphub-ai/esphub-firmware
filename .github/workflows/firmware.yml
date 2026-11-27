@@ -14,6 +14,8 @@ on:
       - '.github/workflows/firmware.yml'
       - '.github/actions/build-kit/**'
       - '.github/workflows/build-board.yml'
+      - '.github/workflows/build-app-shard.yml'
+      - 'scripts/build-app-shard.py'
       - '.github/workflows/build-variant.yml'
       - '.github/workflows/build-bootloader.yml'
       - 'shared/*.js'
@@ -31,6 +33,8 @@ on:
       - '.github/workflows/firmware.yml'
       - '.github/actions/build-kit/**'
       - '.github/workflows/build-board.yml'
+      - '.github/workflows/build-app-shard.yml'
+      - 'scripts/build-app-shard.py'
       - '.github/workflows/build-variant.yml'
       - '.github/workflows/build-bootloader.yml'
       - 'shared/*.js'
@@ -47,9 +51,10 @@ on:
 run-name: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'Catch up main board builds' || '' }}
 permissions: {contents: read}
 # PR events and SDK-bot dispatches for the same PR share a group with the
-# merged-PR cleanup workflow. Each main push and manual board run stays independent.
+# merged-PR cleanup workflow. Automatic main batches run one at a time.
 concurrency:
-  group: board-firmware-${{ (github.event.pull_request.number || inputs.pr_number) && format('pr-{0}', github.event.pull_request.number || inputs.pr_number) || format('run-{0}', github.run_id) }}
+  group: board-firmware-${{ (github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'main') || (github.event.pull_request.number || inputs.pr_number) && format('pr-{0}', github.event.pull_request.number || inputs.pr_number) || format('run-{0}', github.run_id) }}
+  queue: ${{ github.ref == 'refs/heads/main' && !inputs.board && !inputs.pr_number && 'max' || 'single' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '') }}
 jobs:
   context:
@@ -60,6 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cohorts: ${{ steps.plan.outputs.cohorts }}
+      app_shards: ${{ steps.plan.outputs.app_shards }}
       coverage_base: ${{ steps.plan.outputs.coverage_base }}
       expected_builds: ${{ steps.plan.outputs.expected_builds }}
     steps:
@@ -80,9 +86,22 @@ jobs:
           PR_CI_BASE_SHA: ${{ needs.context.outputs.base_sha }}
           FW_HEAD_SHA: ${{ needs.context.outputs.head_sha || github.sha }}
         run: node scripts/firmware-plan.mjs
-  build:
+  applications:
     needs: plan
-    if: needs.plan.outputs.cohorts != '[]'
+    if: needs.plan.outputs.app_shards != '[]'
+    name: Application shard ${{ matrix.plan.shard }}
+    strategy:
+      fail-fast: false
+      matrix:
+        plan: ${{ fromJSON(needs.plan.outputs.app_shards) }}
+    uses: ./.github/workflows/build-app-shard.yml
+    with:
+      shard: ${{ matrix.plan.shard }}
+      groups: ${{ toJSON(matrix.plan.groups) }}
+  build:
+    needs: [plan, applications]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.applications.result == 'success' || needs.applications.result == 'skipped') && needs.plan.outputs.cohorts != '[]' }}
+    # Keep cohort and board job names stable for release evidence.
     name: ${{ matrix.cohort.name }}
     strategy:
       fail-fast: false
@@ -94,23 +113,25 @@ jobs:
       cohort: ${{ toJSON(matrix.cohort) }}
   check:
     name: Firmware
-    needs: [plan, build]
+    needs: [plan, applications, build]
     if: ${{ always() && !cancelled() && github.event_name != 'pull_request' && !inputs.pr_number }}
     runs-on: ubuntu-latest
     steps:
       - name: Require every selected firmware build to pass
         env:
           PLAN: ${{ needs.plan.result }}
+          APPS: ${{ needs.applications.result }}
           BUILD: ${{ needs.build.result }}
         run: |
           test "$PLAN" = success
+          test "$APPS" = success || test "$APPS" = skipped
           test "$BUILD" = success || test "$BUILD" = skipped
 
   coverage:
     name: Record main board build coverage
-    needs: [plan, build]
+    needs: [plan, applications, build]
     if: >-
-      ${{ always() && !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.expected_builds != '' &&
+      ${{ always() && !cancelled() && needs.plan.result == 'success' && (needs.applications.result == 'success' || needs.applications.result == 'skipped') && needs.plan.outputs.expected_builds != '' &&
           github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.board && !inputs.pr_number)) }}
     runs-on: ubuntu-latest

@@ -12,6 +12,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
+  assignApplicationShards,
   boardPlans,
   buildCohorts,
   profiles,
@@ -19,6 +20,19 @@ import {
   isMainBuildBatch,
   unchangedMainBoards,
 } from "../scripts/firmware-plan.mjs";
+
+test("assigns only selected applications to stable board shards", () => {
+  const app = { kind: "app", container: "idf:s3" };
+  const board = "m5stack/atoms3";
+  const selected = { board, components: [app] };
+  const bootloader = { board: "m5stack/paper-color", components: [{ kind: "bootloader" }] };
+  const [assignment] = assignApplicationShards([bootloader, selected]);
+  assert.equal(assignment.shard, 8);
+  assert.deepEqual(assignment.groups, { "idf:s3": [board] });
+  assert.equal(selected.appShard, assignment.shard);
+  assert.equal(bootloader.appShard, undefined);
+  assert.deepEqual(assignApplicationShards([]), []);
+});
 
 test("firmware planning uses the dispatched PR snapshots without a manual rebuild", () => {
   const base = "a".repeat(40),
@@ -201,7 +215,9 @@ test("example-only PRs compile the affected optional examples, with full builds 
       GITHUB_EVENT_PATH: event, GITHUB_EVENT_NAME: "pull_request", GITHUB_OUTPUT: output,
       FW_HEAD_SHA: headSha, GITHUB_RUN_NUMBER: "17",
     } });
-    return JSON.parse(readFileSync(output, "utf8").trim().slice("cohorts=".length));
+    const lines = readFileSync(output, "utf8").trim().split("\n");
+    assert.ok(lines.includes("app_shards=[]"));
+    return JSON.parse(lines.find(line => line.startsWith("cohorts=")).slice("cohorts=".length));
   }
   addExample("imu");
   const added = commit();

@@ -19,7 +19,6 @@ const bootloaderInputs = [
 ];
 const appInputs = [
   "firmware/components/**", "firmware/app/**", "scripts/build-example.py",
-  ".github/workflows/build-board.yml",
 ];
 const kitInputs = [
   "scripts/package-setup.py", "scripts/board-catalog.mjs", "shared/board-examples.js",
@@ -135,7 +134,7 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
       bootloader: {
         kind: "bootloader", runner, container: sharedBootloader.container,
         fingerprint: digest([board, namingInputs, boardInputs, sharedBootloader.fingerprint,
-          matching(["scripts/package-board-bootloader.py", ".github/workflows/build-board.yml"])]),
+          matching(["scripts/package-board-bootloader.py"])]),
       },
       app: {
         kind: "app", runner, container: appContainer,
@@ -223,6 +222,21 @@ export function boardPlans(
     });
   }
   return matrix;
+}
+
+export function assignApplicationShards(plans) {
+  const shards = new Map();
+  for (const plan of plans) {
+    const app = plan.components.find(({ kind }) => kind === "app");
+    if (!app) continue;
+    const hash = createHash("sha256").update(plan.board).digest("hex");
+    const shard = Number(BigInt("0x" + hash) % 20n);
+    if (!shards.has(shard)) shards.set(shard, { shard, groups: {} });
+    const { groups } = shards.get(shard);
+    (groups[app.container] ??= []).push(plan.board);
+    plan.appShard = shard;
+  }
+  return [...shards.values()].sort((a, b) => a.shard - b.shard);
 }
 
 // GitHub schedules one running job per repository-wide concurrency group.
@@ -327,6 +341,8 @@ if (
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
   const plans = before === null ? [] : boardPlans(before, after.boards, options);
+  const appShards = mainBatch ? assignApplicationShards(plans) : [];
+  appendFileSync(process.env.GITHUB_OUTPUT, `app_shards=${JSON.stringify(appShards)}\n`);
   const cohorts = buildCohorts(plans, after.variants, options.version, Number(process.env.GITHUB_RUN_NUMBER));
   appendFileSync(process.env.GITHUB_OUTPUT, `cohorts=${JSON.stringify(cohorts)}\n`);
   if (mainBatch && before !== null) {
