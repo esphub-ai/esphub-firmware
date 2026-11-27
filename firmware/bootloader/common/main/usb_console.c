@@ -10,7 +10,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_mac.h"
 #include "eh_agent_ext.h"
 #include "bootloader.h"
 #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
@@ -52,14 +51,6 @@ static void wifi_line(const char *payload, bool overflow)
             eh_wifi_setup_command(request, reply);
             const char *op = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(request, "op"));
             if (op) cJSON_AddStringToObject(reply, "op", op);
-            uint8_t mac[6];
-            if (op && !strcmp(op, "wifi.status") && esp_efuse_mac_get_default(mac) == ESP_OK) {
-                cJSON_AddStringToObject(reply, "protocol", "esphub-usb-wifi-v2");
-                char address[18];
-                snprintf(address, sizeof(address), "%02x:%02x:%02x:%02x:%02x:%02x",
-                         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-                cJSON_AddStringToObject(reply, "mac", address);
-            }
         } else
             cJSON_AddStringToObject(reply, "error", "invalid Wi-Fi request");
     }
