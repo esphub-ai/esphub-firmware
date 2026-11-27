@@ -1,0 +1,57 @@
+name: Build board applications with sccache
+on:
+  workflow_call:
+    inputs:
+      shard: {required: true, type: number}
+      groups: {required: true, type: string}
+permissions: {contents: read}
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/firmware-sccache
+          key: firmware-sccache-v1-linux-x64-${{ inputs.shard }}-${{ github.run_id }}
+          restore-keys: firmware-sccache-v1-linux-x64-${{ inputs.shard }}-
+      - name: Install pinned sccache
+        run: |
+          asset=sccache-v0.20.1-x86_64-unknown-linux-musl
+          curl -fsSL "https://github.com/mozilla/sccache/releases/download/v0.20.1/$asset.tar.gz" -o "$RUNNER_TEMP/$asset.tar.gz"
+          echo "c9f6c5a3ae84d9da0956b28c357a365827bda33f3383647fc0b67484c74a5ea9  $RUNNER_TEMP/$asset.tar.gz" | sha256sum -c
+          tar xOzf "$RUNNER_TEMP/$asset.tar.gz" "$asset/sccache" > "$RUNNER_TEMP/sccache"
+          chmod +x "$RUNNER_TEMP/sccache"
+      - name: Build selected applications
+        env:
+          GROUPS_JSON: ${{ inputs.groups }}
+          VERSION: 2.0.${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/firmware-sccache" dist
+          trap 'sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/firmware-sccache" dist' EXIT
+          while IFS= read -r group; do
+            image=$(jq -r '.key' <<< "$group")
+            mapfile -t boards < <(jq -r '.value[]' <<< "$group")
+            docker run --rm -w /work \
+              -v "$PWD:/work:ro" \
+              -v "$PWD/dist:/out" \
+              -v "$RUNNER_TEMP/sccache:/usr/local/bin/sccache:ro" \
+              -v "$RUNNER_TEMP/firmware-sccache:/sccache" \
+              -e SCCACHE_DIR=/sccache -e SCCACHE_CACHE_SIZE=384M -e VERSION \
+              "$image" bash -c '
+                set -eo pipefail
+                source "$IDF_PATH/export.sh"
+                python scripts/build-app-shard.py --version "$VERSION" --out /out "$@"
+                sccache --stop-server
+              ' build "${boards[@]}"
+            docker image rm "$image"
+          done < <(jq -c 'to_entries[]' <<< "$GROUPS_JSON")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-shard-${{ inputs.shard }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true

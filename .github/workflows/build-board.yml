@@ -22,7 +22,7 @@ jobs:
       matrix:
         task: ${{ fromJSON(inputs.profile).components }}
     runs-on: ${{ matrix.task.runner }}
-    container: ${{ matrix.task.container || null }}
+    container: ${{ (matrix.task.kind != 'app' || toJSON(fromJSON(inputs.profile).appShard) == 'null') && matrix.task.container || null }}
     env:
       VERSION: ${{ matrix.task.version }}
       KIND: ${{ matrix.task.kind }}
@@ -41,8 +41,17 @@ jobs:
           set -eo pipefail
           source "$IDF_PATH/export.sh"
           python scripts/package-board-bootloader.py "$BOARD" "$VERSION"
+      - uses: actions/download-artifact@v4
+        if: matrix.task.kind == 'app' && toJSON(fromJSON(inputs.profile).appShard) != 'null'
+        with:
+          name: app-shard-${{ fromJSON(inputs.profile).appShard }}
+          path: shard-apps
+      - name: Copy the board application from the compiled shard
+        if: matrix.task.kind == 'app' && toJSON(fromJSON(inputs.profile).appShard) != 'null'
+        shell: bash
+        run: mv "shard-apps/$BOARD_FILE_STEM" dist
       - name: Build the default app and all published source examples
-        if: matrix.task.kind == 'app'
+        if: matrix.task.kind == 'app' && toJSON(fromJSON(inputs.profile).appShard) == 'null'
         shell: bash
         run: |
           set -eo pipefail
