@@ -42,6 +42,12 @@
       "description": "Delete the regular LittleFS sample note on Atom-PSRAM and report the result over serial.",
       "entrypoint": "examples/storage-delete/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/SPIFFS/SPIFFS_Delete/SPIFFS_Delete.ino"
+    },
+    {
+      "id": "eeprom",
+      "description": "Write and read a persistent 32-byte EEPROM sample using the Atom-PSRAM button.",
+      "entrypoint": "examples/eeprom/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/EEPROM/EEPROM.ino"
     }
   ]
 }
