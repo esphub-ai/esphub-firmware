@@ -9,7 +9,7 @@
   "shared_example_inputs": {
     "storage_io.hpp": ["storage-notes", "storage-append", "storage-delete"],
     "atomic_poe.hpp": ["atomic-poe-http", "atomic-poe-mqtt", "atomic-poe-webserver"],
-    "sim7020.hpp": ["uiflow-nbiot-http", "uiflow-nbiot-mqtt"]
+    "sim7020.hpp": ["uiflow-nbiot-http", "uiflow-nbiot-mqtt", "uiflow-nbiot2-http"]
   },
   "examples": [
     {
@@ -173,6 +173,12 @@
       "description": "Subscribe to an MQTT topic through the Atom DTU SIM7020 NB-IoT modem and display received messages.",
       "entrypoint": "examples/uiflow-nbiot-mqtt/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/dtu_nbiot/atoms3_base_nbiot_mqtt_example.py"
+    },
+    {
+      "id": "uiflow-nbiot2-http",
+      "description": "Send the UiFlow2 HTTP POST through the Atom DTU SIM7028 NB-IoT2 modem.",
+      "entrypoint": "examples/uiflow-nbiot2-http/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/dtu_nbiot2/atoms3_base_nbiot2_http_example.py"
     }
   ]
 }
