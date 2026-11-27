@@ -1,6 +1,0 @@
-[submodule "firmware/board/m5stack/stopwatch/power-demo"]
-	path = firmware/board/m5stack/stopwatch/power-demo
-	url = https://github.com/m5stack/M5StopWatch-PowerDemo.git
-[submodule "firmware/board/m5stack/stopwatch/factory-demo"]
-	path = firmware/board/m5stack/stopwatch/factory-demo
-	url = https://github.com/m5stack/M5StopWatch-UserDemo.git

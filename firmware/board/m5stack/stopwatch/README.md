@@ -2,7 +2,7 @@
 
 ## EspHub apps
 
-Build a single application with ESP-IDF 5.5.4 from the repository root. The output is an EspHub OTA **app** image for the 4 MiB application partition.
+Build a single application with ESP-IDF 5.5.4 from the repository root. The output is an EspHub OTA **app** image for the 8 MiB application partition of the 16 MiB layout.
 
 ```sh
 python3 scripts/build-example.py m5stack/stopwatch --example stopwatch --out dist/stopwatch
@@ -26,13 +26,4 @@ For Badge, pass a payload such as `{"slot":1,"url":"https://example.com/badge.pn
 
 ## Original M5Stack projects
 
-The two submodules pin the original multi-app factory interface and power measurement projects. They can be checked out separately from the EspHub examples.
-
-```sh
-git submodule update --init --recursive firmware/board/m5stack/stopwatch/factory-demo firmware/board/m5stack/stopwatch/power-demo
-```
-
-- [Factory firmware](./factory-demo) contains the original launcher, apps, artwork and settings. Activate ESP-IDF 5.5.4, run `python3 fetch_repos.py` inside that project and build with `idf.py build`.
-- [PowerDemo](./power-demo) contains 16 independent bench projects, including L2 deep sleep, IMU motion wake, RTC wake and Wi-Fi power measurements. Activate ESP-IDF 5.5.5 and build from an individual test directory, for example `power-demo/tests/imu_wake_l2`, with `idf.py build`. See the upstream test README for its wake sequence, measurement conditions and fixture requirements.
-
-The two original projects use their own build configurations and USB installation procedures. For remote updates on an EspHub device, choose an application from the table above.
+The examples above are adapted from M5Stack's [M5StopWatch-UserDemo](https://github.com/m5stack/M5StopWatch-UserDemo), and `factory-demo` builds its V0.5 release. M5Stack's [M5StopWatch-PowerDemo](https://github.com/m5stack/M5StopWatch-PowerDemo) bench projects are installed over USB with their own build configurations and are not EspHub apps.
