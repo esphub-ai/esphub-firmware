@@ -1,14 +1,9 @@
 export const SDK_ROOT = "firmware/components/eh_agent/";
 export const SDK_HEADER = SDK_ROOT + "include/eh_agent.h";
 
-// A rename can put the base and head in different SDK directories.
-const headerPaths = ["okou_agent", "eh_agent"].map(
-  component => `firmware/components/${component}/include/${component}.h`,
-);
-
 export function sdkHeaderEntry(files) {
   if (!Array.isArray(files)) throw Error("Expected a git-tree array");
-  const entries = files.filter(file => headerPaths.includes(file.path));
+  const entries = files.filter(file => file.path === SDK_HEADER);
   if (entries.length !== 1 || entries[0].type !== "blob" ||
       !["100644", "100755"].includes(entries[0].mode))
     throw Error("Expected one regular-file SDK header");
@@ -39,14 +34,14 @@ function sdkMacro(header) {
   );
   const macros = [
     ...source.matchAll(
-      /^[\t ]*#[\t ]*define[\t ]+(?:OKOU|EH)_SDK_VERSION\b[^\r\n]*/gm,
+      /^[\t ]*#[\t ]*define[\t ]+EH_SDK_VERSION\b[^\r\n]*/gm,
     ),
   ];
   if (macros.length !== 1)
     throw Error("SDK header must contain exactly one SDK version macro");
   const macro = macros[0];
   const literal =
-    /^([\t ]*#[\t ]*define[\t ]+(?:OKOU|EH)_SDK_VERSION[\t ]+")([^"\r\n]*)("[\t ]*)$/.exec(
+    /^([\t ]*#[\t ]*define[\t ]+EH_SDK_VERSION[\t ]+")([^"\r\n]*)("[\t ]*)$/.exec(
       macro[0],
     );
   if (!literal) throw Error("Invalid SDK version macro");

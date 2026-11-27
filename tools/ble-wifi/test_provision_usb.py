@@ -29,7 +29,7 @@ class UsbTests(unittest.TestCase):
                 os.write(master, b'22:AA:BB:CC"}\r\n')
 
         def mcp(command, **kwargs):
-            self.assertEqual(command[:5], ["okou", "mcp", "call", "esphub-mcp", "devices.bind_ble_address"])
+            self.assertEqual(command[:5], ["okou", "mcp", "call", "esphub-mcp", "devices_bind_ble_address"])
             self.assertEqual(json.loads(command[6]), {"device_id": registration["id"], "ble_address": address})
             result = {"id": registration["id"], "ble_address": address}
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps({
@@ -66,6 +66,6 @@ class UsbTests(unittest.TestCase):
     def test_bind_requires_matching_mcp_receipt(self):
         with patch("provision_usb.subprocess.run") as call:
             call.return_value.stdout = '{"result":{"isError":true}}'
-            with self.assertRaisesRegex(RuntimeError, "Retry only devices.bind_ble_address"):
+            with self.assertRaisesRegex(RuntimeError, "Retry only devices_bind_ble_address"):
                 bind_address("device", "02:11:22:aa:bb:cc")
             call.assert_called_once()

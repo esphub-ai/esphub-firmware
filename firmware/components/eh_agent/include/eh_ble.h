@@ -5,5 +5,4 @@
 #include <stdbool.h>
 void eh_ble_init(void);
 esp_err_t eh_ble_install(const char *hex);
-bool eh_ble_host_owned(void);
 #endif

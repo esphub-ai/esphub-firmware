@@ -23,7 +23,7 @@ test("a main batch accounts for actual build results and detects cancelled or mi
   assert.throws(() => verifyCoverage({}, [], "cancelled", true), /Incomplete/);
 
   const compileError = { ...app, conclusion: "failure",
-    steps: [{ name: "Build the default app and all published source examples", conclusion: "failure" }] };
+    steps: [{ name: "Copy the board application from the compiled shard", conclusion: "failure" }] };
   verifyCoverage(expected, [shared, boot, compileError], "failure", true);
   assert.throws(() => verifyCoverage(expected, [shared, boot, { ...compileError, steps: [] }], "failure", true), /Missing/);
   assert.throws(() => verifyCoverage(expected, [shared, { ...boot, conclusion: "cancelled" }, compileError], "failure", true), /Incomplete/);

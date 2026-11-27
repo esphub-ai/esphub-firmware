@@ -1,4 +1,4 @@
-"""Write a devices.create or devices.reissue result over USB, then bind its BLE address."""
+"""Write a devices_create or devices_reissue result over USB, then bind its BLE address."""
 
 import argparse
 import json
@@ -62,7 +62,7 @@ def write_registration(port, registration):
 
 def bind_address(device_id, address):
     args = {"device_id": device_id, "ble_address": address}
-    command = ["okou", "mcp", "call", "esphub-mcp", "devices.bind_ble_address",
+    command = ["okou", "mcp", "call", "esphub-mcp", "devices_bind_ble_address",
                "--input", json.dumps(args), "--json"]
     try:
         reply = subprocess.run(command, capture_output=True, check=True, timeout=45)
@@ -71,7 +71,7 @@ def bind_address(device_id, address):
             return
     except (OSError, ValueError, subprocess.SubprocessError):
         pass
-    raise RuntimeError(f"USB succeeded. Binding unconfirmed. Retry only devices.bind_ble_address with {json.dumps(args)}.")
+    raise RuntimeError(f"USB succeeded. Binding unconfirmed. Retry only devices_bind_ble_address with {json.dumps(args)}.")
 
 
 def main():

@@ -25,7 +25,6 @@ jobs:
         run: node scripts/prepare-publication.mjs
       # A cross-run artifact listing is capped at 100. Fetch each validated name directly.
       - name: Download bootloader artifact
-        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'bootloader') }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -33,7 +32,6 @@ jobs:
           name: ${{ steps.source.outputs.stem }}.bootloader
           path: assets/${{ steps.source.outputs.stem }}.bootloader
       - name: Download app artifact
-        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'app') }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -41,7 +39,6 @@ jobs:
           name: ${{ steps.source.outputs.stem }}.app
           path: assets/${{ steps.source.outputs.stem }}.app
       - name: Download setup artifact
-        if: ${{ contains(fromJSON(steps.source.outputs.profile).jobs.*.kind, 'setup') }}
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}

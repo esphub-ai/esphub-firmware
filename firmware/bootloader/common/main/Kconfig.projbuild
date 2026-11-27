@@ -1,7 +1,0 @@
-menu "esp-bootloader"
-
-    config EH_URL_OTA
-        bool
-        default y
-
-endmenu

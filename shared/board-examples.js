@@ -1,5 +1,6 @@
+import { repository } from "./repository.js";
+
 export function describeExamples(board, examples, revision) {
-  const repository = "https://github.com/okou-ai/esphub-firmware";
   const tree = repository + "/tree/" + revision + "/firmware/board/" + board;
   const blob = repository + "/blob/" + revision;
   return examples.map(({ id, entrypoint, description, upstream }) => ({

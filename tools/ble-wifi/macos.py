@@ -178,7 +178,7 @@ if __name__ == "__main__":
                 "mcp",
                 "call",
                 "esphub-mcp",
-                "wifi.ble_credential",
+                "wifi_ble_credential",
                 "--input",
                 json.dumps({"device_id": str(args.device)}),
                 "--json",

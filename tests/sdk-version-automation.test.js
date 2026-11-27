@@ -7,7 +7,7 @@ import {
 } from "../scripts/sdk-version-automation.mjs";
 import { SDK_HEADER, SDK_ROOT } from "../scripts/sdk-version.mjs";
 
-const repository = "okou-ai/esphub-firmware";
+const repository = "esphub-ai/esphub-firmware";
 const root = `/repos/${repository}`;
 const treeShas = Object.fromEntries(
   ["base", "head", "ancestor", "merged", "sdk", "forward", "divergent"].map(

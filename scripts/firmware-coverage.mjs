@@ -18,8 +18,9 @@ export function isAncestor(before, after, cwd = process.cwd()) {
   return result.status === 0;
 }
 
+// Main batches compile apps in shards; the board job then copies its app.
 const buildSteps = {
-  app: "Build the default app and all published source examples",
+  app: "Copy the board application from the compiled shard",
   bootloader: "Assemble bootloader release for the board",
 };
 
@@ -45,11 +46,9 @@ export function verifyCoverage(expected, jobs, buildResult, publishEnabled) {
       !["success", "failure", "skipped"].includes(job.conclusion));
     if (interrupted) throw Error("Incomplete firmware job: " + interrupted.name);
 
-    if (cohort !== "app-only") {
-      const shared = byName.get(prefix + "bootloader / build");
-      if (!attempted(shared, "Compile the shared binaries")) throw Error("Missing shared bootloader result: " + cohort);
-      if (shared.conclusion === "failure") continue; // The prerequisite itself was built and failed.
-    }
+    const shared = byName.get(prefix + "bootloader / build");
+    if (!attempted(shared, "Compile the shared binaries")) throw Error("Missing shared bootloader result: " + cohort);
+    if (shared.conclusion === "failure") continue; // The prerequisite itself was built and failed.
     for (const [board, kinds] of boards) {
       const boardPrefix = prefix + board + " / ";
       let failed = false;

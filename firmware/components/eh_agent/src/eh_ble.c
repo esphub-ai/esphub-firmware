@@ -38,8 +38,6 @@ static SemaphoreHandle_t key_lock;
 static uint8_t root_key[32], tls_psk[32];
 static atomic_uint connection = NO_CONN;
 static atomic_bool synced;
-static atomic_bool host_owned;
-bool eh_ble_host_owned(void) { return atomic_load(&host_owned); }
 static int64_t io_deadline;
 
 static int nibble(char ch)
@@ -277,16 +275,13 @@ static void launch_nimble(void *arg)
 fail:
     if (rx) vStreamBufferDelete(rx);
     if (tx) vStreamBufferDelete(tx);
-    atomic_store(&host_owned, false);
     vTaskDelete(NULL);
 }
 
 void eh_ble_init(void)
 {
     key_lock = xSemaphoreCreateMutex();
-    atomic_store(&host_owned, true);
     if (!key_lock || xTaskCreate(launch_nimble, "ble_init", 4096, NULL, 3, NULL) != pdPASS) {
-        atomic_store(&host_owned, false);
         ESP_LOGE("ble_wifi", "cannot start BLE initialization");
     }
 }

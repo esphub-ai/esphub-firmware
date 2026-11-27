@@ -9,7 +9,7 @@ import { advanceLatest, assetRows, recordAssets } from "./release-records.mjs";
 
 const profile = JSON.parse(process.env.BOARD_PROFILE);
 const { board, chip, jobs } = profile;
-const source = process.env.RELEASE_SOURCE_SHA ?? process.env.GITHUB_SHA;
+const source = process.env.RELEASE_SOURCE_SHA;
 const endpoint = process.env.FIRMWARE_R2_ENDPOINT;
 const database = process.env.FIRMWARE_DATABASE_URL;
 const bucket = "esphub-firmware";
@@ -49,8 +49,11 @@ async function readRelease({ kind, version, fingerprint }) {
       }),
     ),
   );
-  const manifestFile = files.manifest ?? files["setup-manifest"];
-  const manifest = manifestFile && JSON.parse(manifestFile.bytes);
+  // The bootloader build manifest describes the OTA image but is not published.
+  const manifestBytes = kind === "bootloader"
+    ? await readFile(join("assets", `${stem}.${kind}`, `esphub-${stem}-${chip}-${version}.json`))
+    : files["setup-manifest"]?.bytes;
+  const manifest = manifestBytes && JSON.parse(manifestBytes);
   if (
     manifest &&
     (manifest.board !== board ||
@@ -60,16 +63,12 @@ async function readRelease({ kind, version, fingerprint }) {
     throw Error("Manifest identity mismatch: " + tag);
   }
   if (kind === "bootloader") {
-    for (const asset of ["ota", "usb"]) {
-      if (
-        manifest[asset]?.file !== files[asset].name ||
-        manifest[asset]?.sha256 !== files[asset].sha256 ||
-        (asset === "ota" && manifest.ota.size !== files.ota.size)
-      ) {
-        throw Error(
-          "Bootloader manifest checksum or length mismatch: " + asset,
-        );
-      }
+    if (
+      manifest.ota?.file !== files.ota.name ||
+      manifest.ota.sha256 !== files.ota.sha256 ||
+      manifest.ota.size !== files.ota.size
+    ) {
+      throw Error("Bootloader manifest checksum or length mismatch");
     }
   } else if (kind === "setup") {
     if (
@@ -88,15 +87,7 @@ async function readRelease({ kind, version, fingerprint }) {
       throw Error("App image checksum mismatch: " + image.name);
     }
   }
-  return {
-    board,
-    kind,
-    version,
-    fingerprint,
-    source,
-    tag,
-    files,
-  };
+  return { board, kind, version, tag, files };
 }
 
 async function publishObject(aws, key, bytes, sha256) {
@@ -140,59 +131,37 @@ async function publishObject(aws, key, bytes, sha256) {
 }
 
 const releases = await Promise.all(jobs.map(readRelease));
-const setup = releases.find(release => release.kind === "setup");
-if (setup) {
-  const app = releases.find(release => release.kind === "app");
-  const manifest = JSON.parse(setup.files["setup-manifest"].bytes);
-  if (!app || manifest.app_tag !== app.tag || manifest.app_sha256 !== app.files.app.sha256 ||
-      manifest.app_size !== app.files.app.size || !manifest.example?.source_url?.includes("/tree/" + source + "/"))
-    throw Error("Setup kit and published app must use the same image and pinned example");
-}
-if (!process.argv.includes("--check")) {
-  if (!endpoint || !database)
-    throw Error("Missing firmware publishing credentials");
-  const aws = new AwsClient({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    service: "s3",
-    region: "auto",
-  });
-  const sql = postgres(database, { max: 1, prepare: false, ssl: "require" });
-  try {
-    for (const release of releases) {
-      const prefix = `releases/${release.tag}/`;
-      for (const { path, name, sha256 } of Object.values(release.files)) {
-        await publishObject(aws, prefix + name, await readFile(path), sha256);
-      }
+const byKind = Object.fromEntries(releases.map((release) => [release.kind, release]));
+if (!byKind.bootloader || !byKind.app || !byKind.setup)
+  throw Error("A board release needs its bootloader, app and setup kit");
+const kitManifest = JSON.parse(byKind.setup.files["setup-manifest"].bytes);
+if (kitManifest.app_tag !== byKind.app.tag || kitManifest.app_sha256 !== byKind.app.files.app.sha256 ||
+    kitManifest.app_size !== byKind.app.files.app.size ||
+    !kitManifest.example?.source_url?.includes("/tree/" + source + "/"))
+  throw Error("Setup kit and published app must use the same image and pinned example");
+if (!endpoint || !database)
+  throw Error("Missing firmware publishing credentials");
+const aws = new AwsClient({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  service: "s3",
+  region: "auto",
+});
+const sql = postgres(database, { max: 1, prepare: false, ssl: "require" });
+try {
+  for (const release of releases) {
+    const prefix = `releases/${release.tag}/`;
+    for (const { path, name, sha256 } of Object.values(release.files)) {
+      await publishObject(aws, prefix + name, await readFile(path), sha256);
     }
-    for (const { tag, fingerprint, files } of releases) {
-      const marker = Buffer.from(
-        JSON.stringify({
-          tag,
-          fingerprint,
-          source,
-          assets: Object.values(files).map(({ name, size, sha256 }) => ({
-            name,
-            size,
-            sha256,
-          })),
-        }),
-      );
-      await publishObject(
-        aws,
-        `releases/${tag}/published.json`,
-        marker,
-        hash(marker),
-      );
-    }
-    await sql.begin(async (tx) => {
-      for (const release of releases) {
-        await recordAssets(tx, assetRows(release));
-        await advanceLatest(tx, release);
-      }
-    });
-  } finally {
-    await sql.end();
   }
+  await sql.begin(async (tx) => {
+    for (const release of releases) {
+      await recordAssets(tx, assetRows(release));
+      await advanceLatest(tx, release);
+    }
+  });
+} finally {
+  await sql.end();
 }
 console.log(`${board}: ${releases.map(({ tag }) => tag).join(", ")}`);

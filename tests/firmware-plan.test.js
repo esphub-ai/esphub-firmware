@@ -144,7 +144,7 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
   addBoard(paper);
   addBoard(watch);
   let before = snapshot();
-  assert.equal(before[paper].blFingerprint, before[watch].blFingerprint);
+  assert.equal(before[paper].bootloader, before[watch].bootloader);
 
   const change = (path, content) => {
     put(path, content);
@@ -169,7 +169,7 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
   assert.deepEqual(unchangedMainBoards(newer, covered, profiles(covered, cwd), cwd), {});
   assert.deepEqual(change("firmware/board/" + watch + "/examples/hello/sdkconfig.defaults", "CONFIG_X=y"), { [watch]: jobs });
   assert.deepEqual(change("scripts/firmware-plan.mjs", "scheduler only"), {});
-  for (const file of ["scripts/build-example.py", "firmware/components/eh_agent/src/sdk.c", "firmware/ble.defaults",
+  for (const file of ["scripts/build-example.py", "firmware/components/eh_agent/src/sdk.c", "firmware/bootloader/common/sdkconfig.defaults",
       "firmware/app/sdkconfig.defaults", "shared/board-examples.js", "tools/ble-wifi/provision_usb.py"]) {
     assert.deepEqual(change(file, "shared input"), { [paper]: jobs, [watch]: jobs });
   }
@@ -272,7 +272,7 @@ test("overlapping firmware runs share 100 job groups across all bootloader varia
     bootloader: i % 2 ? "s3" : "c6",
     components: [{ kind: "bootloader" }, { kind: "app" }],
   }));
-  plans.push({ board: "test/app-only", components: [{ kind: "app" }] });
+  plans.push({ board: "test/examples", components: [{ kind: "app" }], examples: ["demo"] });
   const variants = new Map([["s3", { variant: "s3" }], ["c6", { variant: "c6" }]]);
   function groups(runNumber) {
     const cohorts = buildCohorts(plans, variants, "2.0.25", runNumber);

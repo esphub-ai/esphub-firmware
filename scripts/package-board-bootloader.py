@@ -1,4 +1,5 @@
-"""Assemble board-specific USB and release assets from a shared EspHub bootloader."""
+"""Package a shared EspHub bootloader for one board: the OTA image and the USB base image
+that package-setup.py turns into the setup kit."""
 import csv
 import json
 import os
@@ -28,8 +29,8 @@ ota = prefix + "-ota.bin"
 idf = Path(os.environ["IDF_PATH"])
 
 
-def package(table, suffix):
-    usb = prefix + suffix + ".zip"
+def package(table):
+    usb = prefix + "-usb.zip"
     with TemporaryDirectory() as directory:
         tmp = Path(directory)
         table_bin = tmp / "partition-table.bin"
@@ -64,17 +65,12 @@ def package(table, suffix):
             z.writestr("ota-data-initial.bin", b"\xff" * int(ota_data[4], 0))
             z.writestr("flash_args", " ".join(build["write_flash_args"]) + "\n" +
                        "".join(f"{offset} {name}\n" for offset, name in offsets.items()))
-            z.writestr("INSTALL.txt", f"""For {board} only. Use the setup kit for a first installation.
-This archive preserves NVS and resets boot selection to the bootloader.
-""")
-    return {"file": usb, "sha256": sha256((out / usb).read_bytes()).hexdigest()}, offsets
+    return {"file": usb, "sha256": sha256((out / usb).read_bytes()).hexdigest()}
 
 
 table = Path(__file__).resolve().parents[1] / "firmware/partitions" / f"{metadata['flash_mb']}mb.csv"
-usb, offsets = package(table, "-usb")
-manifest = {"source_commit": build["source_commit"], "board": board, "chip": chip,
-            "version": version, "flash_mb": metadata["flash_mb"],
-            "bootloader": build["variant"], "bootloader_version": build["version"],
-            "partition_sha256": sha256(table.read_bytes()).hexdigest(), "offsets": offsets,
-            "ota": {"file": ota, "sha256": build["ota_sha256"], "size": len(image)}, "usb": usb}
+# Read by the kit job and the publisher. Only the OTA image is published.
+manifest = {"board": board, "chip": chip, "version": version, "bootloader_version": build["version"],
+            "ota": {"file": ota, "sha256": build["ota_sha256"], "size": len(image)},
+            "usb": package(table)}
 (out / (prefix + ".json")).write_text(json.dumps(manifest, indent=2) + "\n")

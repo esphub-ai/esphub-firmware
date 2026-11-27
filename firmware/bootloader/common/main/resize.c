@@ -235,7 +235,7 @@ esp_err_t resize_app(const cJSON *args, cJSON *result, char *error, size_t error
     }
     const char *id = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(args, "transfer_id"));
     if (!id || strlen(id) != 36) return ESP_ERR_INVALID_ARG;
-    // Format the new volume as lfs_format would. Earlier Hubs also send empty_fs; it is ignored.
+    // Format the new volume as lfs_format would.
     uint8_t seed[2 * SEED_RECORD];
     littlefs_empty_root(seed, 1, data_size / SECTOR);
     littlefs_empty_root(seed + SEED_RECORD, 2, data_size / SECTOR);

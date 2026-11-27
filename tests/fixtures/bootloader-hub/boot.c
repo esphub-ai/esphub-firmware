@@ -40,7 +40,7 @@ esp_err_t eh_cmd_register(const char *name, const char *help, eh_cmd_handler_t f
 }
 esp_err_t eh_op_register(const char *name, eh_op_handler_t fn) { return ESP_OK; }
 esp_err_t eh_install_op(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_OK; }
-esp_err_t eh_agent_start_with_config(const eh_config_t *cfg) { assert(cfg->role == EH_ROLE_BOOTLOADER); return ESP_OK; }
+esp_err_t eh_agent_start(void) { return ESP_OK; }
 void prov_serial_start(void) { ++consoles; }
 
 int main(void) {

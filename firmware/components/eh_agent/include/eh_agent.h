@@ -1,7 +1,7 @@
 /*
- * eh_agent - device side of the esp-bootloader protocol.
+ * eh_agent - the EspHub SDK, the device side of the Hub protocol.
  *
- * Link this component into an app, register commands/params, call eh_agent_start().
+ * Link this component into an app and call eh_agent_start().
  * Events enter a bounded queue and a low-priority agent task sends them.
  * A full queue drops the event and increments the drop counter.
  *
@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#define EH_SDK_VERSION "8.0.1"
+#define EH_SDK_VERSION "8.1.0"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -20,13 +20,7 @@
 extern "C" {
 #endif
 
-typedef enum {
-    EH_ROLE_APP = 0,      /* normal apps */
-    EH_ROLE_BOOTLOADER = 1, /* only the esp-bootloader firmware */
-} eh_role_t;
-
 typedef struct {
-    eh_role_t role;
     /* true (default): the SDK brings up the network itself (Wi-Fi STA from NVS eh/ssid+pass,
      * falling back to credentials already stored by the Wi-Fi driver; or OpenCores Ethernet
      * when CONFIG_EH_NET_OPENETH=y). false: the app owns esp_netif/Wi-Fi and the SDK just
@@ -34,7 +28,7 @@ typedef struct {
     bool manage_network;
 } eh_config_t;
 
-#define EH_CONFIG_DEFAULT() { .role = EH_ROLE_APP, .manage_network = true }
+#define EH_CONFIG_DEFAULT() { .manage_network = true }
 
 /* Start the SDK with the default network configuration. */
 esp_err_t eh_agent_start(void);
@@ -76,17 +70,6 @@ typedef struct eh_out eh_out_t;
 typedef int (*eh_cmd_handler_t)(int argc, char **argv, eh_out_t *out);
 int eh_outf(eh_out_t *out, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 esp_err_t eh_cmd_register(const char *name, const char *help, eh_cmd_handler_t handler);
-
-/* ---- params -------------------------------------------------------------------------- */
-/* The variable behind `ptr` is owned by the app and must stay valid forever. The agent
- * writes it with a single aligned 32-bit store when the operator calls param.set.
- * persist=true: value is loaded from NVS (namespace "eh_params", key = name, max 15 chars) at
- * registration time and saved on param.set. Names are limited to 23 chars. */
-esp_err_t eh_param_int(const char *name, int32_t *ptr, int32_t min, int32_t max, bool persist);
-esp_err_t eh_param_float(const char *name, float *ptr, float min, float max, bool persist);
-esp_err_t eh_param_bool(const char *name, bool *ptr, bool persist);
-/* Save the current value of a persistent param after the app changed it itself. */
-esp_err_t eh_param_save(const char *name);
 
 /* ---- telemetry ----------------------------------------------------------------------- */
 /* json: a JSON object text (or NULL for {}). Invalid JSON is sent as {"text":"..."}.

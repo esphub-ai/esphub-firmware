@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         profile: ${{ fromJSON(inputs.cohort).boards }}
-    runs-on: ${{ matrix.profile.components[0].runner }}
+    runs-on: ubuntu-24.04
     container: ${{ matrix.profile.components[0].container }}
     concurrency:
       group: ${{ matrix.profile.components[0].buildGroup }}

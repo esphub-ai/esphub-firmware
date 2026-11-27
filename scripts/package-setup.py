@@ -51,8 +51,8 @@ with ZipFile(args.bootloader) as base, ZipFile(kit, "w", ZIP_DEFLATED) as dest:
     assert len(base.read(name)) == int(parts["nvs"][4], 0)
     flash_args += f"{parts['nvs'][3]} {name}\n".encode()
     dest.writestr("flash_args", flash_args)
-    setup_note = ("With the board in the bootloader, run python3 provision_usb.py PORT with the private devices.create JSON on stdin. Install pyserial and sign in to the Okou CLI with EspHub MCP write access. The helper writes the registration at 115200 baud and binds the returned Bluetooth address to its device ID.\n"
-                  "Run the macOS BLE Wi-Fi tool while the board is in the bootloader. Call bootloader.exit, type app on the provisioning port or power-cycle to start the application.")
+    setup_note = ("With the board in the bootloader, run python3 provision_usb.py PORT with the private devices_create JSON on stdin. Install pyserial and sign in to the Okou CLI with EspHub MCP write access. The helper writes the registration at 115200 baud and binds the returned Bluetooth address to its device ID.\n"
+                  "Run the macOS BLE Wi-Fi tool while the board is in the bootloader. Call bootloader_exit, type app on the provisioning port or power-cycle to start the application.")
     if args.board == "espressif/esp-mosaico":
         setup_note = ("Flash through onboard USB-C in ROM download mode. For provision_usb.py, select the port of a 3.3 V USB-to-UART adapter on header H1. "
                       "Connect adapter TX to pin 13 (RX0), adapter RX to pin 15 (TX0), and connect ground.\n" + setup_note)
@@ -65,8 +65,5 @@ esptool.py --chip {chip} --port PORT write_flash --erase-all @flash_args
 """)
 
 manifest = dict(board=args.board, chip=chip, version=version, **recipe, file=kit.name,
-                download_url=f"https://api.esphub.ai/releases/{args.board}/setup?tag={recipe['tag']}",
-                sha256=hashlib.sha256(kit.read_bytes()).hexdigest(),
-                usb_wifi_setup=b"esphub-usb-wifi-v2\0" in bootloader,
-                example=example, app_sha256=hashlib.sha256(image).hexdigest(), app_size=len(image))
+                sha256=hashlib.sha256(kit.read_bytes()).hexdigest(), example=example, app_sha256=hashlib.sha256(image).hexdigest(), app_size=len(image))
 kit.with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n")

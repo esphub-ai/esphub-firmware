@@ -2,11 +2,9 @@
 
 Firmware sources, board profiles, and build recipes for [EspHub](https://github.com/esphub-ai/esphub).
 
-See the [Waveshare, Seeed Studio and LILYGO board index](docs/esp32s3-boards/README.md) for the supported ESP32-S3 profiles, hardware guides and official examples.
-
 ## Build
 
-Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one. The [firmware glossary](docs/firmware-terminology.md) describes the EspHub Bootloader, SDK, applications and flash layout.
+Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one.
 
 Start the SDK from the application entrypoint:
 
@@ -26,27 +24,25 @@ USB kits use components built in the same workflow run. Shared bootloader builds
 
 ## Development
 
-Run `npm run catalog` to generate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package. See the [board matrix](docs/m5stack-boards.md) for ESP32 targets.
+Run `npm run catalog` to validate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package.
 
 SDK version automation runs here on PRs. It bumps changes to the SDK on same-repository branches, using a patch bump by default and the `sdk:minor` or `sdk:major` label when supplied. Fork contributors update the SDK version themselves.
 
 ## Remote console
 
-Use `logs.set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs.read`. See the [wire protocol and memory limits](https://github.com/esphub-ai/esphub/blob/main/docs/iot.md#remote-console).
+Use `logs_set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs_read`.
 
 ## Production publishing
 
-Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bucket. Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies manifest hashes, writes immutable versioned objects and release receipts, then advances that board's Neon catalog in one transaction. The same transaction records every published file in `esphub.release_assets` and the tag of the latest release, so the Hub serves downloads from Neon without this repository's release naming. Versions in this repository start at `2.0`.
+Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies the build hashes and writes immutable versioned objects: the bootloader OTA image, the app image, and the setup kit with its manifest. It then advances that board's Neon catalog in one transaction. The same transaction records every published file in `esphub.release_assets` and the tag of the latest release, so the Hub serves downloads from Neon without this repository's release naming. Versions in this repository start at `2.0`.
 
 Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`, `esphub.boards`, and `esphub.board_sources`, plus `DELETE` on `esphub.board_sources` and `SELECT, INSERT` on `esphub.release_assets`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
 
-Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time. The directory also stores the example, bootloader and SDK source links the Hub returns. Each run fills them for older rows, including retired boards pinned to an earlier revision.
-
-**Index published releases** records releases published before the file index existed. It lists `releases/` in the R2 bucket, so the R2 token needs list access. It indexes every file named by each release receipt, tags the latest releases, and fails if any latest release is not fully indexed. It runs when the script changes on `main` and can be rerun safely.
+Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time. The directory also stores the example, bootloader and SDK source links the Hub returns. Retired boards keep the links of their pinned revision.
 
 Pull requests that add or edit optional examples compile just those examples on their respective boards. Changes to the default app, board configuration or shared firmware inputs run the full build for each affected board. Merging cancels that PR's remaining board builds.
 
-On `main`, the planner checks all changes since `ci/firmware-coverage`, including changes that were later reverted. A board example selects its own board. Shared SDK or build-recipe changes can select multiple boards. Missing or cancelled work keeps the revision pending. A completed compilation that reports an error counts as an attempt and stays visible in CI.
+On `main`, the planner checks all changes since `ci/firmware-coverage`, including changes that were later reverted. A board example selects its own board. Shared SDK or build-recipe changes can select multiple boards. Missing or cancelled work keeps the revision pending. Applications compile in shared shards first. A compile error fails its shard, which skips the board jobs and the coverage record, so the revision stays pending and the next run retries it. A board job that fails after its shard succeeded counts as an attempt and stays visible in CI.
 
 An hourly check dispatches outstanding builds. To catch up immediately, dispatch **Board firmware** on `main` with the board field empty.
 
@@ -56,4 +52,4 @@ EspHub sends a JSON envelope with `id` and `payload`. Messages use MQTT QoS 0 an
 
 Native applications call `eh_message_receive()` to take a heap-owned JSON envelope, and `eh_message_send(json, reply_to)` to send JSON text with an optional incoming ID. Use `NULL` for an unsolicited message. A successful send means the local transport queue accepted the message.
 
-Read device messages through the Hub's `logs.read` tool.
+Read device messages through the Hub's `logs_read` tool.
