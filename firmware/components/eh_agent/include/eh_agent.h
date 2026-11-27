@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#define EH_SDK_VERSION "8.0.1"
+#define EH_SDK_VERSION "8.1.0"
 
 #include <stdbool.h>
 #include <stddef.h>
