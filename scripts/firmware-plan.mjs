@@ -19,15 +19,16 @@ const bootloaderInputs = [
 const appInputs = [
   "firmware/components/**", "firmware/app/**", "scripts/build-example.py",
 ];
-const kitInputs = [
-  "scripts/package-setup.py", "scripts/board-catalog.mjs", "shared/board-examples.js",
-  ".github/actions/build-kit/**",
-];
 const digest = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 export function profiles(ref, cwd = process.cwd()) {
   return firmwareProfiles(ref, { cwd }).boards;
+}
+
+// Bootloader sets by ID, such as esp32s3-16mb. All boards with that ID share one set.
+export function bootloaders(ref, cwd = process.cwd()) {
+  return Object.fromEntries(firmwareProfiles(ref, { cwd }).variants);
 }
 
 function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}) {
@@ -97,7 +98,7 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
     const sharedBootloader = variants.get(bootloader);
     if (sharedBootloader?.target !== chip || sharedBootloader.flashMb !== flash_mb)
       throw Error("Invalid bootloader for " + board);
-    // On PRs, track optional examples separately from the default app shipped in the kit.
+    // On PRs, track optional examples separately from the published default app.
     const defaultExample = pullRequest && examples.find(example => example.id === default_example);
     const partition = `firmware/partitions/${flash_mb}mb.csv`;
     const boardInputs = defaultExample
@@ -128,21 +129,12 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
     const appContainer = chip === "esp32s31"
       ? "espressif/idf:release-v6.2@sha256:0e714292d8b4e6e75cb42e25461716221448858e125d96dbfea09732964c412d"
       : "espressif/idf:v5.5.4";
+    // A board publishes only its app; the bootloader set is shared by its ID.
     const tasks = {
-      bootloader: {
-        kind: "bootloader", container: sharedBootloader.container,
-        fingerprint: digest([board, namingInputs, boardInputs, sharedBootloader.fingerprint,
-          matching(["scripts/package-board-bootloader.py"])]),
-      },
       app: {
         kind: "app", container: appContainer,
         fingerprint: digest([board, namingInputs, boardInputs, appContainer, appSources]),
       },
-    };
-    // The kit fingerprint covers both components, so any board change rebuilds all three.
-    tasks.setup = {
-      kind: "setup",
-      fingerprint: digest([tasks.bootloader.fingerprint, tasks.app.fingerprint, matching(kitInputs)]),
     };
     boards[board] = { chip, tasks, bootloader };
     if (optional.length) {
@@ -178,16 +170,7 @@ export function boardPlans(
       );
       if (!selectedExamples.length) continue;
     }
-    const jobs = (changed ? Object.values(tasks) : [tasks.app])
-      .map((task) => ({
-        ...task,
-        tag: releaseTag(task.kind, board, version),
-        version,
-      }));
-    const components = jobs.filter((t) => t.kind !== "setup"),
-      kit = jobs.find((t) => t.kind === "setup");
-    const input = (kind) =>
-      components.find((t) => t.kind === kind);
+    const jobs = [{ ...tasks.app, tag: releaseTag("app", board, version), version }];
     matrix.push({
       board,
       fileStem: boardFileStem(board),
@@ -195,17 +178,16 @@ export function boardPlans(
       jobs,
       bootloader,
       ...(selectedExamples && { examples: selectedExamples }),
-      components,
-      kit: kit
-        ? {
-            ...kit,
-            bootloader: input("bootloader"),
-            app: input("app"),
-          }
-        : null,
+      components: jobs,
     });
   }
   return matrix;
+}
+
+// Bootloader set IDs to build and publish: changed sets, or a manual board's set.
+export function bootloaderPlans(before, after, boards, { manual = false, board: selected = "" }) {
+  if (selected) return manual && Object.hasOwn(boards, selected) ? [boards[selected].bootloader] : [];
+  return Object.keys(after).filter(id => before[id]?.fingerprint !== after[id].fingerprint).sort();
 }
 
 export function assignApplicationShards(plans) {
@@ -225,34 +207,29 @@ export function assignApplicationShards(plans) {
 
 // GitHub schedules one running job per repository-wide concurrency group.
 // Start at a different group on each run to spread small or manual builds.
-export function buildCohorts(plans, variants, version, runNumber) {
+// Cohorts are named by bootloader ID so job names stay stable for release evidence.
+export function buildCohorts(plans, variants, version, runNumber, bootloaderIds = []) {
   let index = runNumber;
   const nextGroup = () => `firmware-build-slot-${index++ % 100}`;
   const cohorts = new Map();
+  const cohort = (name) => {
+    if (!cohorts.has(name)) cohorts.set(name, { name, bootloader: null, boards: [] });
+    return cohorts.get(name);
+  };
+  for (const id of bootloaderIds)
+    cohort(id).bootloader = { ...variants.get(id), version, buildGroup: nextGroup() };
   for (const plan of plans) {
-    const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
-    const name = needsBootloader ? plan.bootloader : "examples";
-    if (!cohorts.has(name)) {
-      cohorts.set(name, {
-        name,
-        bootloader: needsBootloader
-          ? { ...variants.get(name), version, buildGroup: nextGroup() }
-          : null,
-        boards: [],
-      });
-    }
     const components = plan.components.map(task => ({ ...task, buildGroup: nextGroup() }));
-    // The kit and publication dispatch run after the components, so they can
-    // reuse a component's group without reducing component parallelism.
-    cohorts.get(name).boards.push({ ...plan, components });
+    // The publication dispatch runs after the app, so it can reuse the app's group.
+    cohort(plan.examples ? "examples" : plan.bootloader).boards.push({ ...plan, components });
   }
   return [...cohorts.values()];
 }
 
-// Keep only boards whose current inputs already have coverage throughout
+// Keep only entries whose current inputs already have coverage throughout
 // the interval. Looking at intermediate main snapshots also catches a change
 // that was built (or partly published) and then reverted during a backlog.
-export function unchangedMainBoards(covered, head, current, cwd = process.cwd()) {
+function unchangedSince(covered, head, current, read, fingerprint, cwd) {
   if (!covered) return {};
   if (covered === head) return current;
   if (!isAncestor(covered, head, cwd)) {
@@ -267,18 +244,26 @@ export function unchangedMainBoards(covered, head, current, cwd = process.cwd())
   for (const ref of [covered, ...revisions.slice(1)]) {
     let previous;
     try {
-      previous = profiles(ref, cwd);
+      previous = read(ref);
     } catch (error) {
       // An invalid older manifest must not prevent the corrected head from building.
       console.warn("Cannot compare historical board inputs at " + ref + ": " + error.message);
       return {};
     }
-    for (const [board, profile] of Object.entries(unchanged)) {
-      if (previous[board]?.tasks.setup.fingerprint !== profile.tasks.setup.fingerprint) delete unchanged[board];
+    for (const [key, entry] of Object.entries(unchanged)) {
+      if (!previous[key] || fingerprint(previous[key]) !== fingerprint(entry)) delete unchanged[key];
     }
     if (!Object.keys(unchanged).length) break;
   }
   return unchanged;
+}
+
+export function unchangedMainBoards(covered, head, current, cwd = process.cwd()) {
+  return unchangedSince(covered, head, current, ref => profiles(ref, cwd), board => board.tasks.app.fingerprint, cwd);
+}
+
+export function unchangedMainBootloaders(covered, head, current, cwd = process.cwd()) {
+  return unchangedSince(covered, head, current, ref => bootloaders(ref, cwd), set => set.fingerprint, cwd);
 }
 
 export function isMainBuildBatch(event, env) {
@@ -312,34 +297,44 @@ if (
     process.env,
   );
   const after = firmwareProfiles(afterRef, { pullRequest });
+  const afterSets = Object.fromEntries(after.variants);
   const mainBatch = isMainBuildBatch(event, process.env);
   const covered = mainBatch ? coverageCommit() : "";
-  let before;
-  if (mainBatch) before = unchangedMainBoards(covered, afterRef, after.boards);
-  else if (process.env.GITHUB_EVENT_NAME === "push" && /^0+$/.test(beforeRef ?? "")) before = after.boards;
-  else before = firmwareProfiles(beforeRef, { pullRequest }).boards;
+  let before, beforeSets;
+  if (mainBatch) {
+    before = unchangedMainBoards(covered, afterRef, after.boards);
+    beforeSets = unchangedMainBootloaders(covered, afterRef, afterSets);
+  } else if (process.env.GITHUB_EVENT_NAME === "push" && /^0+$/.test(beforeRef ?? "")) {
+    before = after.boards;
+    beforeSets = afterSets;
+  } else {
+    const base = firmwareProfiles(beforeRef, { pullRequest });
+    before = base.boards;
+    beforeSets = Object.fromEntries(base.variants);
+  }
   const options = {
     manual,
     board: event.inputs?.board ?? "",
     version: "2.0." + process.env.GITHUB_RUN_NUMBER,
   };
   if (manual && !options.board) throw Error("Select a board for a manual build");
-  const plans = before === null ? [] : boardPlans(before, after.boards, options);
+  // An older queued run that starts after a newer one recorded coverage builds nothing.
+  const skip = before === null || beforeSets === null;
+  const plans = skip ? [] : boardPlans(before, after.boards, options);
+  const sets = skip ? [] : bootloaderPlans(beforeSets, afterSets, after.boards, options);
   const appShards = mainBatch ? assignApplicationShards(plans) : [];
   appendFileSync(process.env.GITHUB_OUTPUT, `app_shards=${JSON.stringify(appShards)}\n`);
-  const cohorts = buildCohorts(plans, after.variants, options.version, Number(process.env.GITHUB_RUN_NUMBER));
+  const cohorts = buildCohorts(plans, after.variants, options.version, Number(process.env.GITHUB_RUN_NUMBER), sets);
   appendFileSync(process.env.GITHUB_OUTPUT, `cohorts=${JSON.stringify(cohorts)}\n`);
-  if (mainBatch && before !== null) {
-    const expected = Object.fromEntries(cohorts.map(({ name, boards }) => [
-      name, boards.map(({ board, jobs }) => [board, jobs.map(task => task.kind)]),
+  if (mainBatch && !skip) {
+    const expected = Object.fromEntries(cohorts.map(({ name, bootloader, boards }) => [
+      name, { bootloader: !!bootloader, boards: boards.map(({ board, jobs }) => [board, jobs.map(task => task.kind)]) },
     ]));
     appendFileSync(process.env.GITHUB_OUTPUT, `coverage_base=${covered}\nexpected_builds=${JSON.stringify(expected)}\n`);
   }
-  console.log(
-    plans.length
-      ? plans
-          .map(p => p.board + ": " + (p.examples ?? p.jobs.map(j => j.kind)).join(", "))
-          .join("\n")
-      : "No firmware inputs changed.",
-  );
+  const summary = [
+    ...sets.map(id => "bootloader " + id),
+    ...plans.map(p => p.board + ": " + (p.examples ?? p.jobs.map(j => j.kind)).join(", ")),
+  ];
+  console.log(summary.length ? summary.join("\n") : "No firmware inputs changed.");
 }

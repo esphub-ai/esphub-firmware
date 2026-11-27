@@ -14,23 +14,26 @@ import test from "node:test";
 import {
   assignApplicationShards,
   boardPlans,
+  bootloaderPlans,
+  bootloaders,
   buildCohorts,
   profiles,
   firmwareEventContext,
   isMainBuildBatch,
   unchangedMainBoards,
+  unchangedMainBootloaders,
 } from "../scripts/firmware-plan.mjs";
 
 test("assigns only selected applications to stable board shards", () => {
   const app = { kind: "app", container: "idf:s3" };
   const board = "m5stack/atoms3";
   const selected = { board, components: [app] };
-  const bootloader = { board: "m5stack/paper-color", components: [{ kind: "bootloader" }] };
-  const [assignment] = assignApplicationShards([bootloader, selected]);
+  const empty = { board: "m5stack/paper-color", components: [] };
+  const [assignment] = assignApplicationShards([empty, selected]);
   assert.equal(assignment.shard, 8);
   assert.deepEqual(assignment.groups, { "idf:s3": [board] });
   assert.equal(selected.appShard, assignment.shard);
-  assert.equal(bootloader.appShard, undefined);
+  assert.equal(empty.appShard, undefined);
   assert.deepEqual(assignApplicationShards([]), []);
 });
 
@@ -132,26 +135,31 @@ function boardFixture(t) {
   return { cwd, git, put, addBoard, commit };
 }
 
-test("board CI discovers a new directory and selects only affected tasks", (t) => {
+test("board CI discovers a new directory and selects only affected apps and bootloader sets", (t) => {
   const { cwd, git, put, addBoard, commit } = boardFixture(t);
-  const snapshot = () => profiles(commit(), cwd);
+  let head;
+  const snapshot = () => profiles(head = commit(), cwd);
   const options = { version: "1.1.9" };
   const select = (before, after) => Object.fromEntries(
     boardPlans(before, after, options).map(p => [p.board, p.jobs.map(j => j.kind)]),
   );
   const paper = "m5stack/paper-color", watch = "m5stack/stopwatch", other = "waveshare/stopwatch";
-  const jobs = ["bootloader", "app", "setup"];
+  const jobs = ["app"];
   addBoard(paper);
   addBoard(watch);
   let before = snapshot();
+  let beforeSets = bootloaders(head, cwd);
   assert.equal(before[paper].bootloader, before[watch].bootloader);
 
+  // Returns the selected apps and bootloader sets for one change.
   const change = (path, content) => {
     put(path, content);
-    const after = snapshot();
+    const after = snapshot(), afterSets = bootloaders(head, cwd);
     const selected = select(before, after);
+    const sets = bootloaderPlans(beforeSets, afterSets, after, options);
     before = after;
-    return selected;
+    beforeSets = afterSets;
+    return sets.length ? { ...selected, sets } : selected;
   };
   const covered = git("rev-parse", "HEAD");
   const since = (ref) => select(unchangedMainBoards(ref, git("rev-parse", "HEAD"), before, cwd), before);
@@ -169,24 +177,36 @@ test("board CI discovers a new directory and selects only affected tasks", (t) =
   assert.deepEqual(unchangedMainBoards(newer, covered, profiles(covered, cwd), cwd), {});
   assert.deepEqual(change("firmware/board/" + watch + "/examples/hello/sdkconfig.defaults", "CONFIG_X=y"), { [watch]: jobs });
   assert.deepEqual(change("scripts/firmware-plan.mjs", "scheduler only"), {});
-  for (const file of ["scripts/build-example.py", "firmware/components/eh_agent/src/sdk.c", "firmware/bootloader/common/sdkconfig.defaults",
-      "firmware/app/sdkconfig.defaults", "shared/board-examples.js", "scripts/package-setup.py"]) {
-    assert.deepEqual(change(file, "shared input"), { [paper]: jobs, [watch]: jobs });
+  for (const file of ["scripts/build-example.py", "firmware/app/sdkconfig.defaults"]) {
+    assert.deepEqual(change(file, "shared app input"), { [paper]: jobs, [watch]: jobs });
   }
-  assert.deepEqual(change("firmware/board/" + watch + "/README.md", "guide"), {});
+  // The SDK is linked into apps and the Launcher, so it changes both.
+  assert.deepEqual(change("firmware/components/eh_agent/src/sdk.c", "shared input"),
+    { [paper]: jobs, [watch]: jobs, sets: ["esp32s3-16mb", "esp32s3-8mb"] });
+  // Launcher-only inputs rebuild the bootloader sets, not the board apps.
+  const launcherCovered = git("rev-parse", "HEAD");
+  for (const file of ["firmware/bootloader/common/sdkconfig.defaults", "scripts/package-bootloader.py"]) {
+    assert.deepEqual(change(file, "launcher input"), { sets: ["esp32s3-16mb", "esp32s3-8mb"] });
+  }
+  const sets = bootloaders(git("rev-parse", "HEAD"), cwd);
+  assert.deepEqual(Object.keys(unchangedMainBootloaders(launcherCovered, git("rev-parse", "HEAD"), sets, cwd)), []);
+  assert.deepEqual(Object.keys(unchangedMainBootloaders(git("rev-parse", "HEAD"), git("rev-parse", "HEAD"), sets, cwd)).sort(),
+    ["esp32s3-16mb", "esp32s3-8mb"]);
+  for (const file of ["firmware/board/" + watch + "/README.md", "shared/board-examples.js"])
+    assert.deepEqual(change(file, "not a build input"), {});
   addBoard(other, 8);
   let after = snapshot();
   assert.deepEqual(select(before, after), { [other]: jobs });
   before = after;
-  assert.deepEqual(change("firmware/partitions/8mb.csv", "changed table"), { [other]: jobs });
-  assert.deepEqual(change("firmware/bootloader/esp32s3-16mb/sdkconfig.defaults", "updated"), {
-    [paper]: jobs, [watch]: jobs,
-  });
+  beforeSets = bootloaders(head, cwd);
+  assert.deepEqual(change("firmware/partitions/8mb.csv", "changed table"), { [other]: jobs, sets: ["esp32s3-8mb"] });
+  assert.deepEqual(change("firmware/bootloader/esp32s3-16mb/sdkconfig.defaults", "updated"), { sets: ["esp32s3-16mb"] });
   after = before;
-  const [plan] = boardPlans(after, after, { ...options, manual: true, board: other });
+  const manual = { ...options, manual: true, board: other };
+  const [plan] = boardPlans(after, after, manual);
   assert.equal(plan.fileStem, "waveshare_stopwatch");
-  assert.equal(plan.kit.tag, "firmware-setup-waveshare_stopwatch-v1.1.9");
-  assert.equal(plan.kit.app.tag, "firmware-app-waveshare_stopwatch-v1.1.9");
+  assert.equal(plan.jobs[0].tag, "firmware-app-waveshare_stopwatch-v1.1.9");
+  assert.deepEqual(bootloaderPlans(beforeSets, beforeSets, after, manual), ["esp32s3-8mb"]);
   assert.throws(() => boardPlans({}, after, { ...options, board: "unknown/board" }), /Unknown board/);
   put("firmware/bootloader/esp32s3-4mb/sdkconfig.defaults", "unsupported");
   assert.throws(snapshot, /at least 8 MiB/);
@@ -226,8 +246,8 @@ test("example-only PRs compile the affected optional examples, with full builds 
   const [cohort] = cohorts;
   assert.equal(cohort.name, "examples");
   assert.equal(cohort.bootloader, null);
-  assert.deepEqual(cohort.boards.map(b => [b.board, b.examples, b.kit, b.jobs.map(j => j.kind)]),
-    [[card, ["imu"], null, ["app"]]]);
+  assert.deepEqual(cohort.boards.map(b => [b.board, b.examples, b.jobs.map(j => j.kind)]),
+    [[card, ["imu"], ["app"]]]);
 
   addExample("clock");
   put(dir + "/examples/imu/sdkconfig.defaults", "CONFIG_IMU=y");
@@ -249,7 +269,7 @@ test("example-only PRs compile the affected optional examples, with full builds 
   const rtc = commit();
   assert.deepEqual(plan(scoped, rtc)[0].boards[0].examples, ["clock"]);
   assert.deepEqual(boardPlans(profiles(scoped, cwd), profiles(rtc, cwd), { version: "2.0.17" })
-    .map(b => [b.board, b.jobs.map(j => j.kind)]), [[card, ["bootloader", "app", "setup"]]]);
+    .map(b => [b.board, b.jobs.map(j => j.kind)]), [[card, ["app"]]]);
 
   manifest.shared_example_inputs["common/display.hpp"].push("hello");
   put(dir + "/board.json", JSON.stringify(manifest));
@@ -258,7 +278,7 @@ test("example-only PRs compile the affected optional examples, with full builds 
     put(dir + "/" + file, "changed");
     const next = commit();
     assert.deepEqual(plan(previous, next).flatMap(c => c.boards.map(b => [b.board, b.jobs.map(j => j.kind)])),
-      [[card, ["bootloader", "app", "setup"]]]);
+      [[card, ["app"]]]);
     previous = next;
   }
   put("scripts/build-example.py", "shared builder changed");
@@ -266,16 +286,16 @@ test("example-only PRs compile the affected optional examples, with full builds 
   assert.deepEqual(plan(added, shared).flatMap(c => c.boards.map(b => b.board)).sort(), [card, watch]);
 });
 
-test("overlapping firmware runs share 100 job groups across all bootloader variants", () => {
-  const plans = Array.from({ length: 64 }, (_, i) => ({
+test("overlapping firmware runs share 100 job groups across all bootloader sets", () => {
+  const plans = Array.from({ length: 120 }, (_, i) => ({
     board: `test/board-${i}`,
     bootloader: i % 2 ? "s3" : "c6",
-    components: [{ kind: "bootloader" }, { kind: "app" }],
+    components: [{ kind: "app" }],
   }));
   plans.push({ board: "test/examples", components: [{ kind: "app" }], examples: ["demo"] });
-  const variants = new Map([["s3", { variant: "s3" }], ["c6", { variant: "c6" }]]);
+  const variants = new Map([["s3", { variant: "s3" }], ["c6", { variant: "c6" }], ["h2", { variant: "h2" }]]);
   function groups(runNumber) {
-    const cohorts = buildCohorts(plans, variants, "2.0.25", runNumber);
+    const cohorts = buildCohorts(plans, variants, "2.0.25", runNumber, ["c6", "h2", "s3"]);
     return cohorts.flatMap(({ bootloader, boards }) => [
       ...(bootloader ? [bootloader.buildGroup] : []),
       ...boards.flatMap(board => board.components.map(task => task.buildGroup)),
@@ -284,8 +304,12 @@ test("overlapping firmware runs share 100 job groups across all bootloader varia
   const first = groups(99);
   const next = groups(100);
   const expected = new Set(Array.from({ length: 100 }, (_, i) => `firmware-build-slot-${i}`));
-  assert.equal(first.length, 131);
+  assert.equal(first.length, 124);
   assert.deepEqual(new Set(first), expected);
   assert.deepEqual(new Set(next), expected);
   assert.notEqual(first[0], next[0]);
+  // A changed bootloader set without board changes still gets its own cohort.
+  const cohorts = buildCohorts(plans, variants, "2.0.25", 1, ["h2"]);
+  assert.deepEqual(cohorts.find(({ name }) => name === "h2").boards, []);
+  assert.equal(cohorts.find(({ name }) => name === "s3").bootloader, null);
 });

@@ -1,4 +1,4 @@
-name: Build a shared EspHub bootloader
+name: Build a bootloader set
 on:
   workflow_call:
     inputs:
@@ -37,7 +37,7 @@ jobs:
             "$IDF_IMAGE" bash scripts/build-bootloader.sh
       - name: Check launcher image size
         run: |
-          size=$(stat --format=%s shared-bl/esp-bootloader.bin)
+          size=$(stat --format=%s shared-bl/launcher.bin)
           limit=$((0x140000))  # 1.25 MiB per launcher slot
           echo "$VARIANT: $size / $limit bytes"
           if (( size > limit )); then
@@ -49,3 +49,17 @@ jobs:
           name: bl-${{ inputs.variant }}
           path: shared-bl/
           if-no-files-found: error
+  queue-publish:
+    needs: build
+    if: >-
+      ${{ vars.FIRMWARE_PUBLISH_ENABLED == 'true' &&
+          github.repository == 'esphub-ai/esphub-firmware' &&
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions: {actions: write}
+    steps:
+      - name: Dispatch this bootloader for publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-bootloader.yml --repo "$GITHUB_REPOSITORY" --ref main -f source_run="$GITHUB_RUN_ID" -f bootloader="$VARIANT"

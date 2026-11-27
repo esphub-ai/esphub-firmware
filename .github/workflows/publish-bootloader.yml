@@ -1,0 +1,40 @@
+name: Publish a bootloader set
+on:
+  workflow_dispatch:
+    inputs:
+      source_run: {description: Trusted firmware build run ID, type: string, required: true}
+      bootloader: {description: Bootloader ID such as esp32s3-16mb, type: string, required: true}
+permissions: {contents: read, actions: read}
+jobs:
+  publish:
+    if: ${{ github.repository == 'esphub-ai/esphub-firmware' && github.ref == 'refs/heads/main' && vars.FIRMWARE_PUBLISH_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: npm}
+      - run: npm ci --ignore-scripts
+      - name: Verify the source run and its bootloader build
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+          BOOTLOADER: ${{ inputs.bootloader }}
+        run: node scripts/prepare-publication.mjs
+      - name: Download the bootloader set
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          name: ${{ steps.source.outputs.artifact }}
+          path: assets/${{ steps.source.outputs.artifact }}
+      - name: Publish the bootloader set to R2 and Neon
+        env:
+          BOOTLOADER: ${{ inputs.bootloader }}
+          FIRMWARE_R2_ENDPOINT: ${{ vars.FIRMWARE_R2_ENDPOINT }}
+          FIRMWARE_DATABASE_URL: ${{ secrets.FIRMWARE_DATABASE_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FIRMWARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FIRMWARE_R2_SECRET_ACCESS_KEY }}
+        run: node scripts/publish-bootloader.mjs

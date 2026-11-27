@@ -1,4 +1,4 @@
-name: Build a board
+name: Build a board app
 on:
   workflow_call:
     inputs:
@@ -9,48 +9,29 @@ permissions: {contents: read}
 env:
   BOARD: ${{ fromJSON(inputs.profile).board }}
   BOARD_FILE_STEM: ${{ fromJSON(inputs.profile).fileStem }}
-  CHIP: ${{ fromJSON(inputs.profile).chip }}
 jobs:
-  component:
+  app:
     concurrency:
-      group: ${{ matrix.task.buildGroup }}
+      group: ${{ fromJSON(inputs.profile).components[0].buildGroup }}
       queue: max
-    name: ${{ matrix.task.kind }}
-    strategy:
-      fail-fast: false
-      matrix:
-        task: ${{ fromJSON(inputs.profile).components }}
     runs-on: ubuntu-24.04
-    container: ${{ (matrix.task.kind != 'app' || toJSON(fromJSON(inputs.profile).appShard) == 'null') && matrix.task.container || null }}
+    container: ${{ toJSON(fromJSON(inputs.profile).appShard) == 'null' && fromJSON(inputs.profile).components[0].container || null }}
     env:
-      VERSION: ${{ matrix.task.version }}
-      KIND: ${{ matrix.task.kind }}
+      VERSION: ${{ fromJSON(inputs.profile).components[0].version }}
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
       - uses: actions/download-artifact@v4
-        if: matrix.task.kind == 'bootloader'
-        with:
-          name: bl-${{ fromJSON(inputs.profile).bootloader }}
-          path: shared-bl
-      - name: Assemble bootloader release for the board
-        if: matrix.task.kind == 'bootloader'
-        shell: bash
-        run: |
-          set -eo pipefail
-          source "$IDF_PATH/export.sh"
-          python scripts/package-board-bootloader.py "$BOARD" "$VERSION"
-      - uses: actions/download-artifact@v4
-        if: matrix.task.kind == 'app' && toJSON(fromJSON(inputs.profile).appShard) != 'null'
+        if: toJSON(fromJSON(inputs.profile).appShard) != 'null'
         with:
           name: app-shard-${{ fromJSON(inputs.profile).appShard }}
           path: shard-apps
       - name: Copy the board application from the compiled shard
-        if: matrix.task.kind == 'app' && toJSON(fromJSON(inputs.profile).appShard) != 'null'
+        if: toJSON(fromJSON(inputs.profile).appShard) != 'null'
         shell: bash
         run: mv "shard-apps/$BOARD_FILE_STEM" dist
       - name: Build the default app and all published source examples
-        if: matrix.task.kind == 'app' && toJSON(fromJSON(inputs.profile).appShard) == 'null'
+        if: toJSON(fromJSON(inputs.profile).appShard) == 'null'
         shell: bash
         run: |
           set -eo pipefail
@@ -58,52 +39,19 @@ jobs:
           python3 scripts/build-example.py "$BOARD" --all --version "$VERSION"
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.BOARD_FILE_STEM }}.${{ matrix.task.kind }}
-          path: dist/
-          if-no-files-found: error
-  kit:
-    concurrency:
-      group: ${{ fromJSON(inputs.profile).components[0].buildGroup }}
-      queue: max
-    needs: component
-    if: ${{ !cancelled() && needs.component.result == 'success' }}
-    name: USB kit
-    runs-on: ubuntu-24.04
-    env:
-      VERSION: ${{ fromJSON(inputs.profile).kit.version }}
-      TAG: ${{ fromJSON(inputs.profile).kit.tag }}
-      BOOTLOADER_VERSION: ${{ fromJSON(inputs.profile).kit.bootloader.version }}
-      BOOTLOADER_TAG: ${{ fromJSON(inputs.profile).kit.bootloader.tag }}
-      APP_VERSION: ${{ fromJSON(inputs.profile).kit.app.version }}
-      APP_TAG: ${{ fromJSON(inputs.profile).kit.app.tag }}
-    steps:
-      - uses: actions/checkout@v4
-        with: {persist-credentials: false}
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.BOARD_FILE_STEM }}.bootloader
-          path: components/bootloader
-      - uses: actions/download-artifact@v4
-        with:
           name: ${{ env.BOARD_FILE_STEM }}.app
-          path: components/app
-      - uses: ./.github/actions/build-kit
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.BOARD_FILE_STEM }}.setup
           path: dist/
           if-no-files-found: error
   queue-publish:
     concurrency:
       group: ${{ fromJSON(inputs.profile).components[0].buildGroup }}
       queue: max
-    needs: [component, kit]
+    needs: app
     if: >-
-      ${{ !cancelled() && vars.FIRMWARE_PUBLISH_ENABLED == 'true' &&
+      ${{ vars.FIRMWARE_PUBLISH_ENABLED == 'true' &&
           github.repository == 'esphub-ai/esphub-firmware' &&
           github.ref == 'refs/heads/main' &&
-          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-          needs.component.result == 'success' && needs.kit.result == 'success' }}
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions: {actions: write}
     steps:

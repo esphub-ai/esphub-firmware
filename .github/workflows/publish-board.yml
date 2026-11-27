@@ -24,13 +24,6 @@ jobs:
           BOARD: ${{ inputs.board }}
         run: node scripts/prepare-publication.mjs
       # A cross-run artifact listing is capped at 100. Fetch each validated name directly.
-      - name: Download bootloader artifact
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.source_run }}
-          name: ${{ steps.source.outputs.stem }}.bootloader
-          path: assets/${{ steps.source.outputs.stem }}.bootloader
       - name: Download app artifact
         uses: actions/download-artifact@v4
         with:
@@ -38,14 +31,7 @@ jobs:
           run-id: ${{ inputs.source_run }}
           name: ${{ steps.source.outputs.stem }}.app
           path: assets/${{ steps.source.outputs.stem }}.app
-      - name: Download setup artifact
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.source_run }}
-          name: ${{ steps.source.outputs.stem }}.setup
-          path: assets/${{ steps.source.outputs.stem }}.setup
-      - name: Publish release assets and advance the Neon catalog
+      - name: Publish the app and advance the Neon catalog
         env:
           BOARD_PROFILE: ${{ steps.source.outputs.profile }}
           RELEASE_SOURCE_SHA: ${{ steps.source.outputs.sha }}

@@ -1,12 +1,16 @@
+// Verify that a publication comes from a trusted main firmware build and that the
+// selected board app or bootloader set built successfully in it.
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { boardFileStem } from "../shared/board-id.js";
-import { profiles } from "./firmware-plan.mjs";
+import { bootloaders, profiles } from "./firmware-plan.mjs";
 
 const repo = "esphub-ai/esphub-firmware";
 const id = process.env.SOURCE_RUN ?? "";
 const board = process.env.BOARD;
+const bootloader = process.env.BOOTLOADER;
 if (!/^\d+$/.test(id)) throw Error("Invalid source run ID");
+if (!board === !bootloader) throw Error("Select exactly one board or bootloader");
 const api = (path, pageFilter) =>
   execFileSync(
     "gh",
@@ -39,52 +43,46 @@ execFileSync("git", [
   run.head_sha,
   process.env.GITHUB_SHA,
 ]);
-const boards = profiles(run.head_sha);
-if (!Object.hasOwn(boards, board))
-  throw Error("Board does not exist in the build revision");
-const profile = boards[board];
-const stem = boardFileStem(board);
-const names = new Set(
+const artifacts = (prefix) => new Set(
   api(
     "/artifacts?per_page=100",
-    `[.artifacts[] | select(.expired == false and (.name | startswith(${JSON.stringify(stem + ".")}))) | .name]`,
+    `[.artifacts[] | select(.expired == false and (.name | startswith(${JSON.stringify(prefix)}))) | .name]`,
   ).flat(),
 );
-const boardSegment = JSON.stringify(`/ ${board} / `);
-const jobs = api(
+const jobs = (segment) => api(
   "/jobs?per_page=100",
-  `[.jobs[] | select(.name | contains(${boardSegment})) | {name, conclusion}]`,
+  `[.jobs[] | select(.name | contains(${JSON.stringify(segment)})) | {name, conclusion}]`,
 ).flat();
-// A board build always produces the bootloader, app and setup kit together.
-const selected = Object.values(profile.tasks);
-for (const { kind } of selected) {
-  const name = kind === "setup" ? "USB kit" : kind;
-  const matches = jobs.filter((job) =>
-    job.name.endsWith(`/ ${board} / ${name}`),
-  );
-  if (
-    !names.has(stem + "." + kind) ||
-    !matches.some((job) => job.conclusion === "success") ||
-    matches.some((job) => job.conclusion !== "success")
-  ) {
-    throw Error("Incomplete build or artifact for " + kind);
-  }
-}
-appendFileSync(
-  process.env.GITHUB_OUTPUT,
-  [
+const succeeded = (matches) =>
+  matches.some((job) => job.conclusion === "success") &&
+  !matches.some((job) => job.conclusion !== "success");
+
+const outputs = ["sha=" + run.head_sha];
+if (bootloader) {
+  if (!Object.hasOwn(bootloaders(run.head_sha), bootloader))
+    throw Error("Bootloader does not exist in the build revision");
+  const artifact = "bl-" + bootloader;
+  const name = `${bootloader} / bootloader / build`;
+  if (!artifacts(artifact).has(artifact) || !succeeded(jobs(name).filter((job) => job.name === name)))
+    throw Error("Incomplete build or artifact for bootloader " + bootloader);
+  outputs.push("artifact=" + artifact);
+} else {
+  const boards = profiles(run.head_sha);
+  if (!Object.hasOwn(boards, board))
+    throw Error("Board does not exist in the build revision");
+  const profile = boards[board];
+  const stem = boardFileStem(board);
+  const name = `/ ${board} / app`;
+  if (!artifacts(stem + ".").has(stem + ".app") ||
+      !succeeded(jobs(`/ ${board} / `).filter((job) => job.name.endsWith(name))))
+    throw Error("Incomplete build or artifact for app");
+  outputs.push(
     "stem=" + stem,
-    "sha=" + run.head_sha,
-    "profile=" +
-      JSON.stringify({
-        board,
-        chip: profile.chip,
-        jobs: selected.map(({ kind, fingerprint }) => ({
-          kind,
-          fingerprint,
-          version: "2.0." + run.run_number,
-        })),
-      }),
-    "",
-  ].join("\n"),
-);
+    "profile=" + JSON.stringify({
+      board,
+      chip: profile.chip,
+      jobs: [{ kind: "app", fingerprint: profile.tasks.app.fingerprint, version: "2.0." + run.run_number }],
+    }),
+  );
+}
+appendFileSync(process.env.GITHUB_OUTPUT, outputs.join("\n") + "\n");

@@ -1,6 +1,6 @@
 # Build a board example
 
-Check out the EspHub firmware revision in the example's source URL. Each board directory contains its default example, additional examples, entrypoints, descriptions and upstream references in `board.json`. The USB kit includes the default example. Each example builds into an ordinary ESP-IDF application image and starts the EspHub SDK.
+Check out the EspHub firmware revision in the example's source URL. Each board directory contains its default example, additional examples, entrypoints, descriptions and upstream references in `board.json`. Each board publishes its default example as its app. Each example builds into an ordinary ESP-IDF application image and starts the EspHub SDK.
 
 For M5Stack, LILYGO, Waveshare and Seeed Studio apps, activate ESP-IDF v5.5.4. For ESP-Mosaico use the Espressif release-v6.2 container pinned in the firmware plan. Python and Git are required. From the repository root:
 
@@ -14,13 +14,13 @@ Open the example's entrypoint to change its behavior. For native ESP-IDF example
 
 For a board-local file shared by several examples, `board.json` can map its path relative to `examples/` to all consuming example IDs in `shared_example_inputs`. PR CI builds those examples when the file changes. A shared file used by the default app or without a declared list triggers a full board build.
 
-The build downloads pinned dependencies, writes the app binary and SHA-256 to the output directory, and checks the image against the board's application slot size. Use the board’s setup kit and its `flash_args` for first-time USB installation. ESP-IDF’s generic `app-flash` command points at the first maintenance slot in this layout. On a registered device, use `bootloader_enter`, wait for the bootloader role, upload the app with `ota_prepare_upload` and call `ota_install` using kind `app`. Verify the install receipt, the next app session and the behavior in the example description.
+The build downloads pinned dependencies, writes the app binary and SHA-256 to the output directory, and checks the image against the board's application slot size. For a first-time USB installation, use the flash plan the Hub returns with the device registration: the board's bootloader set, its app and the device's private NVS image. ESP-IDF’s generic `app-flash` command points at the first maintenance slot in this layout. On a registered device, use `bootloader_enter`, wait for the bootloader role, upload the app with `ota_prepare_upload` and call `ota_install` using kind `app`. Verify the install receipt, the next app session and the behavior in the example description.
 
 M5Stack examples are adapted from the manufacturer’s board guides and M5GFX/M5Unified library examples. See each example's upstream URL and the [M5Stack attribution](../firmware/board/m5stack/LICENSE). TriviaPOD ships proprietary game firmware. Its starter is Espressif's ESP32-S3 chip-info example and uses the serial console.
 
 ## App and filesystem capacity
 
-USB kits select the partition table by flash capacity. Both Launcher slots are 1.25 MiB each. The default app / LittleFS capacities are 4 / 1.375 MiB on 8 MiB boards, 8 / 5.375 MiB on 16 MiB boards, and 5.5 / 23.875 MiB on 32 MiB boards. NVS, otadata and PHY remain at their existing addresses. Reflashing a USB kit installs its default layout and erases files and device credentials. Back up files first, and flash a reissued NVS image from EspHub with the kit.
+Each bootloader set uses the partition table for its flash capacity. Both Launcher slots are 1.25 MiB each. The default app / LittleFS capacities are 4 / 1.375 MiB on 8 MiB boards, 8 / 5.375 MiB on 16 MiB boards, and 5.5 / 23.875 MiB on 32 MiB boards. NVS, otadata and PHY remain at their existing addresses. A first-time installation installs the default layout and erases files and device credentials. Back up files first, and flash a reissued NVS image from EspHub with the bootloader set and app.
 
 Launcher OTA retains the device's installed table, including older devices with larger Launcher slots. In Launcher mode, `ota_resize_app` can move the boundary between the last two contiguous partitions, `app` and `data`, in 64 KiB increments. Both growing and shrinking erase all LittleFS files and create a writable empty filesystem. The installed app must fit before shrinking. The same target size is a no-op. If power fails during the primary table rewrite, recover over USB.
 

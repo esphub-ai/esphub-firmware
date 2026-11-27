@@ -4,7 +4,7 @@ Firmware sources, board profiles, and build recipes for [EspHub](https://github.
 
 ## Build
 
-Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one.
+Each board declares a default application and its examples in `board.json`. Each board publishes only its default app. Boards with the same bootloader ID in `board.json`, such as `esp32s3-16mb`, share one bootloader set: the ESP-IDF second-stage bootloader, the partition table and the EspHub Launcher. The Hub combines a board's bootloader set, its app and a private NVS image into a first-install flash plan. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one.
 
 Start the SDK from the application entrypoint:
 
@@ -18,9 +18,9 @@ void app_main(void)
 }
 ```
 
-From the **Board firmware** workflow, run a manual build with a canonical board ID such as `m5stack/stopwatch`. Manual runs build the selected board's components and USB kit. Pull requests and pushes build changed firmware inputs. Use a targeted manual run to validate changes to the workflows or shared USB-kit packaging action. Download build results from the workflow's artifacts.
+From the **Board firmware** workflow, run a manual build with a canonical board ID such as `m5stack/stopwatch`. Manual runs build the selected board's app and its bootloader set. Pull requests and pushes build changed board apps and changed bootloader sets. Download build results from the workflow's artifacts.
 
-USB kits use components built in the same workflow run. Shared bootloader builds are cached by input fingerprint. Published releases are served from R2 and indexed in Neon.
+Bootloader set builds are cached by input fingerprint. Published releases are served from R2 and indexed in Neon.
 
 ## Development
 
@@ -34,9 +34,9 @@ Use `logs_set` to redirect ordinary ESP-IDF task logs over the existing device M
 
 ## Production publishing
 
-Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies the build hashes and writes immutable versioned objects: the bootloader OTA image, the app image, and the setup kit with its manifest. It then advances that board's Neon catalog in one transaction. The same transaction records every published file in `esphub.release_assets` and the tag of the latest release, so the Hub serves downloads from Neon without this repository's release naming. Versions in this repository start at `2.0`.
+Each successful board app build dispatches **Publish board firmware**, and each successful bootloader set build dispatches **Publish a bootloader set**. To retry a failed publication, dispatch the workflow on `main` with the trusted build run ID and the board or bootloader ID. A retry reuses the validated artifacts. Board publication verifies the app hash, writes the immutable app image and advances that board's Neon catalog in one transaction. Bootloader publication verifies the descriptor, writes `bootloaders/<id>/<version>/{bootloader,partition-table,launcher}.bin` and records one `esphub.bootloaders` row with each file's flash offset, R2 key and SHA-256, the flash settings, and the app and NVS offsets. The Launcher image also serves Launcher OTA. The same transaction records every published file in `esphub.release_assets` and the tag of the latest release, so the Hub serves downloads from Neon without this repository's release naming. Versions in this repository start at `2.0`.
 
-Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`, `esphub.boards`, and `esphub.board_sources`, plus `DELETE` on `esphub.board_sources` and `SELECT, INSERT` on `esphub.release_assets`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
+Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`, `esphub.boards`, and `esphub.board_sources`, plus `DELETE` on `esphub.board_sources` and `SELECT, INSERT` on `esphub.release_assets` and `esphub.bootloaders`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
 
 Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time. The directory also stores the example, bootloader and SDK source links the Hub returns. Retired boards keep the links of their pinned revision.
 
