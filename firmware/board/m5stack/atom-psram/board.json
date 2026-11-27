@@ -96,6 +96,12 @@
       "description": "Send scanner commands over UART and forward scanner responses to the serial console.",
       "entrypoint": "examples/atomic-qrcode-uart/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_QRCode/UART_CMD_CONTROL/UART_CMD_CONTROL.ino"
+    },
+    {
+      "id": "atomic-switch",
+      "description": "Use the button and breathing pixel to select and toggle either output on the K042 Switch base.",
+      "entrypoint": "examples/atomic-switch/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_Switch/ATOM_Switch.ino"
     }
   ]
 }
