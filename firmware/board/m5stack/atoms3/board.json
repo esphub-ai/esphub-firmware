@@ -287,6 +287,12 @@
       "description": "Play a built-in WAV followed by /66.wav on the Atomic SPK Base microSD card.",
       "entrypoint": "examples/uiflow-spk-wav/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/speaker/atoms3_speaker_example.py"
+    },
+    {
+      "id": "uiflow-bleuart-client",
+      "description": "Connect to a BLE UART peripheral, send a repeating number sequence and print the received notifications.",
+      "entrypoint": "examples/uiflow-bleuart-client/main.c",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/system/bleuart/atoms3_bleuart_client_example.py"
     }
   ]
 }
