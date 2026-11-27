@@ -102,6 +102,12 @@
       "description": "Use the button and breathing pixel to select and toggle either output on the K042 Switch base.",
       "entrypoint": "examples/atomic-switch/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_Switch/ATOM_Switch.ino"
+    },
+    {
+      "id": "atomic-stepmotor",
+      "description": "Move a DRV8825 stepper forward and back on a button press.",
+      "entrypoint": "examples/atomic-stepmotor/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_StepMotor/ATOM_StepMotor.ino"
     }
   ]
 }
