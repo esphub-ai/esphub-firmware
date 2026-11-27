@@ -130,6 +130,12 @@
       "description": "Serve the official Atomic PoE Base welcome page over wired Ethernet and show the DHCP address on the LCD.",
       "entrypoint": "examples/atomic-poe-webserver/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/WebServer/WebServer.ino"
+    },
+    {
+      "id": "atomic-spk-mp3",
+      "description": "Play /11-fanfare.mp3 from the Atomic SPK Base microSD card over I2S and report playback status.",
+      "entrypoint": "examples/atomic-spk-mp3/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicSPK/PlayMP3FromSD/PlayMP3FromSD.ino"
     }
   ]
 }
