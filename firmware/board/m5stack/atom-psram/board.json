@@ -60,6 +60,12 @@
       "description": "Cycle the Atom-PSRAM RGB pixel through four colors with the board button.",
       "entrypoint": "examples/led-set/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Basics/LEDSet/LEDSet.ino"
+    },
+    {
+      "id": "mult-serial",
+      "description": "Forward raw bytes bidirectionally between UART0 and the Grove UART on Atom-PSRAM.",
+      "entrypoint": "examples/mult-serial/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/MultSerial/MultSerial.ino"
     }
   ]
 }
