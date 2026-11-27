@@ -44,7 +44,7 @@
 -        ESP_RETURN_ON_ERROR(nvs_flash_erase(), TAG, "erase NVS failed");
 -        ret = nvs_flash_init();
 -    } else if (ret == ESP_ERR_INVALID_STATE) {
-+ else if (ret == ESP_ERR_INVALID_STATE) {
++    if (ret == ESP_ERR_INVALID_STATE) {
          ret = ESP_OK;
      }
      ESP_RETURN_ON_ERROR(ret, TAG, "initialize NVS failed");

@@ -47,7 +47,7 @@ def build_partitions(flash_mb, app_size, work):
 
 
 def write_mosaico_notices(output, project, upstream_root, description):
-    sources = list(dict.fromkeys([upstream_root, Path(description["idf_path"])] +
+    sources = list(dict.fromkeys([ROOT, upstream_root, Path(description["idf_path"])] +
                                  [Path(path) for path in description["build_component_paths"]]))
     with ZipFile(output, "w", ZIP_DEFLATED) as notices:
         for index, directory in enumerate(sources):
