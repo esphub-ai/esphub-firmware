@@ -9,9 +9,13 @@ import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
 from unittest.mock import patch
+import yaml
 
 from idf_build_apps.app import BuildStatus, CMakeApp
+from idf_build_apps.manifest import DEFAULT_BUILD_TARGETS
 from idf_build_apps.manifest.manifest import Manifest
+
+DEFAULT_BUILD_TARGETS.set(["esp32s3"])
 
 ROOT = Path.cwd()
 SAMPLES = (
@@ -105,14 +109,7 @@ with TemporaryDirectory(prefix="esphub-idf-apps-") as temp:
     for label, (project, settings, _, _) in zip(SAMPLES, projects):
         status = plan("raw file only", label, make_app(project, "raw", settings), [changed], [])
         assert status == BuildStatus.SKIPPED
-    if "--plan-only" in sys.argv:
-        sys.exit(0)
-
-    project, settings, _, _ = projects[0]
-    status, commands = execute("SDK auto, stock arguments", SAMPLES[0], make_app(project, "stock", settings), ["eh_agent"])
-    assert (status, commands) == (BuildStatus.FAILED, ["reconfigure"])
-
-    manifest = root / "manifest.json"
+    manifest = root / "manifest.yml"
     rules = {}
     for project, _, board, source in projects:
         rules[str(project)] = {"depends_filepatterns": [
@@ -121,12 +118,22 @@ with TemporaryDirectory(prefix="esphub-idf-apps-") as temp:
             "firmware/app/**",
             "firmware/components/eh_agent/**",
         ]}
-    manifest.write_text(json.dumps(rules))
-    CMakeApp.MANIFEST = Manifest.from_files([str(manifest)], root_path=str(ROOT))
+    manifest.write_text(yaml.safe_dump(rules))
+    manifest_rules = Manifest.from_files([str(manifest)], root_path=str(ROOT))
+    CMakeApp.MANIFEST = manifest_rules
     for i, (label, (project, settings, _, _)) in enumerate(zip(SAMPLES, projects)):
         expected = BuildStatus.SHOULD_BE_BUILT if i == 0 else BuildStatus.SKIPPED
         assert plan("manifest, one example", label, make_app(project, "manifest-example", settings), [changed], []) == expected
         assert plan("manifest, shared SDK", label, make_app(project, "manifest-sdk", settings), [sdk_source], []) == BuildStatus.SHOULD_BE_BUILT
+    if "--plan-only" in sys.argv:
+        sys.exit(0)
+
+    CMakeApp.MANIFEST = None
+    project, settings, _, _ = projects[0]
+    status, commands = execute("SDK auto, stock arguments", SAMPLES[0], make_app(project, "stock", settings), ["eh_agent"])
+    assert (status, commands) == (BuildStatus.FAILED, ["reconfigure"])
+
+    CMakeApp.MANIFEST = manifest_rules
     app = make_app(projects[0][0], "manifest-real-build", projects[0][1])
     assert plan("manifest, actual build selection", SAMPLES[0], app, [changed], []) == BuildStatus.SHOULD_BE_BUILT
     assert execute("manifest, actual build", SAMPLES[0], app, []) == (BuildStatus.SUCCESS, ["build"])
