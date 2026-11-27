@@ -44,12 +44,7 @@ eh_config_t g_eh_cfg = EH_CONFIG_DEFAULT();
 typedef struct {
     char op[20];
     eh_op_handler_t fn;
-    eh_op_async_handler_t afn;
 } op_t;
-
-struct eh_req {
-    cJSON *id;
-};
 
 // A binary semaphore latches work arriving between a state check and sleep.
 static SemaphoreHandle_t s_wake;
@@ -68,7 +63,7 @@ typedef struct { char *frame; unsigned session; } tx_item_t;
 static QueueHandle_t s_txq, s_message_rx;
 static atomic_uint s_message_session;
 static unsigned s_message_generation;
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
 static EventGroupHandle_t ota_transport;
 static atomic_bool s_result_due;
 
@@ -195,12 +190,11 @@ void eh_schedule_reboot(uint32_t delay_ms)
     eh_agent_notify();
 }
 
-static esp_err_t op_register(const char *op, eh_op_handler_t handler, eh_op_async_handler_t ahandler)
+esp_err_t eh_op_register(const char *op, eh_op_handler_t handler)
 {
     for (int i = 0; i < s_nops; i++) {
         if (strcmp(s_ops[i].op, op) == 0) {
             s_ops[i].fn = handler;
-            s_ops[i].afn = ahandler;
             return ESP_OK;
         }
     }
@@ -209,19 +203,8 @@ static esp_err_t op_register(const char *op, eh_op_handler_t handler, eh_op_asyn
     }
     strlcpy(s_ops[s_nops].op, op, sizeof(s_ops[0].op));
     s_ops[s_nops].fn = handler;
-    s_ops[s_nops].afn = ahandler;
     s_nops++;
     return ESP_OK;
-}
-
-esp_err_t eh_op_register(const char *op, eh_op_handler_t handler)
-{
-    return op_register(op, handler, NULL);
-}
-
-esp_err_t eh_op_register_async(const char *op, eh_op_async_handler_t handler)
-{
-    return op_register(op, NULL, handler);
 }
 
 static bool txq_post(char *frame, unsigned session)
@@ -300,10 +283,8 @@ void eh_event(const char *name, const char *json)
 
 /* IDF places this directly after esp_app_desc_t in the first image segment.
  * The bootloader can check the artifact type and board before erasing a slot. */
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
 #define EH_IMAGE_PROFILE EH_BL_IMAGE_PREFIX CONFIG_EH_BL_PROFILE
-#endif
-#ifdef EH_IMAGE_PROFILE
 static const char image_profile[] __attribute__((section(".rodata_custom_desc"), aligned(4))) = EH_IMAGE_PROFILE "\0" EH_OTA_CAPABILITY;
 #endif
 
@@ -345,13 +326,9 @@ static void diagnostics_fill(cJSON *o)
     char sha[65];
     eh_hex(d->app_elf_sha256, 32, sha);
     const esp_partition_t *run = esp_ota_get_running_partition();
-#ifdef EH_IMAGE_PROFILE
+#if CONFIG_EH_LAUNCHER
     cJSON_AddStringToObject(o, "image_profile", image_profile);
-#if CONFIG_EH_URL_OTA
-    cJSON_AddBoolToObject(o, "dual_bootloader_ota",
-                         !strcmp(run->label, "launcher_a") || !strcmp(run->label, "launcher_b"));
-#endif
-    if (CONFIG_EH_BL_PROFILE[0]) cJSON_AddStringToObject(o, "bootloader_profile", CONFIG_EH_BL_PROFILE);
+    cJSON_AddStringToObject(o, "bootloader_profile", CONFIG_EH_BL_PROFILE);
 #endif
     cJSON *fw = cJSON_GetObjectItem(o, "fw");
     cJSON_AddStringToObject(fw, "idf", d->idf_ver);
@@ -497,39 +474,6 @@ static void send_res(const cJSON *id, bool ok, cJSON *data, const char *err)
     }
 }
 
-static char *build_res_string(const cJSON *id, bool ok, cJSON *data, const char *err)
-{
-    cJSON *o = cJSON_CreateObject();
-    cJSON_AddStringToObject(o, "t", "res");
-    cJSON_AddItemToObject(o, "id", id ? cJSON_Duplicate(id, true) : cJSON_CreateNull());
-    cJSON_AddBoolToObject(o, "ok", ok);
-    if (ok) {
-        cJSON_AddItemToObject(o, "data", data ? data : cJSON_CreateObject());
-    } else {
-        cJSON_Delete(data);
-        cJSON_AddStringToObject(o, "error", err && *err ? err : "error");
-    }
-    char *s = cJSON_PrintUnformatted(o);
-    cJSON_Delete(o);
-    return s;
-}
-
-void eh_op_reply(eh_req_t *req, bool ok, cJSON *data, const char *err)
-{
-    if (!req) {
-        cJSON_Delete(data);
-        return;
-    }
-    char *s = build_res_string(req->id, ok, data, err);
-    cJSON_Delete(req->id);
-    free(req);
-    if (s && strlen(s) > 16384) {
-        free(s);
-        s = NULL;
-    }
-    txq_push(s); /* sent by the agent task; dropped if the hub is not connected */
-}
-
 static esp_err_t run_cmd(const char *name, const cJSON *argv, cJSON *data, char *err, size_t errlen)
 {
     char *out = NULL;
@@ -607,26 +551,6 @@ static void handle_req(const cJSON *root)
     esp_err_t r = ESP_ERR_NOT_SUPPORTED;
     for (int i = 0; i < s_nops; i++) {
         if (strcmp(s_ops[i].op, op) == 0) {
-            if (s_ops[i].afn) {
-                eh_req_t *req = calloc(1, sizeof(*req));
-                if (req) {
-                    req->id = id ? cJSON_Duplicate(id, true) : cJSON_CreateNull();
-                }
-                r = req && req->id ? s_ops[i].afn(req, args, err, sizeof(err)) : ESP_ERR_NO_MEM;
-                if (r == ESP_OK) {
-                    cJSON_Delete(data); /* answered later through eh_op_reply() */
-                    return;
-                }
-                if (req) {
-                    cJSON_Delete(req->id);
-                    free(req);
-                }
-                if (!err[0] && r == ESP_ERR_NO_MEM) {
-                    snprintf(err, sizeof(err), "out of memory");
-                }
-                send_res(id, false, data, err);
-                return;
-            }
             r = s_ops[i].fn(args, data, err, sizeof(err));
             if (r == ESP_OK && !strcmp(op, "install"))
                 cJSON_Delete(data);
@@ -661,17 +585,6 @@ static void handle_req(const cJSON *root)
         } else {
             r = run_cmd(n->valuestring, argv, data, err, sizeof(err));
         }
-    } else if (strcmp(op, "cmd.list") == 0) {
-        cJSON_AddItemToObject(data, "commands", eh_cmd_list_json());
-        r = ESP_OK;
-    } else if (strcmp(op, "param.list") == 0) {
-        cJSON_AddItemToObject(data, "params", eh_param_list_json());
-        r = ESP_OK;
-    } else if (strcmp(op, "param.get") == 0) {
-        const cJSON *n = cJSON_GetObjectItemCaseSensitive(args, "name");
-        r = eh_param_get_json(cJSON_IsString(n) ? n->valuestring : NULL, data, err, sizeof(err));
-    } else if (strcmp(op, "param.set") == 0) {
-        r = eh_param_set_json(args, data, err, sizeof(err));
     } else if (strcmp(op, "provision.reset") == 0) {
         const char *keys[] = {"mqtt_identity", "mqtt_grant", "ble_key", "hub", EH_KEY_TOKEN};
         r = eh_nvs_set_str(EH_KEY_WIFIS, "[]");
@@ -716,7 +629,7 @@ static bool report_install_result(void)
         const char *label = cJSON_GetStringValue(cJSON_GetObjectItem(frame, "target"));
         const esp_partition_t *run = esp_ota_get_running_partition();
         if (label && strcmp(label, run->label)) {
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
             // Boot selection succeeded and the installer's reboot is still pending.
             const esp_partition_t *selected = esp_ota_get_boot_partition();
             if (selected && !strcmp(selected->label, label)) {
@@ -825,7 +738,7 @@ static void agent_task(void *arg)
             s_backoff_ms = 1000;
             s_next_connect_us = now_us();
         }
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
         if (xEventGroupGetBits(ota_transport) & OTA_PAUSE) {
             if (s_iot_started) mqtt_teardown("OTA download");
             xEventGroupSetBits(ota_transport, MQTT_STOPPED);
@@ -872,7 +785,7 @@ static void agent_task(void *arg)
             }
         } else {
             drain_txq();
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
             if (s_hello_acked && atomic_exchange(&s_result_due, false) && !report_install_result()) {
                 s_hello_acked = false;
                 atomic_store(&s_message_session, 0);
@@ -890,7 +803,7 @@ static void agent_task(void *arg)
     }
 }
 
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
 #include "esp_netif_sntp.h"
 static void sntp_task(void *arg)
 {
@@ -922,7 +835,7 @@ esp_err_t eh_agent_start_with_config(const eh_config_t *cfg)
     if (cfg) {
         g_eh_cfg = *cfg;
     }
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
     ota_transport = xEventGroupCreate();
     if (!ota_transport) return ESP_ERR_NO_MEM;
 #endif
@@ -955,7 +868,7 @@ esp_err_t eh_agent_start_with_config(const eh_config_t *cfg)
         ESP_LOGE(TAG, "network start: %s", esp_err_to_name(e));
     }
 #if CONFIG_EH_BLE_WIFI
-    if (eh_is_bootloader() && g_eh_cfg.manage_network && e == ESP_OK) eh_ble_init();
+    if (g_eh_cfg.manage_network && e == ESP_OK) eh_ble_init(); /* Launcher-only */
 #endif
     const esp_app_desc_t *d = esp_app_get_description();
     ESP_LOGI(TAG, "agent start: %s %s role=%s boot_id=%s", d->project_name, d->version,
@@ -963,7 +876,7 @@ esp_err_t eh_agent_start_with_config(const eh_config_t *cfg)
     if (xTaskCreate(agent_task, "eh_agent", CONFIG_EH_TASK_STACK, NULL, CONFIG_EH_TASK_PRIO, NULL) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
     xTaskCreate(sntp_task, "eh_sntp", 3072, NULL, 3, NULL);
 #endif
     return ESP_OK;

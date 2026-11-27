@@ -16,7 +16,8 @@ endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(esp-bootloader)
 
-if(NOT "${CONFIG_EH_BL_PROFILE}" STREQUAL "${ESPHUB_BL}" OR
+if(NOT CONFIG_EH_LAUNCHER OR
+   NOT "${CONFIG_EH_BL_PROFILE}" STREQUAL "${ESPHUB_BL}" OR
    NOT "${CONFIG_ESPTOOLPY_FLASHSIZE}" STREQUAL "${variant_flash}" OR
    CONFIG_SPIRAM OR
    (variant_bus STREQUAL "-uart" AND NOT CONFIG_ESP_CONSOLE_UART_DEFAULT) OR
@@ -24,12 +25,9 @@ if(NOT "${CONFIG_EH_BL_PROFILE}" STREQUAL "${ESPHUB_BL}" OR
     message(FATAL_ERROR "Use a clean sdkconfig for bootloader variant '${ESPHUB_BL}'.")
 endif()
 
-# Let the SDK omit app-only command and boot paths from the bootloader image.
-idf_component_get_property(agent_library eh_agent COMPONENT_LIB)
-target_compile_definitions(${agent_library} PRIVATE EH_BOOTLOADER_BUILD)
-
 # Keep EspHub's provisioning and recovery logs when trimming ESP-IDF diagnostics.
 if(CONFIG_LOG_DEFAULT_LEVEL LESS 3)
+    idf_component_get_property(agent_library eh_agent COMPONENT_LIB)
     idf_component_get_property(main_library main COMPONENT_LIB)
     target_compile_definitions(${agent_library} PRIVATE LOG_LOCAL_LEVEL=ESP_LOG_INFO)
     target_compile_definitions(${main_library} PRIVATE LOG_LOCAL_LEVEL=ESP_LOG_INFO)

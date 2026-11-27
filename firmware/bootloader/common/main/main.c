@@ -33,9 +33,7 @@ void app_main(void)
     ESP_ERROR_CHECK(eh_cmd_register("app", "start the installed application", start_app));
     ESP_ERROR_CHECK(eh_op_register("install", launcher_install));
     ESP_ERROR_CHECK(eh_op_register("resize_app", resize_app));
-    eh_config_t cfg = EH_CONFIG_DEFAULT();
-    cfg.role = EH_ROLE_BOOTLOADER;
-    ESP_ERROR_CHECK(eh_agent_start_with_config(&cfg));
+    ESP_ERROR_CHECK(eh_agent_start());
     report_layout();
     prov_serial_start();
 }

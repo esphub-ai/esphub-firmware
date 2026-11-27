@@ -4,20 +4,16 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "sdkconfig.h"
 #include "eh_agent.h"
 #include "eh_agent_ext.h"
 
 #define EH_TAG "okou"
 
 /* ---- registry (eh_registry.c) ---- */
-typedef enum { EH_P_INT, EH_P_FLOAT, EH_P_BOOL } eh_ptype_t;
 void eh_registry_builtin_cmds(void);
-cJSON *eh_cmd_list_json(void);
 /* Runs a command; returns malloc'd UTF-8 output via *out_text; rc via return. -1000: unknown */
 int eh_cmd_run(const char *name, const cJSON *argv, char **out_text);
-cJSON *eh_param_list_json(void);
-esp_err_t eh_param_get_json(const char *name, cJSON *data, char *err, size_t errlen);
-esp_err_t eh_param_set_json(const cJSON *args, cJSON *data, char *err, size_t errlen);
 
 /* ---- network (eh_net.c) ---- */
 void *eh_malloc_large(size_t size);
@@ -48,9 +44,9 @@ extern eh_config_t g_eh_cfg;
 
 static inline bool eh_is_bootloader(void)
 {
-#ifdef EH_BOOTLOADER_BUILD
+#if CONFIG_EH_LAUNCHER
     return true;
 #else
-    return g_eh_cfg.role == EH_ROLE_BOOTLOADER;
+    return false;
 #endif
 }

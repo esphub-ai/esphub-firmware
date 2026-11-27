@@ -1,5 +1,12 @@
 menu "EspHub agent (esp-bootloader SDK)"
 
+    config EH_LAUNCHER
+        bool "Build the EspHub Launcher"
+        default n
+        help
+            Set only by the EspHub Launcher project. Enables its OTA, provisioning and BLE
+            paths in the SDK. Applications leave it off.
+
     config EH_BL_PROFILE
         string "Compatible EspHub bootloader variant"
         default ""
@@ -11,20 +18,8 @@ menu "EspHub agent (esp-bootloader SDK)"
         help
             For Espressif QEMU builds (-nic user,model=open_eth). Wi-Fi is not initialised.
 
-    config EH_QEMU_SYSTEM_RESET
-        bool "QEMU workaround: make esp_restart() a full system reset"
-        depends on EH_NET_OPENETH
-        default y
-        help
-            Espressif QEMU does not reset peripherals on SW_CPU_RESET; the next boot then
-            crashes in esp_timer_init. Only for QEMU builds.
-
     config EH_MAX_CMDS
         int "Max registered commands"
-        default 24
-
-    config EH_MAX_PARAMS
-        int "Max registered params"
         default 24
 
     config EH_CMD_OUT_MAX
@@ -42,6 +37,6 @@ menu "EspHub agent (esp-bootloader SDK)"
 
     config EH_BLE_WIFI
         bool
-        default y if BT_NIMBLE_ENABLED && !EH_NET_OPENETH
+        default y if EH_LAUNCHER && BT_NIMBLE_ENABLED && !EH_NET_OPENETH
 
 endmenu

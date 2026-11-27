@@ -21,7 +21,7 @@ extern "C" {
 /* Public Bluetooth controller address used for provisioning discovery. */
 bool eh_ble_address(char out[18]);
 
-/* NVS namespace and keys shared between bootloader and SDK (docs/protocol.md). */
+/* NVS namespace and keys shared between the Launcher and the SDK. */
 #define EH_NVS_NS          "eh"
 #define EH_KEY_PENDING     "pending"    /* str: in-progress transfer identity or unacknowledged final event */
 #define EH_KEY_LSLOT "lslot" /* Last validated A/B bootloader slot. */
@@ -43,14 +43,6 @@ typedef esp_err_t (*eh_op_handler_t)(const cJSON *args, cJSON *data, char *err, 
 /* Registers or overrides an op (e.g. the bootloader overrides "install"). */
 esp_err_t eh_op_register(const char *op, eh_op_handler_t handler);
 
-/* Deferred op: for work that runs on another task (e.g. an interpreter). Return ESP_OK to keep
- * `req` and answer later, from any task, with eh_op_reply() (exactly once; it frees req and
- * takes ownership of data). Return an error (with err filled) to answer at once. The hub waits
- * up to the request's timeout_ms (max 60 s); a later reply is dropped by the hub. */
-typedef struct eh_req eh_req_t;
-typedef esp_err_t (*eh_op_async_handler_t)(eh_req_t *req, const cJSON *args, char *err, size_t errlen);
-esp_err_t eh_op_register_async(const char *op, eh_op_async_handler_t handler);
-void eh_op_reply(eh_req_t *req, bool ok, cJSON *data, const char *err);
 
 int eh_cmd_run(const char *name, const cJSON *argv, char **out_text);
 

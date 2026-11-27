@@ -311,7 +311,7 @@ static void on_wait(TickType_t ticks)
         publish_cost_us = 800000; eh_schedule_reboot(300); expected_reboot = s_reboot_at_us;
         reboot_expected_polls = event_polls + 1;
         fail_event = is("failed-publish-reboot-priority"); eh_event("slow-publish", "{}");
-#if CONFIG_EH_URL_OTA
+#if CONFIG_EH_LAUNCHER
     } else if (is("ota-pause-resume") || is("ota-paused-reboot")) {
         if (step == 0) {
             forever(ticks); xEventGroupSetBits(ota_transport, OTA_PAUSE); eh_agent_notify();
@@ -466,11 +466,7 @@ const char *eh_ota_state_str(const esp_partition_t *p) { return "valid"; }
 void eh_hex(const uint8_t *in, size_t n, char *out) { memset(out, '0', n * 2); out[n * 2] = 0; }
 void eh_net_info(cJSON *obj) { }
 cJSON *eh_partitions_json(void) { return cJSON_CreateArray(); }
-cJSON *eh_cmd_list_json(void) { return cJSON_CreateArray(); }
-cJSON *eh_param_list_json(void) { return cJSON_CreateArray(); }
 int eh_cmd_run(const char *name, const cJSON *argv, char **out) { return -1000; }
-esp_err_t eh_param_get_json(const char *name, cJSON *data, char *err, size_t len) { return ESP_ERR_NOT_FOUND; }
-esp_err_t eh_param_set_json(const cJSON *args, cJSON *data, char *err, size_t len) { return ESP_ERR_NOT_FOUND; }
 
 int main(int argc, char **argv)
 {

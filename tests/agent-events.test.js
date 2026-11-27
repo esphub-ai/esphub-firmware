@@ -86,7 +86,7 @@ for (const ota of [false, true]) {
         "-D_GNU_SOURCE",
         "-Werror",
         "-g",
-        `-DCONFIG_EH_URL_OTA=${Number(ota)}`,
+        `-DCONFIG_EH_LAUNCHER=${Number(ota)}`,
         "-I" + dir,
         "-I" + fixture,
         "-I" + resolve("."),
