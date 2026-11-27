@@ -59,6 +59,7 @@ def build(args, board, example, work):
     if args.board == "espressif/esp-mosaico" and (raylib_example or entrypoint.suffix == ".patch"):
         manifest = entrypoint if raylib_example else entrypoint.parent / "upstream.json"
         upstream = json.loads(manifest.read_text())
+        env["EH_AGENT_DIR"] = str(FIRMWARE / "components/eh_agent")
         if raylib_example:
             archive = work / "example.tgz"
             with urlopen(upstream["archive"], timeout=60) as download, archive.open("wb") as target:
@@ -88,7 +89,6 @@ def build(args, board, example, work):
             defaults.write("CONFIG_MBEDTLS_X509_CREATE_C=y\n")
             defaults.write("CONFIG_MBEDTLS_X509_CSR_WRITE_C=y\n")
             defaults.write("CONFIG_ESP_MAIN_TASK_STACK_SIZE=20480\n")
-        env["EH_AGENT_DIR"] = str(FIRMWARE / "components/eh_agent")
     elif args.board == "espressif/esp-mosaico":
         original = entrypoint.parents[1]
         project = work / "project"
