@@ -211,6 +211,12 @@
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/echo/atoms3_record_audio_example.py"
     },
     {
+      "id": "uiflow-echo-playback-controls",
+      "description": "Play a WAV through Atomic Echo Base, pause briefly, then resume from the same position.",
+      "entrypoint": "examples/uiflow-echo-playback-controls/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/echo/atoms3_playback_controls_example.py"
+    },
+    {
       "id": "uiflow-gps",
       "description": "Display the GPS Base title and print eleven UTC, position and motion fields from the Atomic GPS Base each second.",
       "entrypoint": "examples/uiflow-gps/main.cpp",
