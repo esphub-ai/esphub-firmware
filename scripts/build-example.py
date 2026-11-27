@@ -52,7 +52,21 @@ def build(args, board, example, work):
     env = dict(os.environ, IDF_TARGET=board["chip"])
     config = work / "sdkconfig"
     options = [f"-DSDKCONFIG={config}", f"-DPROJECT_VER={args.version}"]
-    if args.board == "espressif/esp-mosaico":
+    if args.board == "espressif/esp-mosaico" and entrypoint.suffix == ".patch":
+        upstream = json.loads((entrypoint.parent / "upstream.json").read_text())
+        source = Path(checkout(work, upstream))
+        subprocess.run(["git", "-C", source, "apply", entrypoint], check=True)
+        project = source / upstream["project"]
+        with (project / "sdkconfig.defaults").open("a") as defaults:
+            defaults.write("\nCONFIG_PARTITION_TABLE_CUSTOM=y\n")
+            defaults.write(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partitions}"\n')
+            defaults.write("CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y\n")
+            defaults.write("CONFIG_MBEDTLS_PEM_WRITE_C=y\n")
+            defaults.write("CONFIG_MBEDTLS_X509_CREATE_C=y\n")
+            defaults.write("CONFIG_MBEDTLS_X509_CSR_WRITE_C=y\n")
+            defaults.write("CONFIG_ESP_MAIN_TASK_STACK_SIZE=20480\n")
+        env["EH_AGENT_DIR"] = str(FIRMWARE / "components/eh_agent")
+    elif args.board == "espressif/esp-mosaico":
         original = entrypoint.parents[1]
         project = work / "project"
         shutil.copytree(original, project)

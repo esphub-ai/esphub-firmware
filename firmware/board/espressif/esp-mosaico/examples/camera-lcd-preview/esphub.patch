@@ -1,0 +1,36 @@
+--- a/examples/camera_lcd_preview/CMakeLists.txt
++++ b/examples/camera_lcd_preview/CMakeLists.txt
+@@ -1,4 +1,5 @@
+ cmake_minimum_required(VERSION 3.16)
+ 
++list(APPEND EXTRA_COMPONENT_DIRS "$ENV{EH_AGENT_DIR}")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ project(camera_lcd_preview)
+--- a/examples/camera_lcd_preview/main/CMakeLists.txt
++++ b/examples/camera_lcd_preview/main/CMakeLists.txt
+@@ -2,6 +2,7 @@
+     SRCS "main.c"
+     INCLUDE_DIRS "."
+     PRIV_REQUIRES
++        eh_agent
+         esp_driver_ppa
+         esp_lcd
+         esp_mm
+--- a/examples/camera_lcd_preview/main/main.c
++++ b/examples/camera_lcd_preview/main/main.c
+@@ -3,6 +3,7 @@
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
++#include "eh_agent.h"
+ #include <inttypes.h>
+ #include <stddef.h>
+ #include <stdint.h>
+@@ -329,6 +330,7 @@
+ 
+ void app_main(void)
+ {
++    ESP_ERROR_CHECK(eh_agent_start());
+     ESP_LOGI(
+         TAG,
+         "Camera LCD preview: insert Camera subboard in the LEFT slot");
