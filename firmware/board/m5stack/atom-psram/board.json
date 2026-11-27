@@ -72,6 +72,12 @@
       "description": "Send a byte on button press and indicate RS485 send and receive events on the RGB pixel. Requires the A131 base in place of Atom Display.",
       "entrypoint": "examples/atomic-rs485/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_RS485/ATOM_RS485.ino"
+    },
+    {
+      "id": "atomic-can",
+      "description": "Exchange 500 kbit/s CAN frames and show replies on the RGB pixel. Requires Atomic CAN Base A103 in place of Atom Display.",
+      "entrypoint": "examples/atomic-can/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_CAN/ATOM_CAN.ino"
     }
   ]
 }
