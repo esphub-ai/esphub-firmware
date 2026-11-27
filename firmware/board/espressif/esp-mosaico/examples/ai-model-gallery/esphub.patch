@@ -1,0 +1,35 @@
+--- a/examples/ai_model_gallery/CMakeLists.txt
++++ b/examples/ai_model_gallery/CMakeLists.txt
+@@ -1,5 +1,6 @@
+ cmake_minimum_required(VERSION 3.16)
+ 
++list(APPEND EXTRA_COMPONENT_DIRS "$ENV{EH_AGENT_DIR}")
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ project(ai_model_gallery)
+ 
+--- a/examples/ai_model_gallery/main/CMakeLists.txt
++++ b/examples/ai_model_gallery/main/CMakeLists.txt
+@@ -1,4 +1,5 @@
+ idf_component_register(
+     SRCS "app_main.cpp"
+     INCLUDE_DIRS "."
++    PRIV_REQUIRES eh_agent
+ )
+--- a/examples/ai_model_gallery/main/app_main.cpp
++++ b/examples/ai_model_gallery/main/app_main.cpp
+@@ -12,6 +12,7 @@
+  * constructing a model, then reopen capture.
+  */
+ 
++#include "eh_agent.h"
+ #include <atomic>
+ #include <inttypes.h>
+ #include <stdio.h>
+@@ -328,6 +329,7 @@
+ 
+ extern "C" void app_main(void)
+ {
++    ESP_ERROR_CHECK(eh_agent_start());
+     ESP_LOGI(TAG, "AI model gallery — press AI to cycle face/coco/idle");
+     const esp_err_t led_ret = bsp_led_init();
+     if (led_ret == ESP_ERR_NOT_SUPPORTED) {
