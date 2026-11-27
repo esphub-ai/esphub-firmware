@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
+from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE = ROOT / "firmware"
@@ -44,6 +45,24 @@ def build_partitions(flash_mb, app_size, work):
     return output
 
 
+
+def write_mosaico_notices(output, project, upstream_root, description):
+    sources = list(dict.fromkeys([upstream_root, Path(description["idf_path"])] +
+                                 [Path(path) for path in description["build_component_paths"]]))
+    with ZipFile(output, "w", ZIP_DEFLATED) as notices:
+        for index, directory in enumerate(sources):
+            for path in sorted(directory.iterdir()):
+                name = path.name.upper()
+                if path.is_file() and (name.split(".", 1)[0] in
+                                       {"LICENSE", "LICENCE", "COPYING", "NOTICE",
+                                        "THIRD_PARTY_NOTICES", "ASSET_PROVENANCE"}
+                                       or name.startswith(("LICENSE-", "COPYING-", "NOTICE-"))):
+                    notices.write(path, f"{index:03d}-{directory.name}/{path.name}")
+        lock = project / "dependencies.lock"
+        if lock.is_file():
+            notices.write(lock, "dependencies.lock")
+
+
 def build(args, board, example, work):
     directory = FIRMWARE / "board" / args.board
     example_id = example["id"]
@@ -52,9 +71,11 @@ def build(args, board, example, work):
     env = dict(os.environ, IDF_TARGET=board["chip"])
     config = work / "sdkconfig"
     options = [f"-DSDKCONFIG={config}", f"-DPROJECT_VER={args.version}"]
+    upstream_root = None
     if args.board == "espressif/esp-mosaico" and entrypoint.suffix == ".patch":
         upstream = json.loads((entrypoint.parent / "upstream.json").read_text())
         source = Path(checkout(work, upstream))
+        upstream_root = source
         subprocess.run(["git", "-C", source, "apply", entrypoint], check=True)
         project = source / upstream["project"]
         with (project / "sdkconfig.defaults").open("a") as defaults:
@@ -120,6 +141,8 @@ def build(args, board, example, work):
         name += "-" + example_id
     (args.out / (name + ".bin")).write_bytes(image)
     (args.out / (name + ".sha256")).write_text(f"{hashlib.sha256(image).hexdigest()}  {name}.bin\n")
+    if upstream_root is not None:
+        write_mosaico_notices(args.out / (name + ".notices.zip"), project, upstream_root, description)
     print(args.out / (name + ".bin"))
 
 

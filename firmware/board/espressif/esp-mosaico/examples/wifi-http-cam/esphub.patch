@@ -74,3 +74,14 @@
      ESP_ERROR_CHECK(wifi_softap_start());
      ESP_ERROR_CHECK(camera_wait_and_open());
      ESP_ERROR_CHECK(app_buffers_init());
+--- a/examples/wifi_http_cam/sdkconfig.defaults
++++ b/examples/wifi_http_cam/sdkconfig.defaults
+@@ -10,7 +10,7 @@
+ # GPIO33 is camera D2 and shares the USB Serial/JTAG D- pad.
+ CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+ # CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+-# CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
++CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+ # CONFIG_USJ_ENABLE_USB_SERIAL_JTAG is not set
+ 
+ CONFIG_SPIRAM=y

@@ -48,3 +48,14 @@
          ret = ESP_OK;
      }
      ESP_RETURN_ON_ERROR(ret, TAG, "initialize NVS failed");
+--- a/examples/camera_photo_app/sdkconfig.defaults
++++ b/examples/camera_photo_app/sdkconfig.defaults
+@@ -6,7 +6,7 @@
+ # GPIO33 is camera D2 and shares the USB Serial/JTAG D- pad.
+ CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+ # CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+-# CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
++CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+ # CONFIG_USJ_ENABLE_USB_SERIAL_JTAG is not set
+ 
+ CONFIG_SPIRAM=y
