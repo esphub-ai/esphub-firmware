@@ -1,0 +1,43 @@
+M5AtomS3 1.0.2 Arduino AtomicBase / AtomicPoE / MQTT example
+https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/MQTT/MQTT.ino
+Original sketch by SeanKwok (2023), M5Stack.
+
+MIT License
+
+Copyright (c) 2022 M5Stack
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Atomic PoE Base hardware reference: https://docs.m5stack.com/en/atom/Atomic_PoE_Base
+
+W5500 register reference: https://docs.wiznet.io/Product/iEthernet/W5500/datasheet
+
+
+
+M5-Ethernet 4.0.0 (3354be7d4804cfc60431834e015b93caaf21a9f3) is the reviewed behavior reference for the unpinned Arduino dependency:
+
+https://github.com/m5stack/M5-Ethernet/tree/3354be7d4804cfc60431834e015b93caaf21a9f3
+
+M5-Ethernet repository-level MIT and w5100.cpp GPL-2.0/LGPL-2.1 notices differ.
+The Arduino sketch does not fix PubSubClient. Reviewed PubSubClient v2.8,
+2d228f2f862a95846c65a8518c79f48dfc8f188c, MIT (Nick O'Leary).
+https://github.com/knolleary/pubsubclient/tree/2d228f2f862a95846c65a8518c79f48dfc8f188c
+
+The port uses the W5500 MACRAW driver, lwIP and ESP-MQTT distributed with ESP-IDF
+5.5.4, plus the existing M5Unified and M5GFX display libraries. It does not use
+or distribute code or assets from M5-Ethernet or PubSubClient.
