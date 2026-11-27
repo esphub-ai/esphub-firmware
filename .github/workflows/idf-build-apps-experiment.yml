@@ -1,0 +1,22 @@
+name: ESP-IDF dependency selection experiment
+on:
+  push:
+    branches: [experiment/idf-build-apps]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container: espressif/idf:v5.5.4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run the dependency probe
+        shell: bash
+        run: |
+          set -eo pipefail
+          source "$IDF_PATH/export.sh"
+          python -m pip install idf-build-apps==3.1.1
+          python -u scripts/experiments/probe-idf-build-apps.py
