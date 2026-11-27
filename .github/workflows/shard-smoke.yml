@@ -1,0 +1,17 @@
+name: Verify firmware shard handoff
+on:
+  push:
+    branches: [experiment/verify-main-firmware-shards]
+permissions: {contents: read}
+jobs:
+  applications:
+    uses: ./.github/workflows/build-app-shard.yml
+    with:
+      shard: 0
+      groups: '{"espressif/idf:v5.5.4":["waveshare/esp32-s3-zero-n8r8"]}'
+  board:
+    needs: applications
+    permissions: {contents: read, actions: write}
+    uses: ./.github/workflows/build-board.yml
+    with:
+      profile: '{"board":"waveshare/esp32-s3-zero-n8r8","fileStem":"waveshare_esp32-s3-zero-n8r8","chip":"esp32s3","appShard":0,"components":[{"kind":"app","runner":"ubuntu-24.04","version":"2.0.1","container":"espressif/idf:v5.5.4","buildGroup":"esphub-shard-handoff-smoke"}]}'
