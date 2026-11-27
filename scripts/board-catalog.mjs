@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describeExamples } from "../shared/board-examples.js";
 import { boardId } from "../shared/board-id.js";
 
 const repository = new URL("../", import.meta.url);
@@ -75,14 +74,6 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const { boards, sdk_version, revision } = await readBoardCatalog();
-  if (process.argv[2] === "--default-example") {
-    const id = process.argv[3];
-    const board = boards[id];
-    if (!board) throw Error("Unknown board: " + id);
-    const examples = describeExamples(id, board.examples, revision);
-    console.log(JSON.stringify(examples.find(e => e.id === board.default_example)));
-  } else {
-    console.log(`Validated ${Object.keys(boards).length} boards at SDK ${sdk_version}`);
-  }
+  const { boards, sdk_version } = await readBoardCatalog();
+  console.log(`Validated ${Object.keys(boards).length} boards at SDK ${sdk_version}`);
 }

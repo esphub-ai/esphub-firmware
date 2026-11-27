@@ -19,16 +19,15 @@ export function isAncestor(before, after, cwd = process.cwd()) {
 }
 
 // Main batches compile apps in shards; the board job then copies its app.
-const buildSteps = {
-  app: "Copy the board application from the compiled shard",
-  bootloader: "Assemble bootloader release for the board",
-};
+const appStep = "Copy the board application from the compiled shard";
 
 function attempted(job, step) {
   return job?.conclusion === "success" || (job?.conclusion === "failure" &&
     job.steps?.some(s => s.name === step && ["success", "failure"].includes(s.conclusion)));
 }
 
+// Expected: { cohort: { bootloader: bool, boards: [[board, kinds]] } }. A cohort is named
+// by bootloader ID and builds that bootloader set only when its inputs changed.
 export function verifyCoverage(expected, jobs, buildResult, publishEnabled) {
   const groups = Object.entries(expected);
   if (!groups.length) {
@@ -37,35 +36,30 @@ export function verifyCoverage(expected, jobs, buildResult, publishEnabled) {
   }
   if (!["success", "failure"].includes(buildResult)) throw Error("Incomplete board matrix: " + buildResult);
   const byName = new Map(jobs.map(job => [job.name, job]));
+  const dispatched = (name, step) => !publishEnabled || attempted(byName.get(name), step);
 
-  for (const [cohort, boards] of groups) {
+  for (const [cohort, { bootloader, boards }] of groups) {
     const prefix = cohort + " / ";
-    // Also catch an interrupted USB kit or publication dispatch, including
-    // cancellation in a matrix where a different board had a compiler error.
+    // Also catch an interrupted publication dispatch, including cancellation
+    // in a matrix where a different board had a compiler error.
     const interrupted = jobs.find(job => job.name.startsWith(prefix) &&
       !["success", "failure", "skipped"].includes(job.conclusion));
     if (interrupted) throw Error("Incomplete firmware job: " + interrupted.name);
 
-    const shared = byName.get(prefix + "bootloader / build");
-    if (!attempted(shared, "Compile the shared binaries")) throw Error("Missing shared bootloader result: " + cohort);
-    if (shared.conclusion === "failure") continue; // The prerequisite itself was built and failed.
-    for (const [board, kinds] of boards) {
+    if (bootloader) {
+      const set = byName.get(prefix + "bootloader / build");
+      if (!attempted(set, "Compile the shared binaries")) throw Error("Missing bootloader set result: " + cohort);
+      if (set.conclusion === "success" &&
+          !dispatched(prefix + "bootloader / queue-publish", "Dispatch this bootloader for publication"))
+        throw Error("Missing bootloader publication dispatch result: " + cohort);
+    }
+    for (const [board] of boards) {
       const boardPrefix = prefix + board + " / ";
-      let failed = false;
-      for (const kind of kinds.filter(kind => kind !== "setup")) {
-        const job = byName.get(boardPrefix + kind);
-        if (!attempted(job, buildSteps[kind])) throw Error("Missing firmware build result: " + boardPrefix + kind);
-        if (job.conclusion === "failure") failed = true;
-      }
-      if (!failed && kinds.includes("setup")) {
-        const kit = byName.get(boardPrefix + "USB kit");
-        if (!attempted(kit, "Run ./.github/actions/build-kit")) throw Error("Missing USB kit result: " + board);
-        failed = kit.conclusion === "failure";
-      }
-      if (!failed && publishEnabled &&
-          !attempted(byName.get(boardPrefix + "queue-publish"), "Dispatch this board for publication")) {
+      const app = byName.get(boardPrefix + "app");
+      if (!attempted(app, appStep)) throw Error("Missing firmware build result: " + boardPrefix + "app");
+      if (app.conclusion === "success" &&
+          !dispatched(boardPrefix + "queue-publish", "Dispatch this board for publication"))
         throw Error("Missing publication dispatch result: " + board);
-      }
     }
   }
 }

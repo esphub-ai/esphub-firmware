@@ -8,28 +8,34 @@ import { advanceCoverage, verifyCoverage } from "../scripts/firmware-coverage.mj
 
 test("a main batch accounts for actual build results and detects cancelled or missing work", () => {
   const cohort = "esp32s3-8mb", board = "m5stack/cardputer-adv";
-  const expected = { [cohort]: [[board, ["bootloader", "app", "setup"]]] };
-  const shared = { name: cohort + " / bootloader / build", conclusion: "success" };
-  const job = (kind) => ({ name: cohort + " / " + board + " / " + kind, conclusion: "success" });
-  const boot = job("bootloader"), app = job("app"), kit = job("USB kit"), publish = job("queue-publish");
-  const all = [shared, boot, app, kit, publish];
+  const expected = { [cohort]: { bootloader: true, boards: [[board, ["app"]]] } };
+  const named = (name, conclusion = "success") => ({ name: cohort + " / " + name, conclusion });
+  const set = named("bootloader / build"), setPublish = named("bootloader / queue-publish");
+  const app = named(board + " / app"), publish = named(board + " / queue-publish");
+  const all = [set, setPublish, app, publish];
   verifyCoverage(expected, all, "success", true);
   verifyCoverage({}, [], "skipped", true);
-  verifyCoverage(expected, [shared, boot, app, kit], "success", false);
+  verifyCoverage(expected, [set, app], "success", false);
   for (const missing of all) {
     assert.throws(() => verifyCoverage(expected, all.filter(j => j !== missing), "failure", true), /Missing/);
   }
   assert.throws(() => verifyCoverage(expected, [], "skipped", true), /Incomplete/);
   assert.throws(() => verifyCoverage({}, [], "cancelled", true), /Incomplete/);
 
+  // A cohort whose bootloader set did not change builds only its boards.
+  verifyCoverage({ [cohort]: { bootloader: false, boards: [[board, ["app"]]] } }, [app, publish], "success", true);
+  // A changed bootloader set may have no board app to rebuild.
+  verifyCoverage({ [cohort]: { bootloader: true, boards: [] } }, [set, setPublish], "success", true);
+
   const compileError = { ...app, conclusion: "failure",
     steps: [{ name: "Copy the board application from the compiled shard", conclusion: "failure" }] };
-  verifyCoverage(expected, [shared, boot, compileError], "failure", true);
-  assert.throws(() => verifyCoverage(expected, [shared, boot, { ...compileError, steps: [] }], "failure", true), /Missing/);
-  assert.throws(() => verifyCoverage(expected, [shared, { ...boot, conclusion: "cancelled" }, compileError], "failure", true), /Incomplete/);
-  assert.throws(() => verifyCoverage(expected, [shared, boot, app, kit, { ...publish, conclusion: "cancelled" }], "failure", true), /Incomplete/);
-  verifyCoverage(expected, [{ ...shared, conclusion: "failure",
-    steps: [{ name: "Compile the shared binaries", conclusion: "failure" }] }], "failure", true);
+  verifyCoverage(expected, [set, setPublish, compileError], "failure", true);
+  assert.throws(() => verifyCoverage(expected, [set, setPublish, { ...compileError, steps: [] }], "failure", true), /Missing/);
+  assert.throws(() => verifyCoverage(expected, [set, setPublish, app, { ...publish, conclusion: "cancelled" }], "failure", true), /Incomplete/);
+  // A failed bootloader set is accounted for; board apps still need their own results.
+  const failedSet = { ...set, conclusion: "failure", steps: [{ name: "Compile the shared binaries", conclusion: "failure" }] };
+  verifyCoverage(expected, [failedSet, app, publish], "failure", true);
+  assert.throws(() => verifyCoverage(expected, [failedSet], "failure", true), /Missing/);
 });
 
 test("out-of-order completions can advance only the coverage ref on the current main history", t => {

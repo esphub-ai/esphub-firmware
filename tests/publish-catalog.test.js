@@ -32,7 +32,7 @@ test("builds the example and source links the Hub serves", () => {
   );
 });
 
-// Requires a migrated EspHub database. Changes are rolled back.
+// Requires an EspHub database migrated through esphub migration 024. Changes are rolled back.
 test(
   "publishes current boards and keeps retired boards on their pinned sources",
   { skip: !process.env.TEST_DATABASE_URL },
@@ -61,7 +61,7 @@ test(
           VALUES ('test/retired', ${old}, 'Retired', 'Retired', 'esp32s3', 16, 'hello', false,
             ${tx.json(retired.published_examples)}, ${retired.bootloader_source_url})`;
         const links = async (id) => {
-          const [row] = await tx`SELECT b.source_revision, b.published_examples, b.bootloader_source_url, s.sdk_source_url
+          const [row] = await tx`SELECT b.source_revision, b.bootloader, b.published_examples, b.bootloader_source_url, s.sdk_source_url
             FROM esphub.boards b JOIN esphub.board_sources s ON s.revision = b.source_revision WHERE b.id = ${id}`;
           return row;
         };
@@ -71,11 +71,13 @@ test(
         assert.equal(await publishCatalog(tx, catalog), 1);
         assert.deepEqual(await links("test/current"), {
           source_revision: revision,
+          bootloader: "esp32s3-16mb",
           sdk_source_url: sdkSourceUrl(revision),
           ...boardLinks("test/current", profile(), revision),
         });
         assert.deepEqual(await links("test/retired"), {
           source_revision: old,
+          bootloader: null,
           sdk_source_url: sdkSourceUrl(old),
           ...retired,
         });
