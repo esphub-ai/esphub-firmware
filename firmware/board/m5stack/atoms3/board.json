@@ -219,6 +219,12 @@
       "description": "Click BtnA to step motor 1 through its speed settings and monitor the Motion Base v1.1 voltage, current and power.",
       "entrypoint": "examples/uiflow-motion/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/motion/atoms3_motion_base_v1.1_example.py"
+    },
+    {
+      "id": "uiflow-qrcode-auto",
+      "description": "Configure the Atomic QRCode Base for continuous scanning and show the latest decoded data.",
+      "entrypoint": "examples/uiflow-qrcode-auto/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/qrcode/atoms3_qrcode_auto_mode_example.py"
     }
   ]
 }
