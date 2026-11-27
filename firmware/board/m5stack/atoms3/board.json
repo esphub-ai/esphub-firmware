@@ -332,6 +332,12 @@
       "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/HowToUse/HowToUse.ino"
     },
     {
+      "id": "m5unified-mp3-player",
+      "description": "Browse a mixed SD MP3 and WAV playlist with tags, spectrum, waveform and single-button controls.",
+      "entrypoint": "examples/m5unified-mp3-player/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Advanced/MP3_with_ESP8266Audio/MP3_with_ESP8266Audio.ino"
+    },
+    {
       "id": "m5unified-speaker-sd-wav",
       "description": "Stream root-directory WAV files from the Atomic SPK Base microSD card in directory order.",
       "entrypoint": "examples/m5unified-speaker-sd-wav/main.cpp",
