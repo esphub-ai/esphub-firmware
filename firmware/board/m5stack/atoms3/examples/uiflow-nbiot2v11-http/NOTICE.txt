@@ -1,0 +1,31 @@
+UiFlow2 2.5.5 (a61a29409f09f1f4bebae05e15c4bd6dcc4956b6)
+https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/dtu_nbiot2v11/atoms3_base_nbiot2v11_http_example.py
+Example copyright (c) 2026 M5Stack Technology CO LTD.
+DTU v1.1 and M5IOE1 bindings copyright (c) 2026 M5Stack Technology CO LTD.
+RS485 bindings copyright (c) 2024 M5Stack Technology CO LTD.
+SIM7028, SIM7020, modem and requests2 driver copyright (c) 2025 M5Stack Technology CO LTD.
+
+MIT License
+
+Copyright (c) 2023 M5Stack
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Hardware: https://docs.m5stack.com/en/atom/Atom_DTU_NBIoT2_v1.1
+Uses the ESP-IDF I2C and UART drivers and existing M5 display components. No modem firmware or other external assets are distributed.
