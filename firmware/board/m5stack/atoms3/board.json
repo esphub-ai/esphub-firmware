@@ -111,6 +111,12 @@
       "description": "Read the Atomic PoE Base W5500 Ethernet link and show Unknown, ON or OFF on the LCD and serial console.",
       "entrypoint": "examples/atomic-poe-link/main.cpp",
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/LinkStatus/LinkStatus.ino"
+    },
+    {
+      "id": "atomic-poe-http",
+      "description": "Use Atomic PoE Base Ethernet and DHCP to make HTTP GET and POST requests. Read the responses on the LCD and serial console.",
+      "entrypoint": "examples/atomic-poe-http/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomicBase/AtomicPoE/HTTP/HTTP.ino"
     }
   ]
 }
