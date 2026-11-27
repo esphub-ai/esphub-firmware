@@ -1,12 +1,12 @@
 # ESP Hub Wi-Fi setup on macOS
 
-Use the bootloader and example application from the latest USB kit for your board. Register with `devices.create` and flash the kit following its INSTALL.txt. On the local USB port at 115200 baud send one newline-terminated record with the returned values:
+Use the bootloader and example application from the latest USB kit for your board. Register with `devices_create` and flash the kit following its INSTALL.txt. On the local USB port at 115200 baud send one newline-terminated record with the returned values:
 
 ```text
 EH-PROVISION {"hub":"api.esphub.ai","token":"<token>","ble_secret":"<ble_secret>"}
 ```
 
-The setup kit includes `provision_usb.py`. Install `pyserial` and pipe the private JSON result of `devices.create` or `devices.reissue` to `python3 provision_usb.py PORT` after flashing. The helper sends the record, reads the receipt, and calls `devices.bind_ble_address` using the authorized local Okou CLI. With another MCP client, read `EH-PROVISION-OK {"ble_address":"aa:bb:cc:dd:ee:ff"}` and pass that address and the registration’s `device_id` to the same tool. The device returns `EH-PROVISION-OK {}` when its Bluetooth address is unavailable. The device can now receive its first Wi-Fi over Bluetooth.
+The setup kit includes `provision_usb.py`. Install `pyserial` and pipe the private JSON result of `devices_create` or `devices_reissue` to `python3 provision_usb.py PORT` after flashing. The helper sends the record, reads the receipt, and calls `devices_bind_ble_address` using the authorized local Okou CLI. With another MCP client, read `EH-PROVISION-OK {"ble_address":"aa:bb:cc:dd:ee:ff"}` and pass that address and the registration’s `device_id` to the same tool. The device returns `EH-PROVISION-OK {}` when its Bluetooth address is unavailable. The device can now receive its first Wi-Fi over Bluetooth.
 
 On a Mac with Python 3.13+ (OpenSSL with PSK support), install Bleak in a virtual environment and grant Bluetooth access to the terminal. Run with a locally authorized Okou CLI:
 
@@ -16,7 +16,7 @@ python3.13 -m venv .venv
 .venv/bin/python tools/ble-wifi/macos.py --device DEVICE_UUID
 ```
 
-The host requests `wifi.ble_credential` from MCP. Alternatively, pipe that tool's private JSON response directly to the script on stdin and omit `--device`. Keep all credential responses private. Keep the device in EspHub Bootloader mode. The Mac scans for the service and authenticates the requested board, including when several boards are nearby. After disconnecting you can run the tool again while the bootloader is running. Select the SSID in the terminal and enter its password at the hidden prompt. The device scans and attempts the connection itself. It reports successful association with an IP and saves the network. An unsuccessful attempt preserves the saved list and can be retried. Check `devices.get` separately for hub reachability.
+The host requests `wifi_ble_credential` from MCP. Alternatively, pipe that tool's private JSON response directly to the script on stdin and omit `--device`. Keep all credential responses private. Keep the device in EspHub Bootloader mode. The Mac scans for the service and authenticates the requested board, including when several boards are nearby. After disconnecting you can run the tool again while the bootloader is running. Select the SSID in the terminal and enter its password at the hidden prompt. The device scans and attempts the connection itself. It reports successful association with an IP and saves the network. An unsuccessful attempt preserves the saved list and can be retried. Check `devices_get` separately for hub reachability.
 
 ## Wire protocol
 

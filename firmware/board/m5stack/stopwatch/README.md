@@ -22,7 +22,7 @@ python3 scripts/build-example.py m5stack/stopwatch --example stopwatch --out dis
 | `buttons` | Displays button transitions and logs click counts. |
 | [`factory-demo`](./examples/factory-demo/) | Runs the complete M5Stack V0.5 menu as one OTA app. Hold A and B together to leave the first-boot guide, browse with either button and tap an icon to open an app. |
 
-For Badge, pass a payload such as `{"slot":1,"url":"https://example.com/badge.png"}` to `devices.send`. Use a direct HTTPS image URL, up to 256 KiB. Square artwork sized for the 466 × 466 display works best. The app replies with `{"saved":true}` after decoding and saving the image. It stores files named `sw-badge-*.img` on the board's LittleFS data partition.
+For Badge, pass a payload such as `{"slot":1,"url":"https://example.com/badge.png"}` to `devices_send`. Use a direct HTTPS image URL, up to 256 KiB. Square artwork sized for the 466 × 466 display works best. The app replies with `{"saved":true}` after decoding and saving the image. It stores files named `sw-badge-*.img` on the board's LittleFS data partition.
 
 ## Original M5Stack projects
 

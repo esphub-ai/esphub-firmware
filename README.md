@@ -32,7 +32,7 @@ SDK version automation runs here on PRs. It bumps changes to the SDK on same-rep
 
 ## Remote console
 
-Use `logs.set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs.read`. See the [wire protocol and memory limits](https://github.com/esphub-ai/esphub/blob/main/docs/iot.md#remote-console).
+Use `logs_set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs_read`. See the [wire protocol and memory limits](https://github.com/esphub-ai/esphub/blob/main/docs/iot.md#remote-console).
 
 ## Production publishing
 
@@ -54,4 +54,4 @@ EspHub sends a JSON envelope with `id` and `payload`. Messages use MQTT QoS 0 an
 
 Native applications call `eh_message_receive()` to take a heap-owned JSON envelope, and `eh_message_send(json, reply_to)` to send JSON text with an optional incoming ID. Use `NULL` for an unsolicited message. A successful send means the local transport queue accepted the message.
 
-Read device messages through the Hub's `logs.read` tool.
+Read device messages through the Hub's `logs_read` tool.

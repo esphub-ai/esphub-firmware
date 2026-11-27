@@ -9,7 +9,7 @@ Use the onboard USB-C port in ROM download mode to flash the kit. The bootloader
 
 The example uses Espressif's [Hello World template](https://github.com/esp-mosaico/esp-mosaico-utils/tree/f58f4f9e5363f908b17a8e1ea8fdf4dd77561ef1/mosaico-tools/templates/hello_world). It compiles the upstream GSP scene, assets, touch counter and display driver. The GSP bundle is embedded in the application image so the same binary works for application OTA and the first-time kit. EspHub's SDK uses the registration and Wi-Fi configuration saved by the bootloader and connects to EspHub over MQTT.
 
-On a registered board, call `bootloader.enter` and wait for the bootloader to come online. Use `ota.install` with kind `app` and `https://api.esphub.ai/releases/espressif/esp-mosaico/app`. Check the install receipt and confirm that `devices.get` reports an online app with the expected version.
+On a registered board, call `bootloader_enter` and wait for the bootloader to come online. Use `ota_install` with kind `app` and `https://api.esphub.ai/releases/espressif/esp-mosaico/app`. Check the install receipt and confirm that `devices_get` reports an online app with the expected version.
 
 ### Build locally
 
@@ -25,4 +25,4 @@ Register the device as `espressif/esp-mosaico` in EspHub. Follow `INSTALL.txt` i
 
 For boards running the former USB OTG bootloader, back up device data and flash the new setup kit to change bootloader profiles. Bootloader OTA validates the installed profile.
 
-Connect a 3.3 V USB-to-UART adapter to H1. Connect adapter TX to pin 13 (RX0, GPIO59), adapter RX to pin 15 (TX0, GPIO58), and connect ground. Use the adapter port at 115200 baud with `provision_usb.py`, then configure Wi-Fi using the [Mac BLE tool](../../../../tools/ble-wifi/) while the board is in bootloader mode. Check that `devices.get` shows the device online, then call `bootloader.exit`. Verify Hello World and its touch counter on the display and the application version in `devices.get`.
+Connect a 3.3 V USB-to-UART adapter to H1. Connect adapter TX to pin 13 (RX0, GPIO59), adapter RX to pin 15 (TX0, GPIO58), and connect ground. Use the adapter port at 115200 baud with `provision_usb.py`, then configure Wi-Fi using the [Mac BLE tool](../../../../tools/ble-wifi/) while the board is in bootloader mode. Check that `devices_get` shows the device online, then call `bootloader_exit`. Verify Hello World and its touch counter on the display and the application version in `devices_get`.

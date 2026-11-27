@@ -15,7 +15,7 @@ A bootloader update validates the inactive maintenance slot before selecting it.
 
 ## Capacity
 
-Both Launcher slots are 1.25 MiB on every flash size. The default application and LittleFS sizes per flash size, and how `ota.resize_app` moves the boundary between them, are in [App and filesystem capacity](build-examples.md#app-and-filesystem-capacity). The partition tables are in [`firmware/partitions/`](../firmware/partitions/).
+Both Launcher slots are 1.25 MiB on every flash size. The default application and LittleFS sizes per flash size, and how `ota_resize_app` moves the boundary between them, are in [App and filesystem capacity](build-examples.md#app-and-filesystem-capacity). The partition tables are in [`firmware/partitions/`](../firmware/partitions/).
 
 The `data` partition is available to the application. NVS stores credentials and pending receipts. `otadata` holds ESP-IDF boot selection and `phy_init` stores radio configuration. OTA uses the partition table already on the board.
 
