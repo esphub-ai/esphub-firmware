@@ -1,5 +1,5 @@
 /*
- * eh_agent - device side of the esp-bootloader protocol.
+ * eh_agent - the EspHub SDK, the device side of the Hub protocol.
  *
  * Link this component into an app and call eh_agent_start().
  * Events enter a bounded queue and a low-priority agent task sends them.

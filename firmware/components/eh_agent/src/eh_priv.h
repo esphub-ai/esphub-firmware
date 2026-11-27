@@ -8,7 +8,7 @@
 #include "eh_agent.h"
 #include "eh_agent_ext.h"
 
-#define EH_TAG "okou"
+#define EH_TAG "esphub"
 
 /* ---- registry (eh_registry.c) ---- */
 void eh_registry_builtin_cmds(void);
