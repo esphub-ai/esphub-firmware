@@ -1,0 +1,12 @@
+M5Unified Basic/Speaker, pinned upstream revision 96576a1.
+Copyright (c) 2021 M5Stack. MIT.
+https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Speaker/Speaker.ino
+https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/LICENSE
+
+The upstream embedded click and WAV have no verified separate recording
+provenance. This port uses an original synthetic click, the MIT WAV
+generator from the Atom VoiceS3R port, and a generated 64-byte triangle
+wave. All replacement audio is distributed under the repository's MIT
+license. No original recording is included.
+
+M5Unified and M5GFX are MIT. ESP-IDF is Apache-2.0.
