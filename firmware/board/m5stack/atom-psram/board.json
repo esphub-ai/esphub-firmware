@@ -108,6 +108,12 @@
       "description": "Move a DRV8825 stepper forward and back on a button press.",
       "entrypoint": "examples/atomic-stepmotor/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/ATOM_BASE/ATOM_StepMotor/ATOM_StepMotor.ino"
+    },
+    {
+      "id": "scales-kit",
+      "description": "Read an HX711 Weight Unit on Grove and tare it with the board button.",
+      "entrypoint": "examples/scales-kit/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/KIT/SCALES_KIT/SCALES_KIT.ino"
     }
   ]
 }
