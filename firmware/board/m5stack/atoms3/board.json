@@ -13,7 +13,8 @@
     "sim7028.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-http", "uiflow-nbiot2v11-mqtt"],
     "nbiot_mqtt.hpp": ["uiflow-nbiot-mqtt", "uiflow-nbiot2-mqtt", "uiflow-nbiot2v11-mqtt"],
     "nbiot2v11_startup.hpp": ["uiflow-nbiot2v11-http", "uiflow-nbiot2v11-mqtt"],
-    "sim7028_http.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2v11-http"]
+    "sim7028_http.hpp": ["uiflow-nbiot2-http", "uiflow-nbiot2v11-http"],
+    "qrcode_base.hpp": ["uiflow-qrcode-auto", "uiflow-qrcode-host"]
   },
   "examples": [
     {
@@ -225,6 +226,12 @@
       "description": "Configure the Atomic QRCode Base for continuous scanning and show the latest decoded data.",
       "entrypoint": "examples/uiflow-qrcode-auto/main.cpp",
       "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/qrcode/atoms3_qrcode_auto_mode_example.py"
+    },
+    {
+      "id": "uiflow-qrcode-host",
+      "description": "Click BtnA to start or stop the Atomic QRCode Base and show the latest decoded result.",
+      "entrypoint": "examples/uiflow-qrcode-host/main.cpp",
+      "upstream": "https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/qrcode/atoms3_qrcode_host_mode_example.py"
     }
   ]
 }
