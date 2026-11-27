@@ -317,6 +317,12 @@
       "description": "Show the AtomS3 hardware status, BtnA events and six-axis IMU bars together on the LCD.",
       "entrypoint": "examples/m5unified-how-to-use/main.cpp",
       "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/HowToUse/HowToUse.ino"
+    },
+    {
+      "id": "m5unified-mic-fft",
+      "description": "View peak, spectrum, waterfall and microphone waveform from the Atomic Echo Base.",
+      "entrypoint": "examples/m5unified-mic-fft/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Advanced/Mic_FFT/Mic_FFT.ino"
     }
   ]
 }
