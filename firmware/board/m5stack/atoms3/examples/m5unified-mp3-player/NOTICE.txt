@@ -1,0 +1,13 @@
+M5Unified Advanced/MP3_with_ESP8266Audio, upstream revision 96576a1.
+Copyright (c) 2021 M5Stack. MIT.
+https://github.com/m5stack/M5Unified/tree/96576a14247ddc935149145aa6b51943464120f1/examples/Advanced/MP3_with_ESP8266Audio
+https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/LICENSE
+
+AudioUI.h derives from the pinned MIT UI. ESP8266Audio and its
+AudioOutputM5Speaker adapter are not used. The minimp3 copy is from
+48e3a085f0e1a99446b34614e1e7f17f09dc2e82 under CC0-1.0.
+https://github.com/lieff/minimp3/tree/48e3a085f0e1a99446b34614e1e7f17f09dc2e82
+See LICENSE.minimp3. M5GFX is MIT. ESP-IDF is Apache-2.0, with the
+separate permissive ChaN FatFs license. No audio files are bundled.
+
+The LCD uses DejaVu12 via M5GFX. See LICENSE.DejaVu.
