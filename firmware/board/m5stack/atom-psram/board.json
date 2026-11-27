@@ -48,6 +48,12 @@
       "description": "Write and read a persistent 32-byte EEPROM sample using the Atom-PSRAM button.",
       "entrypoint": "examples/eeprom/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/EEPROM/EEPROM.ino"
+    },
+    {
+      "id": "multitask",
+      "description": "Run three pinned FreeRTOS tasks at different priorities and periods while the Atom-PSRAM RGB pixel is orange.",
+      "entrypoint": "examples/multitask/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/MultiTask/MultiTask.ino"
     }
   ]
 }
