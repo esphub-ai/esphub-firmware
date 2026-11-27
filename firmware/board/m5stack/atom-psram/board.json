@@ -18,6 +18,12 @@
       "description": "Scan the Atom-PSRAM Grove I2C bus and print responding addresses over serial.",
       "entrypoint": "examples/i2c-tester/main.cpp",
       "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/I2C_Tester/I2C_Tester.ino"
+    },
+    {
+      "id": "counter",
+      "description": "Increment a persistent boot counter and restart the Atom-PSRAM after ten seconds.",
+      "entrypoint": "examples/counter/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Atom/blob/4717fcfff7edd8d638b51fcbd7c3a869c2423990/examples/Advanced/Storage/Counter/Counter.ino"
     }
   ]
 }
