@@ -58,7 +58,8 @@ def build(args, board, example, work):
         subprocess.run(["git", "-C", source, "apply", entrypoint], check=True)
         project = source / upstream["project"]
         with (project / "sdkconfig.defaults").open("a") as defaults:
-            defaults.write("\nCONFIG_PARTITION_TABLE_CUSTOM=y\n")
+            defaults.write(f"\nCONFIG_ESPTOOLPY_FLASHSIZE_{board['flash_mb']}MB=y\n")
+            defaults.write("CONFIG_PARTITION_TABLE_CUSTOM=y\n")
             defaults.write(f'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="{partitions}"\n')
             defaults.write("CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y\n")
             defaults.write("CONFIG_MBEDTLS_PEM_WRITE_C=y\n")
