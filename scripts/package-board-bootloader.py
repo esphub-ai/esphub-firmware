@@ -29,8 +29,8 @@ ota = prefix + "-ota.bin"
 idf = Path(os.environ["IDF_PATH"])
 
 
-def package(table, suffix):
-    usb = prefix + suffix + ".zip"
+def package(table):
+    usb = prefix + "-usb.zip"
     with TemporaryDirectory() as directory:
         tmp = Path(directory)
         table_bin = tmp / "partition-table.bin"
@@ -72,5 +72,5 @@ table = Path(__file__).resolve().parents[1] / "firmware/partitions" / f"{metadat
 # Read by the kit job and the publisher. Only the OTA image is published.
 manifest = {"board": board, "chip": chip, "version": version, "bootloader_version": build["version"],
             "ota": {"file": ota, "sha256": build["ota_sha256"], "size": len(image)},
-            "usb": package(table, "-usb")}
+            "usb": package(table)}
 (out / (prefix + ".json")).write_text(json.dumps(manifest, indent=2) + "\n")

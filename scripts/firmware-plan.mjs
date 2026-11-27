@@ -11,7 +11,6 @@ const bootloaderInputs = [
   "firmware/bootloader/common/**",
   "firmware/components/**",
   "firmware/sdkconfig.common",
-  "firmware/ble.defaults",
   "firmware/version.txt",
   "scripts/build-bootloader.sh",
   "scripts/package-bootloader.py",
@@ -58,7 +57,7 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
     );
   const variants = new Map();
   for (const path of files.keys()) {
-    // The base snapshot may still contain an older transport-suffixed variant.
+    // Variants may carry a hardware suffix such as -uart or -opi.
     const match =
       /^firmware\/bootloader\/(([a-z0-9]+)-(\d+)mb(?:-[a-z0-9-]+)?)\/sdkconfig\.defaults$/.exec(
         path,

@@ -11,7 +11,7 @@ const example = {
   upstream: "https://example.com/hello",
 };
 
-test("records the source links the Hub previously derived", () => {
+test("builds the example and source links the Hub serves", () => {
   const tree = "https://github.com/esphub-ai/esphub-firmware/tree/" + revision;
   assert.equal(sdkSourceUrl(revision), tree + "/firmware/components/eh_agent");
   assert.deepEqual(
