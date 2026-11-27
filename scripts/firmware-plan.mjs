@@ -126,31 +126,26 @@ function firmwareProfiles(ref, { cwd = process.cwd(), pullRequest = false } = {}
         inputs.push(source);
       }
     }
-    const runner = "ubuntu-24.04";
     const appContainer = chip === "esp32s31"
       ? "espressif/idf:release-v6.2@sha256:0e714292d8b4e6e75cb42e25461716221448858e125d96dbfea09732964c412d"
       : "espressif/idf:v5.5.4";
     const tasks = {
       bootloader: {
-        kind: "bootloader", runner, container: sharedBootloader.container,
+        kind: "bootloader", container: sharedBootloader.container,
         fingerprint: digest([board, namingInputs, boardInputs, sharedBootloader.fingerprint,
           matching(["scripts/package-board-bootloader.py"])]),
       },
       app: {
-        kind: "app", runner, container: appContainer,
+        kind: "app", container: appContainer,
         fingerprint: digest([board, namingInputs, boardInputs, appContainer, appSources]),
       },
     };
+    // The kit fingerprint covers both components, so any board change rebuilds all three.
     tasks.setup = {
-      kind: "setup", runner, container: "",
+      kind: "setup",
       fingerprint: digest([tasks.bootloader.fingerprint, tasks.app.fingerprint, matching(kitInputs)]),
     };
-    boards[board] = {
-      chip,
-      tasks,
-      bootloader,
-      blFingerprint: sharedBootloader?.fingerprint,
-    };
+    boards[board] = { chip, tasks, bootloader };
     if (optional.length) {
       boards[board].exampleFingerprints = Object.fromEntries(optional.map(example => [
         example.id, digest([example, optionalSources.get(example.id)]),
@@ -170,30 +165,21 @@ export function boardPlans(
   const matrix = [];
   for (const [
     board,
-    { chip, tasks, bootloader, blFingerprint, exampleFingerprints },
+    { chip, tasks, bootloader, exampleFingerprints },
   ] of Object.entries(after)) {
     if (selected && selected !== board) continue;
-    const changed = {};
-    for (const [kind, task] of Object.entries(tasks)) {
-      const touched =
-        manual || before[board]?.tasks[kind]?.fingerprint !== task.fingerprint;
-      changed[kind] = touched;
-    }
+    const changed = manual || Object.entries(tasks).some(
+      ([kind, task]) => before[board]?.tasks[kind]?.fingerprint !== task.fingerprint,
+    );
+    // An unchanged board on a PR still compiles its changed optional examples.
     let selectedExamples;
-    if (!Object.values(changed).some(Boolean)) {
+    if (!changed) {
       selectedExamples = Object.keys(exampleFingerprints ?? {}).filter(
         id => exampleFingerprints[id] !== before[board]?.exampleFingerprints?.[id],
       );
       if (!selectedExamples.length) continue;
-      changed.app = true;
     }
-    if (changed.setup) {
-      for (const kind of ["bootloader", "app"]) {
-        changed[kind] = true;
-      }
-    }
-    const jobs = Object.values(tasks)
-      .filter((task) => changed[task.kind])
+    const jobs = (changed ? Object.values(tasks) : [tasks.app])
       .map((task) => ({
         ...task,
         tag: releaseTag(task.kind, board, version),
@@ -209,7 +195,6 @@ export function boardPlans(
       chip,
       jobs,
       bootloader,
-      blFingerprint,
       ...(selectedExamples && { examples: selectedExamples }),
       components,
       kit: kit
@@ -247,7 +232,7 @@ export function buildCohorts(plans, variants, version, runNumber) {
   const cohorts = new Map();
   for (const plan of plans) {
     const needsBootloader = plan.components.some(({ kind }) => kind === "bootloader");
-    const name = needsBootloader ? plan.bootloader : (plan.examples ? "examples" : "app-only");
+    const name = needsBootloader ? plan.bootloader : "examples";
     if (!cohorts.has(name)) {
       cohorts.set(name, {
         name,

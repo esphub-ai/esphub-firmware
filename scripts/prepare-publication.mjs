@@ -55,24 +55,21 @@ const jobs = api(
   "/jobs?per_page=100",
   `[.jobs[] | select(.name | contains(${boardSegment})) | {name, conclusion}]`,
 ).flat();
-const selected = Object.values(profile.tasks).filter(({ kind }) => {
+// A board build always produces the bootloader, app and setup kit together.
+const selected = Object.values(profile.tasks);
+for (const { kind } of selected) {
   const name = kind === "setup" ? "USB kit" : kind;
   const matches = jobs.filter((job) =>
     job.name.endsWith(`/ ${board} / ${name}`),
   );
-  const hasArtifact = names.has(stem + "." + kind);
-  const succeeded = matches.some((job) => job.conclusion === "success");
   if (
-    matches.some(
-      (job) => job.conclusion !== "success" && job.conclusion !== "skipped",
-    ) ||
-    hasArtifact !== succeeded
+    !names.has(stem + "." + kind) ||
+    !matches.some((job) => job.conclusion === "success") ||
+    matches.some((job) => job.conclusion !== "success")
   ) {
     throw Error("Incomplete build or artifact for " + kind);
   }
-  return succeeded;
-});
-if (!selected.length) throw Error("No completed assets for board " + board);
+}
 appendFileSync(
   process.env.GITHUB_OUTPUT,
   [

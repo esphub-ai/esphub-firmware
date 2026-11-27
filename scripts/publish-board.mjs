@@ -131,14 +131,14 @@ async function publishObject(aws, key, bytes, sha256) {
 }
 
 const releases = await Promise.all(jobs.map(readRelease));
-const setup = releases.find(release => release.kind === "setup");
-if (setup) {
-  const app = releases.find(release => release.kind === "app");
-  const manifest = JSON.parse(setup.files["setup-manifest"].bytes);
-  if (!app || manifest.app_tag !== app.tag || manifest.app_sha256 !== app.files.app.sha256 ||
-      manifest.app_size !== app.files.app.size || !manifest.example?.source_url?.includes("/tree/" + source + "/"))
-    throw Error("Setup kit and published app must use the same image and pinned example");
-}
+const byKind = Object.fromEntries(releases.map((release) => [release.kind, release]));
+if (!byKind.bootloader || !byKind.app || !byKind.setup)
+  throw Error("A board release needs its bootloader, app and setup kit");
+const kitManifest = JSON.parse(byKind.setup.files["setup-manifest"].bytes);
+if (kitManifest.app_tag !== byKind.app.tag || kitManifest.app_sha256 !== byKind.app.files.app.sha256 ||
+    kitManifest.app_size !== byKind.app.files.app.size ||
+    !kitManifest.example?.source_url?.includes("/tree/" + source + "/"))
+  throw Error("Setup kit and published app must use the same image and pinned example");
 if (!endpoint || !database)
   throw Error("Missing firmware publishing credentials");
 const aws = new AwsClient({

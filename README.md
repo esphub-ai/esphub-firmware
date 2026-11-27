@@ -44,7 +44,7 @@ Board directory changes on main are published to Neon independently of device bi
 
 Pull requests that add or edit optional examples compile just those examples on their respective boards. Changes to the default app, board configuration or shared firmware inputs run the full build for each affected board. Merging cancels that PR's remaining board builds.
 
-On `main`, the planner checks all changes since `ci/firmware-coverage`, including changes that were later reverted. A board example selects its own board. Shared SDK or build-recipe changes can select multiple boards. Missing or cancelled work keeps the revision pending. A completed compilation that reports an error counts as an attempt and stays visible in CI.
+On `main`, the planner checks all changes since `ci/firmware-coverage`, including changes that were later reverted. A board example selects its own board. Shared SDK or build-recipe changes can select multiple boards. Missing or cancelled work keeps the revision pending. Applications compile in shared shards first. A compile error fails its shard, which skips the board jobs and the coverage record, so the revision stays pending and the next run retries it. A board job that fails after its shard succeeded counts as an attempt and stays visible in CI.
 
 An hourly check dispatches outstanding builds. To catch up immediately, dispatch **Board firmware** on `main` with the board field empty.
 
