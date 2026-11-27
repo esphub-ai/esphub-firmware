@@ -338,6 +338,12 @@
       "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Speaker/Speaker.ino"
     },
     {
+      "id": "m5unified-microphone",
+      "description": "Monitor Atomic Echo Base audio, adjust its filter, and replay the most recent 3.2 seconds.",
+      "entrypoint": "examples/m5unified-microphone/main.cpp",
+      "upstream": "https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Microphone/Microphone.ino"
+    },
+    {
       "id": "m5unified-mic-fft",
       "description": "View peak, spectrum, waterfall and microphone waveform from the Atomic Echo Base.",
       "entrypoint": "examples/m5unified-mic-fft/main.cpp",

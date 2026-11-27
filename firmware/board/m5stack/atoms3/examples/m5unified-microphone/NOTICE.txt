@@ -1,0 +1,7 @@
+M5Unified Basic/Microphone, upstream revision 96576a1.
+Copyright (c) 2021 M5Stack. MIT.
+https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/examples/Basic/Microphone/Microphone.ino
+https://github.com/m5stack/M5Unified/blob/96576a14247ddc935149145aa6b51943464120f1/LICENSE
+
+This AtomS3 port uses Atomic Echo Base. All played PCM was captured at
+runtime. M5Unified and M5GFX are MIT. ESP-IDF is Apache-2.0.
