@@ -2,11 +2,9 @@
 
 Firmware sources, board profiles, and build recipes for [EspHub](https://github.com/esphub-ai/esphub).
 
-See the [Waveshare, Seeed Studio and LILYGO board index](docs/esp32s3-boards/README.md) for the supported ESP32-S3 profiles, hardware guides and official examples.
-
 ## Build
 
-Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one. The [firmware glossary](docs/firmware-terminology.md) describes the EspHub Bootloader, SDK, applications and flash layout.
+Each board declares a default application and its examples in `board.json`. The USB setup kit and default app OTA contain identical application bytes. The catalog exposes a description, upstream reference, pinned EspHub source, entrypoint and build command for each example. Follow the [build guide](docs/build-examples.md) to edit one.
 
 Start the SDK from the application entrypoint:
 
@@ -26,13 +24,13 @@ USB kits use components built in the same workflow run. Shared bootloader builds
 
 ## Development
 
-Run `npm run catalog` to validate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package. See the [board matrix](docs/m5stack-boards.md) for ESP32 targets.
+Run `npm run catalog` to validate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package.
 
 SDK version automation runs here on PRs. It bumps changes to the SDK on same-repository branches, using a patch bump by default and the `sdk:minor` or `sdk:major` label when supplied. Fork contributors update the SDK version themselves.
 
 ## Remote console
 
-Use `logs_set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs_read`. See the [wire protocol and memory limits](https://github.com/esphub-ai/esphub/blob/main/docs/iot.md#remote-console).
+Use `logs_set` to redirect ordinary ESP-IDF task logs over the existing device MQTT connection. Capture starts off at boot. Only an enabled session allocates the ring and its send buffers. Device owners can page through output with `logs_read`.
 
 ## Production publishing
 
