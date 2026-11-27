@@ -164,6 +164,12 @@
       "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/Unit/MiniCAN_TJA1051T/Slave/Slave.ino"
     },
     {
+      "id": "atom-can-base",
+      "description": "Transmit periodic 500 kbit/s CAN frames and monitor TWAI errors on the AtomS3 Atomic CAN Base.",
+      "entrypoint": "examples/atom-can-base/main.cpp",
+      "upstream": "https://github.com/m5stack/M5AtomS3/blob/8accfe68d45ac8b31580e3067a0ecedfbf2d49c7/examples/AtomBase/AtomCan/AtomCan.ino"
+    },
+    {
       "id": "uiflow-can-base",
       "description": "Send and receive frames with the AtomS3 Atomic CAN Base at 1 Mbit/s.",
       "entrypoint": "examples/uiflow-can-base/main.cpp",
