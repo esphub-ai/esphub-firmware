@@ -1,0 +1,39 @@
+Derived from the UiFlow2 v2.5.5 AtomS3 Atomic SPK Base speaker example, pinned
+at a61a29409f09f1f4bebae05e15c4bd6dcc4956b6. The Python and m5f2 project
+describe the same example. SpeakerBase follows the repository MIT license.
+https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/examples/base/speaker/atoms3_speaker_example.py
+https://github.com/m5stack/uiflow-micropython/blob/a61a29409f09f1f4bebae05e15c4bd6dcc4956b6/m5stack/libs/base/speaker.py
+https://docs.m5stack.com/en/atom/Atomic_SPK_Base
+
+The Flash WAV is an original synthesized tone stored as a read-only resource
+in the OTA app and used for /flash/res/audio/66.wav. Place a PCM WAV of your
+choice at the root of a FAT microSD card as 66.wav for the second playback.
+The original recording's redistribution rights could not be verified. The
+repository recording is absent from the firmware and the simulation fixtures.
+
+M5Unified 96576a14247ddc935149145aa6b51943464120f1 and M5GFX 0.3.0 use MIT.
+ESP-IDF I2S, SDSPI and VFS integration use Apache-2.0. FatFs retains its
+permissive ChaN license within ESP-IDF.
+
+MIT License
+
+Copyright (c) 2023 M5Stack
+Copyright (c) 2024 M5Stack Technology CO LTD
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
