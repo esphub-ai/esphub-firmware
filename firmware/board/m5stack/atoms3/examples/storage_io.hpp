@@ -72,7 +72,8 @@ inline bool start()
     esp_vfs_littlefs_conf_t config{};
     config.base_path = mountPoint;
     config.partition_label = "data";
-    config.format_if_mount_failed = false;
+    // A first install erases flash, so the first mount formats the data partition.
+    config.format_if_mount_failed = true;
     const esp_err_t status = esp_vfs_littlefs_register(&config);
     if (status != ESP_OK) {
         std::printf("LittleFS mount failed: %s\n", esp_err_to_name(status));
