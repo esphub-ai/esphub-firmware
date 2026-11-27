@@ -88,15 +88,7 @@ async function readRelease({ kind, version, fingerprint }) {
       throw Error("App image checksum mismatch: " + image.name);
     }
   }
-  return {
-    board,
-    kind,
-    version,
-    fingerprint,
-    source,
-    tag,
-    files,
-  };
+  return { board, kind, version, tag, files };
 }
 
 async function publishObject(aws, key, bytes, sha256) {
@@ -164,26 +156,6 @@ if (!process.argv.includes("--check")) {
       for (const { path, name, sha256 } of Object.values(release.files)) {
         await publishObject(aws, prefix + name, await readFile(path), sha256);
       }
-    }
-    for (const { tag, fingerprint, files } of releases) {
-      const marker = Buffer.from(
-        JSON.stringify({
-          tag,
-          fingerprint,
-          source,
-          assets: Object.values(files).map(({ name, size, sha256 }) => ({
-            name,
-            size,
-            sha256,
-          })),
-        }),
-      );
-      await publishObject(
-        aws,
-        `releases/${tag}/published.json`,
-        marker,
-        hash(marker),
-      );
     }
     await sql.begin(async (tx) => {
       for (const release of releases) {

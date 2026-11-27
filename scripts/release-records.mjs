@@ -23,12 +23,10 @@ export async function recordAssets(tx, rows) {
   }
 }
 
-// Advance the latest release only to a newer version. A row published before tags
-// were recorded gains the tag of its current version.
+// Advance the latest release only to a newer version.
 export async function advanceLatest(tx, { board, kind, version, tag }) {
   await tx`INSERT INTO esphub.firmware_releases AS current (board, kind, version, tag)
     VALUES (${board}, ${kind}, ${version}, ${tag})
     ON CONFLICT (board, kind) DO UPDATE SET version = excluded.version, tag = excluded.tag
-    WHERE string_to_array(excluded.version, '.')::numeric[] > string_to_array(current.version, '.')::numeric[]
-      OR (excluded.version = current.version AND current.tag IS NULL)`;
+    WHERE string_to_array(excluded.version, '.')::numeric[] > string_to_array(current.version, '.')::numeric[]`;
 }

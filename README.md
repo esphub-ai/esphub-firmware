@@ -26,7 +26,7 @@ USB kits use components built in the same workflow run. Shared bootloader builds
 
 ## Development
 
-Run `npm run catalog` to generate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package. See the [board matrix](docs/m5stack-boards.md) for ESP32 targets.
+Run `npm run catalog` to validate board metadata. Run `npm test` with Node.js 24, a C compiler, pkg-config, and the cJSON development package. See the [board matrix](docs/m5stack-boards.md) for ESP32 targets.
 
 SDK version automation runs here on PRs. It bumps changes to the SDK on same-repository branches, using a patch bump by default and the `sdk:minor` or `sdk:major` label when supplied. Fork contributors update the SDK version themselves.
 
@@ -36,13 +36,11 @@ Use `logs.set` to redirect ordinary ESP-IDF task logs over the existing device M
 
 ## Production publishing
 
-Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bucket. Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies manifest hashes, writes immutable versioned objects and release receipts, then advances that board's Neon catalog in one transaction. The same transaction records every published file in `esphub.release_assets` and the tag of the latest release, so the Hub serves downloads from Neon without this repository's release naming. Versions in this repository start at `2.0`.
+Enable the publishing job once the EspHub API serves the `esphub-firmware` R2 bucket. Each successful board build dispatches **Publish board firmware** separately after its components have passed. To retry a failed publication, dispatch that workflow on `main` with the trusted build run ID and board ID. The retry reuses the validated artifacts. The step verifies manifest hashes, writes immutable versioned objects, then advances that board's Neon catalog in one transaction. The same transaction records every published file in `esphub.release_assets` and the tag of the latest release, so the Hub serves downloads from Neon without this repository's release naming. Versions in this repository start at `2.0`.
 
 Configure the `production` environment with `FIRMWARE_R2_ENDPOINT`, bucket-scoped `FIRMWARE_R2_ACCESS_KEY_ID` and `FIRMWARE_R2_SECRET_ACCESS_KEY`, and `FIRMWARE_DATABASE_URL` for a login limited to `USAGE` on `esphub` and `SELECT, INSERT, UPDATE` on `esphub.firmware_releases`, `esphub.boards`, and `esphub.board_sources`, plus `DELETE` on `esphub.board_sources` and `SELECT, INSERT` on `esphub.release_assets`. Set `FIRMWARE_PUBLISH_ENABLED=true` after configuring the environment. The R2 endpoint and enable flag are Actions variables.
 
-Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time. The directory also stores the example, bootloader and SDK source links the Hub returns. Each run fills them for older rows, including retired boards pinned to an earlier revision.
-
-**Index published releases** records releases published before the file index existed. It lists `releases/` in the R2 bucket, so the R2 token needs list access. It indexes every file named by each release receipt, tags the latest releases, and fails if any latest release is not fully indexed. It runs when the script changes on `main` and can be rerun safely.
+Board directory changes on main are published to Neon independently of device binary releases. Each board keeps its `vendor/model` ID. Add or replace `static/boards/<vendor>/<model>.webp` in the same PR as the board definition. After merge, the **Board photos** workflow uploads changed images to `boards/<vendor>/<model>.webp` in the `esphub-firmware` R2 bucket. The public URL stays the same. The job leaves other R2 objects alone. The Hub reads this directory and joins the latest published firmware versions at request time. The directory also stores the example, bootloader and SDK source links the Hub returns. Retired boards keep the links of their pinned revision.
 
 Pull requests that add or edit optional examples compile just those examples on their respective boards. Changes to the default app, board configuration or shared firmware inputs run the full build for each affected board. Merging cancels that PR's remaining board builds.
 

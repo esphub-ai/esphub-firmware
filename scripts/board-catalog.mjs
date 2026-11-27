@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describeExamples } from "../shared/board-examples.js";
@@ -83,13 +83,6 @@ if (
     const examples = describeExamples(id, board.examples, revision);
     console.log(JSON.stringify(examples.find(e => e.id === board.default_example)));
   } else {
-    await writeFile(
-      new URL("shared/boards.generated.json", repository),
-      JSON.stringify(boards) + "\n",
-    );
-    await writeFile(
-      new URL("shared/sdk.generated.json", repository),
-      JSON.stringify({ version: sdk_version }) + "\n",
-    );
+    console.log(`Validated ${Object.keys(boards).length} boards at SDK ${sdk_version}`);
   }
 }
